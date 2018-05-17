@@ -10,7 +10,15 @@
 
 #define NULL ((void*)0)
 
+typedef void* jhd_string;
+
+
+
+
+
 #include <jhd_config.h>
+#include <jhd_pool.h>
+#include <jhd_string.h>
 #include <jhd_log.h>
 #include <jhd_time.h>
 
