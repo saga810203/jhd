@@ -10,6 +10,9 @@
 
 #define NULL ((void*)0)
 
+#define JHD_OK 0
+#define JHD_ERROR (-1)
+
 typedef void* jhd_string;
 
 
@@ -17,6 +20,7 @@ typedef void* jhd_string;
 
 
 #include <jhd_config.h>
+#include <jhd_queue.h>
 #include <jhd_pool.h>
 #include <jhd_string.h>
 #include <jhd_log.h>
