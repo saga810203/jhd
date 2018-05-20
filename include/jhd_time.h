@@ -8,6 +8,7 @@
 #ifndef JHD_TIME_H_
 #define JHD_TIME_H_
 
+#include <jhd_config.h>
 
 #define JHD_CACHE_LOG_TIME_LEN 		19
 #define JHD_CACHE_HTTP_DATE_LEN 	29
@@ -19,9 +20,9 @@ void jhd_update_time();
 
 
 
-extern u_char* 			cache_log_time;
-extern u_char* 			cache_http_date;
-extern u_int64_t      	jhd_current_msec;
+extern u_char* 			jhd_cache_log_time;
+extern u_char* 			jhd_cache_http_date;
+extern uint64_t      	jhd_current_msec;
 
 
 

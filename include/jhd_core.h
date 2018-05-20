@@ -13,6 +13,15 @@
 #define JHD_OK 0
 #define JHD_ERROR (-1)
 
+//#define  JHD_BUSY       (-3)
+//#define  JHD_DONE       -4
+//#define  NGX_DECLINED   -5
+//#define  NGX_ABORT      -6
+
+#define jhd_bool int
+#define jhd_true 1
+#define jhd_false 0
+
 typedef void* jhd_string;
 
 
@@ -25,6 +34,7 @@ typedef void* jhd_string;
 #include <jhd_string.h>
 #include <jhd_log.h>
 #include <jhd_time.h>
+#include <jhd_rbtree.h>
 
 
 
