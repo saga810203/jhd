@@ -14,8 +14,10 @@
 #define jhd_event_timer_set(ev)  ((ev)->timer.key)
 
 typedef struct jhd_event_s jhd_event_t;
+typedef struct jhd_listener_s jhd_listener_t;
 
 typedef void (*jhd_event_handler_pt)(jhd_event_t  *ev);
+typedef void (*jhd_listener_handler_pt)(jhd_listener_t  *ev);
 
 struct jhd_event_s {
     void            *data;
@@ -26,6 +28,13 @@ struct jhd_event_s {
     unsigned         error:1;
     /* to test on worker exit */
     unsigned         channel:1;
+};
+
+
+struct jhd_listener_s{
+		jhd_queue_t	   queue;
+		void           *data;
+		jhd_listener_handler_pt  handler;
 };
 
 
@@ -72,10 +81,18 @@ static jhd_inline void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer)
     jhd_rbtree_insert(&jhd_event_timer_rbtree, &ev->timer);
 }
 
-#define jhd_post_event(ev, queue)  if (!(ev)->queue.next) { ngx_queue_insert_tail(queue, &(ev)->queue);}                                                                                              \
+#define jhd_post_event(ev, queue)  if (!(ev)->queue.next) { ngx_queue_insert_tail(queue, &(ev)->queue);}
 
 
 #define jhd_delete_posted_event(ev)   jhd_queue_remove(&(ev)->queue)
+
+#define jhd_event_from_queue(q)    jhd_queue_data(q,jhd_event_t,queue);
+
+#define jhd_post_listener(lis,queue) ngx_queue_insert_tail(queue,&(lis)->queue);
+
+#define jhd_delete_listener(lis)  jhd_queue_only_remove(lis)
+
+#define jhd_listener_from_queue(q)   jhd_queue_data(q,jhd_listener_t,queue);
 
 void ngx_event_process_posted(jhd_queue_t *posted);
 

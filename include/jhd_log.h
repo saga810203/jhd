@@ -50,6 +50,10 @@ struct jhd_log_s{
 
 
  extern uint16_t jhd_common_log_mask;
+ extern jhd_log_t  * jhd_top_log;
+
+
+int jhd_std_log_handler(jhd_log_t  *log,u_char* buf,size_t len);
 
 
 void _log_out(u_char* file_name,u_char *func_name,int line,jhd_log_t *log,uint16_t log_mask,uint16_t level,const u_char* fmt,...);

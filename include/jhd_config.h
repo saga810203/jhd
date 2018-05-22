@@ -72,8 +72,6 @@
 
 #define JHD_LISTEN_BACKLOG  511
 
-
-
 #define jhd_random               random
 
 /* TODO: #ifndef */
@@ -85,10 +83,6 @@
 #define JHD_REOPEN_SIGNAL        SIGUSR1
 #define JHD_CHANGEBIN_SIGNAL     SIGUSR2
 
-
-
-
-
 #ifndef JHD_ALIGNMENT
 #define JHD_ALIGNMENT   sizeof(unsigned long)    /* platform word */
 #endif
@@ -96,29 +90,33 @@
 #define jhd_align(d, a)     (((d) + (a - 1)) & ~(a - 1))
 #define jhd_align_ptr(p, a)  (u_char *) (((uintptr_t) (p) + ((uintptr_t) a - 1)) & ~((uintptr_t) a - 1))
 
-
 #define jhd_abort       abort
-
 
 /* TODO: auto_conf: ngx_inline   inline __inline __inline__ */
 #ifndef jhd_inline
 #define jhd_inline      inline
 #endif
 
-
 #ifdef MAXHOSTNAMELEN
 #define JHD_MAXHOSTNAMELEN  MAXHOSTNAMELEN
 #else
 #define JHD_MAXHOSTNAMELEN  256
+
+#define NULL ((void*)0)
+
+#define JHD_OK			0
+#define JHD_ERROR		(-1)
+#define JHD_AGAIN		(-2)
+#define JHD_BUSY        (-3)
+
+
+//#define  JHD_DONE       -4
+//#define  NGX_DECLINED   -5
+//#define  NGX_ABORT      -6
+
+#define jhd_bool int
+#define jhd_true 1
+#define jhd_false 0
+
 #endif
-
-
-
-
-
-
-
-
-
-
 

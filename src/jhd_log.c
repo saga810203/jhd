@@ -9,6 +9,9 @@
 
 uint16_t jhd_common_log_mask = JHD_LOG_MASK_IN_MASTER;
 
+jhd_log_t  * jhd_top_log;
+
+
 static char *jhd_log_level_enum[] = { "STDERR", " EMERG", " ALERT", "  CRIT",
 		"   ERR", "  WARN", "NOTICE", "  INFO", " DEBUG", };
 
@@ -41,3 +44,8 @@ void _log_out(u_char* file_name, u_char *func_name, int line, jhd_log_t *log,
 	}
 }
 
+
+int jhd_std_log_handler(jhd_log_t  *log,u_char* buf,size_t len){
+	write(2,buf,len);
+	return JHD_OK;
+}
