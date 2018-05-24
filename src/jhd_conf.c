@@ -8,44 +8,56 @@
 #include <jhd_config.h>
 #include <jhd_conf.h>
 
-static jhd_inline void jhd_conf_find_data(u_char* start, size_t len, u_char** out, size_t *out_len) {
+static jhd_inline void jhd_conf_parse_line(u_char* start, size_t len, u_char** out, size_t *out_len,size_t* line_len) {
 	int i;
 
 	u_char *b, *e;
 	*out_len = 0;
 	*out = NULL;
 	b = NULL;
+	*line_len = 0;
+	char c;
 
-	if (len) {
-		char c;
-		for(i=0; i < len;++i) {
-			c = start[i];
-			if((c =='\t') ||(c == ' ') ) {
-				continue;
-			}
-			if(c == '#') {
-				return;
-			}
-			*out = b = &start[i];
-
-			break;
-		}
-		if (b) {
-			e = &start[len - 1];
-			for (; e >= b; --e) {
-				c = *e;
-				if ((c == '\t') || (c == ' ') || (c == '\r')) {
-					continue;
-				}
-
-				*out_len = e - b + 1;
-				break;
-			}
-
+	for(i=0 ; i < len; ++i){
+		c = start[i];
+		if((c =='\t') ||(c == ' ') ) {
+			continue;
+		}else {
+			len-=i;
+			b = start+i;
+			*out = b;
+			goto found_head;
 		}
 	}
-	return;
+	return ;
 
+found_head:
+
+    for(i = 0 ;i < len ; ++i){
+    	c = b[i];
+    	if(c == '\n'){
+    		e = b+i;
+    		*line_len = (e - start) + 1;
+    		goto found_tail;
+
+    	}
+    }
+    return ;
+
+ found_tail:
+    --e;
+    if(*e == '\r'){
+    	--e;
+    }
+
+    while(e <= b){
+    	c = *e;
+    	if((c == '\t') || (c ==' ')){
+    		--e;
+    	}else{
+    		*out_len = e - b +1;
+    	}
+    }
 }
 
 int jhd_conf_read(u_char* file_name, jhd_config_handler handler) {
@@ -64,20 +76,42 @@ int jhd_conf_read(u_char* file_name, jhd_config_handler handler) {
 	line_no = 1;
 	fd = open(file_name, O_RDONLY, 0);
 	if (fd != JHD_ERROR) {
-
 		for (;;) {
 			if (buffer_len) {
+				jhd_conf_parse_line(&buffer[0],buffer_len,&data,&data_len,&line_len);
+				if(0 == line_len){
+					if(buffer_len ==JHD_CONFIG_MAX_LINE_SIZE ){
+						close(fd);
+						return JHD_BUSY;
+					}
+				}else{
+					if(handler(file_name,&buffer[0],line_len,data,data_len,line_no) == JHD_OK){
+						buffer_len -=line_len;
+						if(buffer_len ){
+							memmove(&buffer[0],&buffer[line_len],buffer_len);
+							continue;
+						}
+						++line_no;
+					}else {
+						close(fd);
+						return JHD_OK;
+					}
+				}
 
 			}
 			n = pread(fd, &buffer[buffer_len], JHD_CONFIG_MAX_LINE_SIZE - buffer_len,off);
 			if (n) {
-
-			} else {
-				jhd_conf_find_data(&buffer[0],buffer_len,&data,&data_len);
-				if(data_len){
-					handler(file_name,&buffer[0],buffer_len,data,data_len);
-						return JHD_OK;
+				if(JHD_ERROR != n){
+					buffer_len+=n;
+					off+=n;
 				}
+			} else {
+				buffer[buffer_len] = '\n';
+				++buffer_len;
+				jhd_conf_parse_line(&buffer[0],buffer_len,&data,&data_len,&line_len);
+				handler(file_name,&buffer[0],line_len,data,data_len,line_no);
+				close(fd);
+				return JHD_OK;
 			}
 		}
 

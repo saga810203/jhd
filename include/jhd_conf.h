@@ -22,7 +22,7 @@
 
 
 
-typedef int (*jhd_config_handler)(u_char* file_name,u_char* line,size_t line_len,u_char* data,size_t data_len);
+typedef int (*jhd_config_handler)(u_char* file_name,u_char* line,size_t line_len,u_char* data,size_t data_len,off_t line_no);
 
 
 
