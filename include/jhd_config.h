@@ -70,6 +70,8 @@
 
 #include <linux/capability.h>
 
+#include <jhd_error.h>
+
 #define JHD_LISTEN_BACKLOG  511
 
 #define jhd_random               random
@@ -106,8 +108,7 @@
 
 #define JHD_OK			0
 #define JHD_ERROR		(-1)
-#define JHD_AGAIN		(-2)
-#define JHD_BUSY        (-3)
+
 
 
 //#define  JHD_DONE       -4
@@ -117,6 +118,8 @@
 #define jhd_bool int
 #define jhd_true 1
 #define jhd_false 0
+
+extern  int jhd_err;
 
 #endif
 

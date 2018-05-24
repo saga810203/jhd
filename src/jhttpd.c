@@ -21,6 +21,8 @@ static jhd_log_t jhd_std_log = {
 	NULL,NULL
 };
 
+static char* config_file;
+
 int main(int argc, char * const *argv) {
 	jhd_update_time();
 
