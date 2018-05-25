@@ -14,6 +14,11 @@
 #define JHD_ERR_FILE_OPEN   (JHD_ERR_FILE +1)
 
 
+#define JHD_ERR_SOCKET (JHD_ERR_OS + 200)
+
+
+
+
 
 
 #define JHD_ERR_LOGIC  100000

@@ -8,6 +8,9 @@
 
 #ifndef JHD_QUEUE_H_
 #define JHD_QUEUE_H_
+
+#include <jhd_config.h>
+
 typedef struct jhd_queue_s  jhd_queue_t;
 
 struct jhd_queue_s {
@@ -68,13 +71,10 @@ struct jhd_queue_s {
     (x)->prev->next = (x)->next;                                              \
     (x)->next = NULL
 
-#define jhd_queue_only_remove(x)                                              \
-    (x)->next->prev = (x)->prev;                                              \
-    (x)->prev->next = (x)->next;                                              \
+#define jhd_queue_only_remove(x)   (x)->next->prev = (x)->prev; (x)->prev->next = (x)->next;
 
 
-#define jhd_queue_data(q, type, link)                                         \
-    (type *) ((u_char *) q - offsetof(type, link))
+#define jhd_queue_data(q, type, link)   (type *) ((u_char *) q - offsetof(type, link))
 
 
 

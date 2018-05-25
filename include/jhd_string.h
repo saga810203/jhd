@@ -9,6 +9,7 @@
 #define JHD_STRING_H_
 
 #include <jhd_config.h>
+typedef u_char jhd_string;
 
 #define JHD_MAX_INT64_T_VALUE  9223372036854775807
 
@@ -16,7 +17,6 @@
 
 #define JHD_STRING_DATA(str) ((u_char*) (((u_char*)str)+2))
 
-#define u_char  jhd_string
 
 #define jhd_string_free(str) if(!((1<<15) & (*((uint16_t*)str)))){ jhd_free_original(str,(*((uint16_t*)str)));}
 
@@ -37,5 +37,8 @@ int64_t jhd_chars_to_uint64(u_char *chars, size_t n);
 int64_t jhd_hex_to_uint64(u_char *chars,size_t n);
 
 u_char* jhd_uint16_to_hex(u_char* last,u_int16_t val);
+
+
+jhd_bool jhd_static_string_equals(u_char* str1,size_t str1_len,u_char* str2,size_t str2_len);
 
 #endif /* JHD_STRING_H_ */

@@ -70,6 +70,7 @@
 
 #include <linux/capability.h>
 
+
 #include <jhd_error.h>
 
 #define JHD_LISTEN_BACKLOG  511
@@ -108,6 +109,7 @@
 
 #define JHD_OK			0
 #define JHD_ERROR		(-1)
+#define JHD_AGAIN		(-2)
 
 
 
@@ -120,6 +122,7 @@
 #define jhd_false 0
 
 extern  int jhd_err;
+
 
 #endif
 

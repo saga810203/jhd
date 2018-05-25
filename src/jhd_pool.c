@@ -51,8 +51,7 @@ int jhd_add_pool_config(uint16_t size, uint32_t page_size,
 			pool = jhd_queue_data(q, jhd_pool_t, queue);
 			if (pool->size > size) {
 				q = jhd_queue_prev(q);
-				jhd_queue_insert_after(q,&new_pool->queue)
-				;
+				jhd_queue_insert_after(q,&new_pool->queue);
 				return JHD_OK;
 			}
 		}

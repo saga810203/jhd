@@ -5,11 +5,51 @@
  *      Author: root
  */
 
-#include <jhd_config.h>
-#include <jhd_conf.h>
+#include <jhd_core.h>
 
-static jhd_inline void jhd_conf_parse_line(u_char* p, size_t len,
-		size_t *out_len, size_t* line_len) {
+
+
+static jhd_config_item_t* jhd_conf_core_start_child(jhd_config_item_t* parent,u_char *str_start,size_t len);
+static int jhd_conf_core_set_value(jhd_config_item_t *config,u_char *name_start,size_t name_len,u_char *value_start,size_t name_len);
+static int jhd_conf_core_over(jhd_config_item_t *config);
+
+
+
+static jhd_config_item_t  jhd_main_config={
+		NULL,
+		NULL,
+		jhd_conf_core_start_child,
+		jhd_conf_core_set_value,
+		jhd_conf_core_over
+
+};
+
+#define JHD_TMP_HTTP_LISTEN "http_listen"
+#define JHD_TMP_HTTPS_LISTEN "https_listen"
+
+static jhd_config_item_t* jhd_conf_core_start_child(jhd_config_item_t* parent,u_char *str_start,size_t len){
+	if(jhd_static_string_equals(str_start,len,JHD_TMP_HTTP_LISTEN,sizeof(JHD_TMP_HTTP_LISTEN))){
+
+
+
+	}
+	if(jhd_static_string_equals(str_start,len,JHD_TMP_HTTPS_LISTEN,sizeof(JHD_TMP_HTTPS_LISTEN))){
+
+	}
+
+
+	return NULL;
+}
+
+#undef JHD_TMP_HTTP_LISTEN
+#undef JHD_TMP_HTTPS_LISTEN
+
+
+static int jhd_conf_core_set_value(jhd_config_item_t *config,u_char *name_start,size_t name_len,u_char *value_start,size_t name_len);
+static int jhd_conf_core_over(jhd_config_item_t *config);
+
+
+static jhd_inline void jhd_conf_parse_line(u_char* p, size_t len, size_t *out_len, size_t* line_len) {
 	int i;
 	*out_len = 0;
 	*line_len = 0;
@@ -55,7 +95,7 @@ static jhd_inline void jhd_conf_skip_white(u_char* p, size_t *len) {
 	*len = 0;
 }
 
-int jhd_conf_read(u_char* file_name, jhd_config_handler handler) {
+static int jhd_conf_read(u_char* file_name, jhd_config_handler_pt handler) {
 	u_char buffer[JHD_CONFIG_MAX_LINE_SIZE];
 
 	size_t line_no, line_len, data_len, buffer_len;
@@ -70,8 +110,7 @@ int jhd_conf_read(u_char* file_name, jhd_config_handler handler) {
 		for (;;) {
 			jhd_conf_skip_white(&buffer[0], &buffer_len);
 			if (buffer_len) {
-				jhd_conf_parse_line(&buffer[0], buffer_len, &data_len,
-						&line_len);
+				jhd_conf_parse_line(&buffer[0], buffer_len, &data_len, &line_len);
 				if (0 == line_len) {
 					if (buffer_len == JHD_CONFIG_MAX_LINE_SIZE) {
 						close(fd);
@@ -80,8 +119,7 @@ int jhd_conf_read(u_char* file_name, jhd_config_handler handler) {
 					}
 				} else {
 					if ((data_len > 0) && (buffer[0] != '#')) {
-						if (handler(file_name, &buffer[0], line_len, &buffer[0],
-								data_len, line_no) != JHD_OK) {
+						if (handler(file_name, &buffer[0], line_len, &buffer[0], data_len, line_no) != JHD_OK) {
 							close(fd);
 							jhd_err = JHD_ERR_LOGIC_CONF_HANDLER_ABORT;
 							return JHD_ERROR;
@@ -95,7 +133,7 @@ int jhd_conf_read(u_char* file_name, jhd_config_handler handler) {
 				}
 			}
 			n = pread(fd, &buffer[buffer_len],
-					JHD_CONFIG_MAX_LINE_SIZE - buffer_len, off);
+			JHD_CONFIG_MAX_LINE_SIZE - buffer_len, off);
 			if (n) {
 				if (JHD_ERROR != n) {
 					buffer_len += n;
@@ -105,11 +143,9 @@ int jhd_conf_read(u_char* file_name, jhd_config_handler handler) {
 				buffer[buffer_len] = '\n';
 				++buffer_len;
 				close(fd);
-				jhd_conf_parse_line(&buffer[0], buffer_len, &data_len,
-						&line_len);
+				jhd_conf_parse_line(&buffer[0], buffer_len, &data_len, &line_len);
 				if (data_len) {
-					if (handler(file_name, &buffer[0], line_len, &buffer[0],
-							data_len, line_no) != JHD_OK) {
+					if (handler(file_name, &buffer[0], line_len, &buffer[0], data_len, line_no) != JHD_OK) {
 						jhd_err = JHD_ERR_LOGIC_CONF_HANDLER_ABORT;
 						return JHD_ERROR;
 					}
@@ -120,4 +156,27 @@ int jhd_conf_read(u_char* file_name, jhd_config_handler handler) {
 	}
 	jhd_err = JHD_ERR_FILE_OPEN;
 	return JHD_ERROR;
+}
+
+
+int jhd_conf_parse(jhd_config_handler_pt handler){
+	u_char* file_name;
+	u_char* nf;
+	file_name = getenv(JHD_CONF_CONFIG_FILE_ENV_NAME);
+	if(!file_name){
+		file_name = JHD_CONF_DEFAULT_CONFIG_FILE;
+	}
+	return jhd_conf_read(file_name,handler);
+}
+
+
+
+int jhd_conf_default_config_handler(u_char* file_name,u_char* line,size_t line_len,u_char* data,size_t data_len,off_t line_no){
+
+}
+
+int jhd_conf_parse_default(){
+
+
+
 }

@@ -17,6 +17,10 @@ typedef struct jhd_event_s jhd_event_t;
 typedef struct jhd_listener_s jhd_listener_t;
 
 typedef void (*jhd_event_handler_pt)(jhd_event_t  *ev);
+
+/**
+ * return JHD_OK ,JHD_ERROR, JHD_AGAIN
+ */
 typedef void (*jhd_listener_handler_pt)(jhd_listener_t  *ev);
 
 struct jhd_event_s {

@@ -6,28 +6,46 @@
  */
 
 #include <jhd_core.h>
+#include <jhd_log.h>
+#include <jhd_conf.h>
+#include <jhd_connection.h>
+#include <jhd_ssl.h>
 
-
-
-
-static jhd_log_t jhd_std_log = {
-	(uint16_t)(JHD_LOG_MASK_IN_MASTER | JHD_LOG_MASK_UTIL),
+static jhd_log_t jhd_std_log = { (uint16_t) (JHD_LOG_MASK_IN_MASTER | JHD_LOG_MASK_UTIL),
 #ifdef JHD_DEBUG
-	JHD_LOG_DEBUG,
+        JHD_LOG_DEBUG,
 #else
-	JHD_LOG_WARN,
+        JHD_LOG_WARN,
 #endif
-	jhd_std_log_handler,
-	NULL,NULL
-};
-
-static char* config_file;
+        jhd_std_log_handler,
+        NULL, NULL };
 
 int main(int argc, char * const *argv) {
 	jhd_update_time();
+	jhd_ssl_init();
+	jhd_core_init();
+
+	if (JHD_OK != jhd_conf_parse_default()) {
+		printf("%s", "read cofnig error");
+		return 1;
+	}
+	jhd_run_master_startup_listener();
+
+	jhd_err = 0;
+	//TODO handle argv
+
+	if (jhd_open_listening_sockets() != JHD_OK) {
+		printf("%s", "listen socket error");
+		goto finish;
+	}
 
 
 
 
+
+
+	finish: jhd_run_master_shutdown_listener();
+
+	return jhd_err;
 
 }

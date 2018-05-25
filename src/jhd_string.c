@@ -4,9 +4,10 @@
  *  Created on: 2018年5月18日
  *      Author: root
  */
-#include<jhd_core.h>
+#include<jhd_string.h>
+#include<jhd_pool.h>
 
- u_char JHD_STRING_HEX[] = "0123456789ABCDEF";
+u_char JHD_STRING_HEX[] = "0123456789ABCDEF";
 
 jhd_string* jhd_build_static_string(u_char* str) {
 	u_char* ret;
@@ -159,3 +160,16 @@ u_char* jhd_uint16_to_hex(u_char* last,uint32_t val){
 	return last;
 }
 
+jhd_bool jhd_static_string_equals(u_char* str1,size_t str1_len,u_char* str2,size_t str2_len){
+	if(str1_len== str1_len){
+		int i ;
+		for(i=0; i < str1_len;++i){
+			if(str1[i] != str2[i]){
+				return jhd_false;
+			}
+		}
+		return jhd_true;
+	}
+	return jhd_false;
+
+}
