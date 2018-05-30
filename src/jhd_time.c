@@ -5,7 +5,8 @@
  *      Author: root
  */
 
-#include <jhd_core.h>
+#include <jhd_time.h>
+#include <jhd_config.h>
 
 
 static u_char log_time_value[JHD_CACHE_LOG_TIME_LEN+1];
@@ -135,6 +136,8 @@ void jhd_update_time() {
 	clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
 
 	jhd_current_msec = ts.tv_sec * 1000 + (ts.tv_nsec / 1000000);
+
+
 
 	if (jhd_cache_time == tv.tv_sec) {
 		return;

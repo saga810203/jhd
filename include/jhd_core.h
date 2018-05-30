@@ -26,11 +26,10 @@ struct jhd_core_s {
 		jhd_bool				daemon;
 		jhd_bool				use_worker;
 
-		void*					listenings;
-		size_t					listening_size;
 
 
-}
+
+};
 
 
 

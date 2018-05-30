@@ -73,6 +73,10 @@
 
 #include <jhd_error.h>
 
+
+#define JHD_HAVE_INET6 1
+
+
 #define JHD_LISTEN_BACKLOG  511
 
 #define jhd_random               random

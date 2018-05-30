@@ -21,7 +21,7 @@ typedef void (*jhd_event_handler_pt)(jhd_event_t  *ev);
 /**
  * return JHD_OK ,JHD_ERROR, JHD_AGAIN
  */
-typedef void (*jhd_listener_handler_pt)(jhd_listener_t  *ev);
+typedef int (*jhd_listener_handler_pt)(jhd_listener_t  *ev);
 
 struct jhd_event_s {
     void            *data;
@@ -32,6 +32,7 @@ struct jhd_event_s {
     unsigned         error:1;
     /* to test on worker exit */
     unsigned         channel:1;
+    unsigned		 timedout:1;
 };
 
 
@@ -43,20 +44,18 @@ struct jhd_listener_s{
 
 
 int jhd_event_init();
-void ngx_event_accept(jhd_event_t *ev);
-void ngx_event_recvmsg(jhd_event_t *ev);
-int ngx_trylock_accept_mutex();
-void ngx_process_events_and_timers();
+void jhd_event_accept(jhd_event_t *ev);
+void jhd_event_recvmsg(jhd_event_t *ev);
+jhd_bool jhd_trylock_accept_mutex();
+void jhd_process_events_and_timers();
 
 
-int ngx_event_timer_init();
-uint64_t ngx_event_find_timer(void);
-void ngx_event_expire_timers(void);
-int64_t ngx_event_no_timers_left(void);
 
+uint64_t jhd_event_find_timer(void);
+void jhd_event_expire_timers(void);
 
 extern jhd_rbtree_t  jhd_event_timer_rbtree;
-
+extern int epoll_fd;
 
 static jhd_inline void jhd_event_del_timer(jhd_event_t *ev)
 {
@@ -85,7 +84,7 @@ static jhd_inline void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer)
     jhd_rbtree_insert(&jhd_event_timer_rbtree, &ev->timer);
 }
 
-#define jhd_post_event(ev, queue)  if (!(ev)->queue.next) { ngx_queue_insert_tail(queue, &(ev)->queue);}
+#define jhd_post_event(ev, queue)  if ((ev)->queue.next) { jhd_queue_insert_tail(queue, &(ev)->queue);}
 
 
 #define jhd_delete_posted_event(ev)   jhd_queue_remove(&(ev)->queue)
@@ -98,7 +97,17 @@ static jhd_inline void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer)
 
 #define jhd_listener_from_queue(q)   jhd_queue_data(q,jhd_listener_t,queue);
 
-void ngx_event_process_posted(jhd_queue_t *posted);
+void jhd_inline jhd_event_process_posted(jhd_queue_t *posted){
+    jhd_queue_t  *q;
+    jhd_event_t  *ev;
+
+    while (!jhd_queue_empty(posted)) {
+        q = jhd_queue_head(posted);
+        ev = jhd_queue_data(q, jhd_event_t,queue);
+        jhd_delete_posted_event(ev);
+        ev->handler(ev);
+    }
+}
 
 
 extern jhd_queue_t  jhd_posted_accept_events;

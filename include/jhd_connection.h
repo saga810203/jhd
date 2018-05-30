@@ -25,6 +25,8 @@ typedef ssize_t (*jhd_connection_close_pt)(jhd_connection_t *c);
 
 
 struct jhd_listening_s{
+		int					fd;
+
 		void   				*sockaddr;
 		socklen_t           socklen;
 
@@ -38,6 +40,10 @@ struct jhd_listening_s{
 	    jhd_connection_t	*connection;
 
 	    jhd_bool			ssl;
+	    jhd_bool			ipv6only;
+	    jhd_bool			bind;
+
+	    jhd_queue_t			*queue;
 
 
 };
@@ -74,6 +80,8 @@ void  free_connection(jhd_connection_t *c);
 
 
 jhd_bool  jhd_open_listening_sockets();
+
+
 
 
 

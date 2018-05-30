@@ -40,9 +40,9 @@ struct jhd_queue_s {
 
 #define jhd_queue_insert_tail(queue, ele)                                           \
     (ele)->prev = (queue)->prev;                                                    \
-    (ele)->prev->next = ele;                                                      \
-    (ele)->next = queue;                                                            \
-    (queue)->prev = ele
+    (ele)->prev->next = (ele);                                                      \
+    (ele)->next = (queue);                                                            \
+    (queue)->prev = (ele)
 
 
 #define jhd_queue_head(queue)                                                     \

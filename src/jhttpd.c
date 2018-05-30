@@ -10,6 +10,7 @@
 #include <jhd_conf.h>
 #include <jhd_connection.h>
 #include <jhd_ssl.h>
+#include <jhd_shm.h>
 
 static jhd_log_t jhd_std_log = { (uint16_t) (JHD_LOG_MASK_IN_MASTER | JHD_LOG_MASK_UTIL),
 #ifdef JHD_DEBUG
@@ -24,6 +25,7 @@ int main(int argc, char * const *argv) {
 	jhd_update_time();
 	jhd_ssl_init();
 	jhd_core_init();
+	jhd_connection_init();
 
 	if (JHD_OK != jhd_conf_parse_default()) {
 		printf("%s", "read cofnig error");
@@ -45,6 +47,7 @@ int main(int argc, char * const *argv) {
 
 
 	finish: jhd_run_master_shutdown_listener();
+	jhd_free_shm();
 
 	return jhd_err;
 
