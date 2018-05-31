@@ -16,7 +16,7 @@ static jhd_queue_t jhd_master_shutdown_queue;
 static jhd_queue_t jhd_worker_startup_queue;
 static jhd_queue_t jhd_worker_shutdown_queue;
 
-void jhd_init_core() {
+void jhd_core_init() {
 	jhd_queue_init(&jhd_master_startup_queue);
 	jhd_queue_init(&jhd_master_shutdown_queue);
 

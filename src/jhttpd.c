@@ -23,13 +23,14 @@ static jhd_log_t jhd_std_log = { (uint16_t) (JHD_LOG_MASK_IN_MASTER | JHD_LOG_MA
 
 int main(int argc, char * const *argv) {
 	jhd_update_time();
-	jhd_ssl_init();
 	jhd_core_init();
+	jhd_ssl_init();
 	jhd_connection_init();
+	jhd_event_init();
 
 	if (JHD_OK != jhd_conf_parse_default()) {
-		printf("%s", "read cofnig error");
-		return 1;
+		jhd_err = 1;
+		goto finish;
 	}
 	jhd_run_master_startup_listener();
 
@@ -40,9 +41,6 @@ int main(int argc, char * const *argv) {
 		printf("%s", "listen socket error");
 		goto finish;
 	}
-
-
-
 
 
 

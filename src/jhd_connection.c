@@ -10,7 +10,7 @@
 #include <jhd_core.h>
 #include <jhd_connection.h>
 
-static jhd_connection_t *g_connections;
+jhd_connection_t *g_connections;
 
 static jhd_queue_t g_listening_queue;
 
@@ -21,6 +21,7 @@ static jhd_connection_t *free_connections;
 
 uint32_t listening_count;
 uint32_t connection_count;
+uint32_t free_connection_count;
 
 int32_t jhd_open_listening_sockets(jhd_listening_t *lis) {
 	int reuseaddr, reuseport;
@@ -268,7 +269,6 @@ static int jhd_connection_worker_close_listening(jhd_listener_t* listener) {
 
 				ev->timedout = 1;
 
-
 			}
 			if (ev->queue.next) {
 				jhd_queue_only_remove(&ev->queue);
@@ -279,6 +279,13 @@ static int jhd_connection_worker_close_listening(jhd_listener_t* listener) {
 
 	jhd_event_process_posted(&jhd_posted_events);
 
+	jhd_event_expire_all();
+
+	free(g_connections);
+	g_connections = NULL;
+
+	free(event_list);
+	event_list = NULL;
 	close(epoll_fd);
 	epoll_fd = -1;
 
@@ -294,11 +301,20 @@ static int jhd_connection_worker_startup_listening(jhd_listener_t* listener) {
 	if (connection_count == 0) {
 		connection_count = 1024;
 	}
+	if (event_count == 0) {
+		event_count = connection_count;
+	}
 
 	epoll_fd = epoll_create(connection_count);
 	if (epoll_fd == -1) {
 //TODO:LOG
-		return JHD_ERROR;
+		goto failed;
+	}
+
+	event_list = calloc(sizeof(struct epoll_event) * event_count);
+	if (event_list == NULL) {
+		//TODO:LOG
+		goto failed;
 	}
 
 	i = 0;
@@ -322,24 +338,39 @@ static int jhd_connection_worker_startup_listening(jhd_listener_t* listener) {
 			free_connection = connection;
 		}
 
+		free_connection_count = connection_count - listening_count;
+
 		listener->handler = jhd_connection_worker_close_listening;
 		jhd_add_worker_shutdown_listener(listener);
-		return JHD_OK;
+	} else {
+		goto failed;
 	}
+	return JHD_OK;
 
-//TODO LOG
+	failed:
+
+	if (epoll_fd != (-1)) {
+		close(epoll_fd);
+		epoll_fd = (-1);
+	}
+	if (event_list) {
+		free(event_list);
+		event_list = NULL;
+	}
 
 	return JHD_ERROR;
 
 }
 
-jhd_bool init_connection(size_t max_connections) {
+void jhd_connection_init() {
 	epoll_fd = -1;
 
 	listening_count = 0;
 	connection_count = 0;
 	g_connections = NULL;
 	free_connections = NULL;
+	event_count = 0;
+	event_list = NULL;
 
 	jhd_queue_init(&g_listening_queue);
 
@@ -354,7 +385,5 @@ jhd_bool init_connection(size_t max_connections) {
 	w_connection_listener.handler = jhd_connection_worker_startup_listening;
 
 	jhd_add_worker_startup_listener(&w_connection_listener);
-	return jhd_true;
-
 }
 

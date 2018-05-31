@@ -73,7 +73,7 @@ struct jhd_connection_s {
 
 
 
-jhd_bool  init_connection(size_t  max_connections);
+void  jhd_connection_init();
 
 jhd_connection_t*  getconnection();
 void  free_connection(jhd_connection_t *c);
@@ -86,7 +86,8 @@ jhd_bool  jhd_open_listening_sockets();
 
 
 
-
-
+extern jhd_connection_t *g_connections;
+extern uint32_t connection_count;
+extern uint32_t free_connection_count;
 
 #endif /* JHD_CONNECTION_H_ */
