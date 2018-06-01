@@ -19,6 +19,12 @@
 #include <jhd_string.h>
 
 
+#define JHD_PROCESS_SINGLE     0
+#define JHD_PROCESS_MASTER     1
+#define JHD_PROCESS_SIGNALLER  2
+#define JHD_PROCESS_WORKER     3
+#define JHD_PROCESS_HELPER     4
+
 
 
 struct jhd_core_s {
@@ -37,6 +43,16 @@ struct jhd_core_s {
 
 
 
+
+
+
+extern int  jhd_core_master_startup_time;
+extern int  jhd_core_worker_startup_time;
+
+extern int jhd_process;
+extern sig_atomic_t jhd_quit;
+extern sig_atomic_t jhd_restart;
+extern sig_atomic_t jhd_daemonized;
 
 
 

@@ -21,26 +21,49 @@ static jhd_log_t jhd_std_log = { (uint16_t) (JHD_LOG_MASK_IN_MASTER | JHD_LOG_MA
         jhd_std_log_handler,
         NULL, NULL };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int main(int argc, char * const *argv) {
 	jhd_update_time();
 	jhd_core_init();
-	jhd_ssl_init();
-	jhd_connection_init();
-	jhd_event_init();
-
 	if (JHD_OK != jhd_conf_parse_default()) {
 		jhd_err = 1;
 		goto finish;
 	}
-	jhd_run_master_startup_listener();
+
+
+
+
+	if(jhd_run_master_startup_listener()!=JHD_OK){
+		jhd_err = 1;
+		//TODO:LOG
+		goto finish;
+	}
 
 	jhd_err = 0;
 	//TODO handle argv
 
-	if (jhd_open_listening_sockets() != JHD_OK) {
-		printf("%s", "listen socket error");
-		goto finish;
-	}
+
+
+
+
+
 
 
 

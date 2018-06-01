@@ -9,6 +9,18 @@
 #include <jhd_core.h>
 #include <jhd_event.h>
 #include <jhd_queue.h>
+#include <jhd_time.h>
+
+
+
+
+int  jhd_core_master_startup_time;
+int  jhd_core_worker_startup_time;
+
+int jhd_process;
+sig_atomic_t jhd_quit;
+sig_atomic_t jhd_restart;
+sig_atomic_t jhd_daemonized;
 
 static jhd_queue_t jhd_master_startup_queue;
 static jhd_queue_t jhd_master_shutdown_queue;
@@ -17,11 +29,17 @@ static jhd_queue_t jhd_worker_startup_queue;
 static jhd_queue_t jhd_worker_shutdown_queue;
 
 void jhd_core_init() {
+	int jhd_process;
+	jhd_quit = 0;
+	jhd_restart = 0;
+	jhd_daemonized = 1;
 	jhd_queue_init(&jhd_master_startup_queue);
 	jhd_queue_init(&jhd_master_shutdown_queue);
 
 	jhd_queue_init(&jhd_worker_startup_queue);
 	jhd_queue_init(&jhd_worker_shutdown_queue);
+	jhd_core_master_startup_time = 1000 * 60;
+	jhd_core_worker_startup_time = 1000 * 60;
 
 }
 void jhd_add_master_startup_listener(jhd_listener_t *lis) {
@@ -38,9 +56,18 @@ void jhd_add_worker_shutdown_listener(jhd_listener_t *lis) {
 }
 
 int jhd_run_master_startup_listener() {
+	uint64_t begin_time;
+
 	jhd_listener_t *lis;
 	jhd_queue_t *q;
 	int ret;
+
+	jhd_update_time();
+	jhd_ssl_init();
+	jhd_connection_init();
+	jhd_event_init();
+
+	begin_time = jhd_current_msec;
 	while (jhd_queue_head(&jhd_master_startup_queue)) {
 		q = jhd_queue_head(&jhd_master_startup_queue);
 		jhd_queue_only_remove(q);
@@ -50,6 +77,12 @@ int jhd_run_master_startup_listener() {
 			jhd_queue_insert_tail(&jhd_master_startup_queue, q);
 		} else if (ret == JHD_ERROR) {
 			return JHD_ERROR;
+		}
+		if((jhd_core_master_startup_time >0)){
+			jhd_update_time();
+			if((jhd_current_msec - begin_time)>jhd_core_master_startup_time){
+				return JHD_ERROR;
+			}
 		}
 	}
 	return JHD_OK;

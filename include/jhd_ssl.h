@@ -11,4 +11,6 @@
 
 	void jhd_ssl_init();
 
+	void jhd_ssl_free();
+
 #endif /* JHD_SSL_H_ */
