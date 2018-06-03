@@ -14,6 +14,8 @@ jhd_connection_t *g_connections;
 
 static jhd_queue_t g_listening_queue;
 
+
+
 static jhd_listener_t m_connection_listener;
 static jhd_listener_t w_connection_listener;
 
@@ -30,6 +32,10 @@ int32_t jhd_open_listening_sockets(jhd_listening_t *lis) {
 	reuseaddr = 1;
 	reuseport = 1;
 	int err;
+	if(lis->fd!=-1){
+		return JHD_OK;
+	}
+
 	saddr = (struct sockaddr *) lis->sockaddr;
 
 	fd = socket(saddr->sa_family, SOCK_STREAM, 0);

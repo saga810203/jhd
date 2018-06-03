@@ -4,8 +4,9 @@
  *  Created on: May 22, 2018
  *      Author: root
  */
+#include <jhd_config.h>
 
-#include <jhd_core.h>
+#include <jhd_conf.h>
 
 
 
