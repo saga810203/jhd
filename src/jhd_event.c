@@ -21,11 +21,7 @@ static jhd_listener_t w_event_listener;
 
 static jhd_bool accepted;
 
-void ngx_event_accept(jhd_event_t *ev);
-void ngx_event_recvmsg(jhd_event_t *ev);
-jhd_bool ngx_trylock_accept_mutex() {
-	return __sync_fetch_and_or(g_event_lock.addr, (uint64_t) 1) == 0 ? jhd_true : jhd_false;
-}
+
 
 void jhd_process_events_and_timers() {
 	uint64_t timer, delta;

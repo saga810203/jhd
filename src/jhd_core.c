@@ -14,11 +14,12 @@
 int jhd_core_master_startup_time;
 int jhd_core_worker_startup_time;
 
-int jhd_process;
+volatile int jhd_process;
 int jhd_single;
-sig_atomic_t jhd_quit;
-sig_atomic_t jhd_restart;
-sig_atomic_t jhd_daemonized;
+volatile sig_atomic_t jhd_quit;
+volatile sig_atomic_t jhd_reap;
+volatile sig_atomic_t jhd_restart;
+volatile sig_atomic_t jhd_daemonized;
 
 u_char *jhd_pid_file;
 
@@ -32,6 +33,7 @@ void jhd_core_init() {
 	jhd_single = 0;
 	jhd_quit = 0;
 	jhd_restart = 0;
+	jhd_reap = 0;
 	jhd_daemonized = 1;
 	jhd_queue_init(&jhd_master_startup_queue);
 	jhd_queue_init(&jhd_master_shutdown_queue);
@@ -53,7 +55,10 @@ int jhd_run_master_startup_listener() {
 	int ret;
 
 	jhd_update_time();
-	jhd_ssl_init();
+	if(!jhd_ssl_init()){
+		return JHD_ERROR;
+
+	}
 	jhd_connection_init();
 	jhd_event_init();
 
@@ -109,6 +114,8 @@ void jhd_run_master_shutdown_listener() {
 			jhd_queue_insert_tail(&jhd_master_startup_queue, q);
 		}
 	}
+
+	jhd_ssl_free();
 }
 void jhd_run_worker_shutdown_listener() {
 	jhd_listener_t *lis;

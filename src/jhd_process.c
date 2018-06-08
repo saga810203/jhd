@@ -15,9 +15,11 @@ pid_t jhd_parent;
 
 jhd_listener_t jhd_pid_file_listener;
 int process_count;
-uint32_t jhd_process_slot;
+volatile uint32_t jhd_process_slot;
 
-jhd_process_t    jhd_processes[512];
+static int jhd_process_last;
+
+pid_t *jhd_processes;
 
 static void jhd_signal_handler(int signo, siginfo_t *siginfo, void *ucontext);
 
@@ -47,6 +49,50 @@ jhd_signal_t signals[] = { { SIGHUP, "SIGHUP", "restart", jhd_signal_handler },
 
 { 0, NULL, "", NULL } };
 
+static void jhd_process_get_status(void) {
+	int status;
+	char *process;
+	pid_t pid;
+	uint32_t i;
+	uint32_t one;
+
+	one = 0;
+
+	for (;;) {
+		pid = waitpid(-1, &status, WNOHANG);
+
+		if (pid == 0) {
+			return;
+		}
+
+		if (pid == -1) {
+			if (errno == EINTR) {
+				continue;
+			}
+
+			if (errno == ECHILD && one) {
+				return;
+			}
+			if (errno == ECHILD) {
+//                ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, err,"waitpid() failed");
+				return;
+			}
+
+//            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, err,   "waitpid() failed");
+			return;
+		}
+
+		one = 1;
+
+		for (i = 0; i < process_count; ++i) {
+			if (jhd_processes[i] == pid) {
+				jhd_processes[i] = (-1);
+				break;
+			}
+		}
+	}
+}
+
 static void jhd_signal_handler(int signo, siginfo_t *siginfo, void *ucontext) {
 	jhd_signal_t *sig;
 
@@ -58,50 +104,48 @@ static void jhd_signal_handler(int signo, siginfo_t *siginfo, void *ucontext) {
 
 	switch (jhd_process) {
 
-	case JHD_PROCESS_MASTER:
+		case JHD_PROCESS_MASTER:
 
-		switch (signo) {
+			switch (signo) {
 
-		case SIGQUIT:
-		case SIGTERM:
-		case SIGINT:
-			jhd_quit = 1;
-//            action = "shutting down";
+				case SIGQUIT:
+				case SIGTERM:
+				case SIGINT:
+					jhd_quit = 1;
+					break;
+
+				case SIGWINCH:
+					break;
+
+				case SIGHUP:
+					jhd_restart = 1;
+					break;
+
+				case SIGUSR1:
+				case SIGUSR2:
+					break;
+				case SIGALRM:
+					//  ngx_sigalrm = 1;
+					break;
+
+				case SIGIO:
+					//  ngx_sigio = 1;
+					break;
+
+				case SIGCHLD:
+					jhd_reap = 1;
+					break;
+			}
+
 			break;
-
-		case SIGWINCH:
-			break;
-
-		case SIGHUP:
-			jhd_restart = 1;
-//            action = "restart jhttpd";
-			break;
-
-		case SIGUSR1:
-		case SIGUSR2:
-			break;
-		case SIGALRM:
-			//  ngx_sigalrm = 1;
-			break;
-
-		case SIGIO:
-			//  ngx_sigio = 1;
-			break;
-
-		case SIGCHLD:
-			//  ngx_reap = 1;
-			break;
-		}
-
-		break;
-	case JHD_PROCESS_SINGLE:
-	case JHD_PROCESS_WORKER:
-	case JHD_PROCESS_HELPER:
-		if (signo == SIGQUIT || signo == SIGTERM || signo == SIGINT) {
-			jhd_quit = 1;
+		case JHD_PROCESS_SINGLE:
+		case JHD_PROCESS_WORKER:
+		case JHD_PROCESS_HELPER:
+			if (signo == SIGQUIT || signo == SIGTERM || signo == SIGINT) {
+				jhd_quit = 1;
 //    		 action = "shutting down";
-		}
-		break;
+			}
+			break;
 	}
 }
 
@@ -178,14 +222,14 @@ jhd_bool jhd_daemon() {
 	int fd;
 
 	switch (fork()) {
-	case -1:
-		printf("fork() failed");
-		return jhd_false;
-	case 0:
-		break;
+		case -1:
+			printf("fork() failed");
+			return jhd_false;
+		case 0:
+			break;
 
-	default:
-		exit(0);
+		default:
+			exit(0);
 	}
 
 	jhd_pid = getpid();
@@ -227,8 +271,8 @@ jhd_bool jhd_daemon() {
 	return jhd_true;
 }
 
-static void jhd_delete_pidfile(jhd_listener_t *lis){
-	 unlink((const char *) jhd_pid_file);
+static void jhd_delete_pidfile(jhd_listener_t *lis) {
+	unlink((const char *) jhd_pid_file);
 }
 
 jhd_bool jhd_create_pidfile() {
@@ -256,173 +300,212 @@ jhd_bool jhd_create_pidfile() {
 	return jhd_true;
 }
 
-void jhd_delete_pidfile(){
-	 unlink((const char *) jhd_pid_file);
+void jhd_delete_pidfile() {
+	unlink((const char *) jhd_pid_file);
 }
-void jhd_single_process(){
-	if(jhd_run_worker_startup_listener()!=JHD_OK){
+void jhd_single_process() {
+	jhd_process = JHD_PROCESS_SINGLE;
+	if (jhd_run_worker_startup_listener() != JHD_OK) {
 		jhd_err = 1;
 		return;
 	}
 
-	while(!jhd_quit){
+	while (!jhd_quit) {
 		jhd_process_events_and_timers();
 
 	}
 
 	jhd_run_worker_shutdown_listener();
 
-
 }
 
-static void jhd_worker_process(void *data){
-
-}
-
-
-static void jhd_process_listener_handler(jhd_listener_t *lis){
-	jhd_process_t *p = lis->data;
-	if(p->channel[0]!=-1){
-		close(p->channel[0]);
+jhd_bool jhd_worker_init(){
+	if(jhd_run_worker_startup_listener()!=JHD_OK){
+		return jhd_false;
 	}
-	if(p->channel[1]!=-1){
-		close(p->channel[1]);
+	return jhd_true;
+}
+
+static void jhd_worker_process() {
+	jhd_process = JHD_PROCESS_WORKER;
+	jhd_pool_init();
+	if(!jhd_worker_init()){
+		jhd_run_worker_shutdown_listener();
+		return;
+
 	}
 
-}
-
-jhd_bool jhd_spawn_process(jhd_spawn_proc_pt proc, void *data)
-{
-
-    pid_t  pid;
-    uint32_t  p_slot;
-    jhd_listener_t  *lis;
-    int nb;
-    nb =1;
-    p_slot =(uint32_t)data;
-        if (socketpair(AF_UNIX, SOCK_STREAM, 0, jhd_processes[p_slot].channel) == -1)
-        {
-          //TODO:LOG
-        	return jhd_false;
-        }
-        lis = &&jhd_processes[p_slot].listener;
-        lis->data = &jhd_processes[p_slot];
-        lis->handler = jhd_process_listener_handler;
-        jhd_add_master_startup_listener(lis);
-
-
-        if (ioctl(jhd_processes[p_slot].channel[0], FIONBIO, &nb)== -1) {
-        	//TODO:LOG
-            return jhd_false;
-        }
-        if (ioctl(jhd_processes[p_slot].channel[1], FIONBIO, &nb)== -1) {
-        	//TODO:LOG
-            return jhd_false;
-        }
-        if (ioctl(jhd_processes[p_slot].channel[0], FIOASYNC, &nb)== -1) {
-            return jhd_false;
-        }
-
-        if (fcntl(jhd_processes[p_slot].channel[0], F_SETOWN, jhd_pid) == -1) {
-           return jhd_false;
-        }
-
-        if (fcntl(jhd_processes[p_slot].channel[0], F_SETFD, FD_CLOEXEC) == -1) {
-           return jhd_false;
-        }
-
-        if (fcntl(jhd_processes[s].channel[1], F_SETFD, FD_CLOEXEC) == -1) {
-            return jhd_false;
-        }
-
-
-    jhd_process_slot = p_slot;
-
-
-    pid = fork();
-
-    switch (pid) {
-
-    case -1:
-        return jhd_false;
-
-    case 0:
-        jhd_parent = jhd_pid;
-        jhd_pid = ngx_getpid();
-        proc(data);
-        break;
-
-    default:
-        break;
-    }
-
-
-
-    jhd_processes[p_slot].pid = pid;
-    jhd_processes[p_slot].exited = 0;
-
-
-
-    jhd_processes[p_slot].proc = proc;
-    jhd_processes[p_slot].data = data;
-
-
-  return jhd_true;
-}
-
-jhd_bool jhd_start_worker_processes(){
-	uint32_t i;
-		jhd_channel_t ch;
-		memset(&ch, 0,sizeof(jhd_channel_t));
-
-		ch.command = JHD_CMD_OPEN_CHANNEL;
-
-		for (i = 0; i < process_count; i++) {
-
-			if(!jhd_spawn_process(jhd_worker_process,(void *) (intptr_t) i)){
-				return jhd_false;
-			}
-
-			ch.pid = jhd_processes[jhd_process_slot].pid;
-			ch.slot = jhd_process_slot;
-			ch.fd = jhd_processes[jhd_process_slot].channel[0];
-
-			jhd_pass_open_channel( &ch);
+	for(;;){
+		jhd_process_events_and_timers();
+		if(jhd_quit){
+			break;
 		}
-
-		return jhd_true;
-
+	}
+	jhd_run_worker_shutdown_listener();
 }
 
-void jhd_master_process(){
+jhd_bool jhd_spawn_process(uint32_t idx) {
+	pid_t pid;
+	jhd_process_slot = idx;
+	pid = fork();
+	switch (pid) {
+		case -1:
+			return jhd_false;
+		case 0:
+			jhd_parent = jhd_pid;
+			jhd_pid = ngx_getpid();
+			jhd_worker_process();
+			break;
+		default:
+			jhd_processes[idx] = pid;
+			break;
+	}
+	return jhd_true;
+}
+
+jhd_bool jhd_start_worker_processes() {
+	uint32_t i;
+
+	jhd_process_last = -1;
+
+	for (i = 0; i < process_count; i++) {
+		if (!jhd_spawn_process(i)) {
+			jhd_err = 1;
+			jhd_quit = 1;
+			return jhd_false;
+		}
+		++jhd_process_last;
+	}
+	return jhd_true;
+}
+
+void jhd_master_wait(sigset_t *set) {
+	uint32_t i;
+	uint32_t pc;
+	if (jhd_process_last < 0) {
+		return;
+	}
+	for (;;) {
+		pc = 0;
+		for (i = 0; i < process_count; ++i) {
+			if (jhd_processes[i] != (-1)) {
+				sigsuspend(&set);
+				if (jhd_reap) {
+					jhd_reap = 0;
+					jhd_process_get_status();
+				}
+				break;
+			}
+			++pc;
+		}
+		if (pc == process_count) {
+			break;
+		}
+	}
+}
+
+void jhd_master_process() {
 	uint64_t n, sigio;
 	sigset_t set;
 	struct itimerval itv;
-		sigemptyset(&set);
-		sigaddset(&set, SIGCHLD);
-		sigaddset(&set, SIGALRM);
-		sigaddset(&set, SIGIO);
-		sigaddset(&set, SIGINT);
-		sigaddset(&set, SIGHUP);
-		sigaddset(&set, SIGUSR1);
-		sigaddset(&set, SIGWINCH);
-		sigaddset(&set, SIGTERM);
-		sigaddset(&set, SIGQUIT);
-		sigaddset(&set, SIGUSR2);
+	uint32_t i;
 
-		if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
-			//TODO:LOG
+	jhd_process = JHD_PROCESS_MASTER;
+	sigemptyset(&set);
+	sigaddset(&set, SIGCHLD);
+	sigaddset(&set, SIGALRM);
+	sigaddset(&set, SIGIO);
+//	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGHUP);
+	sigaddset(&set, SIGUSR1);
+	sigaddset(&set, SIGWINCH);
+	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGQUIT);
+	sigaddset(&set, SIGUSR2);
+
+	if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
+		//TODO:LOG
+	}
+
+	sigemptyset(&set);
+
+	process_count = getnprocs();
+
+	jhd_processes = calloc(sizeof(pid_t) * process_count);
+	if (jhd_processes == NULL) {
+		//TODO: LOG;
+		jhd_err = 1;
+		return;
+	}
+	for (i = 0; i < process_count; ++i) {
+		jhd_processes[i] = (-1);
+	}
+
+//TODO LOG
+	if (!jhd_start_worker_processes()) {
+		jhd_master_wait(&set);
+		return;
+	}
+
+
+	if(jhd_process == JHD_PROCESS_MASTER){
+		for(;;){
+			sigsuspend(&set);
+
+			if(jhd_reap){
+				jhd_reap = 0;
+
+
+				jhd_process_get_status();
+
+				for(i = 0 ;i < process_count ; ++i){
+					if(jhd_processes[i] == (-1)){
+						if(!jhd_spawn_process(i)){
+							jhd_reap = 1;
+							alarm(1);
+							break;
+						}
+						if(jhd_process != JHD_PROCESS_MASTER){
+							return;
+						}
+					}
+				}
+			}
+			if(jhd_quit){
+				for(i = 0 ;i < process_count;++i){
+					if(jhd_processes[i] != (-1)){
+						kill(jhd_processes[i],SIGINT);
+					}
+				}
+				jhd_master_wait();
+				return;
+			}
+			if(jhd_restart){
+				for(i = 0 ;i < process_count;++i){
+						if(jhd_processes[i] != (-1)){
+							kill(jhd_processes[i],SIGINT);
+						}
+				}
+				jhd_master_wait();
+//TODO:
+
+
+
+			}
+
+
+
+
+
+
+
+
+
 		}
 
-		sigemptyset(&set);
 
-		process_count = getnprocs();
-		//TODO LOG
-		if(!jhd_start_worker_processes(){
-			return;
-		}
 
-		//TODO next
+	}
 
 
 

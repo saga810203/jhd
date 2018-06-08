@@ -38,6 +38,7 @@ extern int jhd_process;
 extern sig_atomic_t jhd_quit;
 extern sig_atomic_t jhd_restart;
 extern sig_atomic_t jhd_daemonized;
+extern sig_atomic_t jhd_reap;
 extern u_char *jhd_pid_file;
 
 void jhd_inline jhd_add_master_startup_listener(jhd_listener_t *lis) {

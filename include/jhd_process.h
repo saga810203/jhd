@@ -10,12 +10,7 @@
 
 
 typedef void (*jhd_spawn_proc_pt) (void *data);
-typedef struct {
-	uint64_t command;
-	pid_t pid;
-	uint32_t slot;
-	int fd;
-} jhd_channel_t;
+
 typedef struct {
 	int signo;
 	char *signame;
@@ -23,23 +18,6 @@ typedef struct {
 	void (*handler)(int signo, siginfo_t *siginfo, void *ucontext);
 } jhd_signal_t;
 
-typedef struct {
-	jhd_listener_t listener;
-
-    pid_t           pid;
-    int                 status;
-    int        channel[2];
-
-    jhd_spawn_proc_pt   proc;
-    void               *data;
-    char               *name;
-
-    unsigned            respawn:1;
-    unsigned            just_spawn:1;
-    unsigned            detached:1;
-    unsigned            exiting:1;
-    unsigned            exited:1;
-} jhd_process_t;
 
 extern pid_t jhd_pid;
 extern pid_t jhd_parent;

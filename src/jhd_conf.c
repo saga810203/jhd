@@ -51,7 +51,7 @@ static int jhd_conf_core_over(jhd_config_item_t *config);
 
 
 static jhd_inline void jhd_conf_parse_line(u_char* p, size_t len, size_t *out_len, size_t* line_len) {
-	int i;
+	size_t i;
 	*out_len = 0;
 	*line_len = 0;
 	char c;
@@ -84,7 +84,7 @@ static jhd_inline void jhd_conf_parse_line(u_char* p, size_t len, size_t *out_le
 }
 
 static jhd_inline void jhd_conf_skip_white(u_char* p, size_t *len) {
-	int i = 0;
+	size_t i = 0;
 	for (; i < *len; ++i) {
 		if ((p[i] == ' ') || (p[i] == '\t')) {
 			continue;
@@ -162,7 +162,6 @@ static int jhd_conf_read(u_char* file_name, jhd_config_handler_pt handler) {
 
 int jhd_conf_parse(jhd_config_handler_pt handler){
 	u_char* file_name;
-	u_char* nf;
 	file_name = getenv(JHD_CONF_CONFIG_FILE_ENV_NAME);
 	if(!file_name){
 		file_name = JHD_CONF_DEFAULT_CONFIG_FILE;
@@ -174,10 +173,11 @@ int jhd_conf_parse(jhd_config_handler_pt handler){
 
 int jhd_conf_default_config_handler(u_char* file_name,u_char* line,size_t line_len,u_char* data,size_t data_len,off_t line_no){
 
+	return JHD_OK;
 }
 
 int jhd_conf_parse_default(){
 
 
-
+	return JHD_OK;
 }
