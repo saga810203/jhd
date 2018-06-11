@@ -88,6 +88,7 @@ int main(int argc, char * const *argv) {
     }
 
 	finish: jhd_run_master_shutdown_listener();
+	jhd_ssl_ssl();
 	jhd_free_shm();
 	jhd_delete_pidfile();
 

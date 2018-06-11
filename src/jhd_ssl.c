@@ -22,6 +22,55 @@ int jhd_ssl_stapling_index;
 
 static jhd_listener_t jhd_ssl_listener;
 
+static jhd_queue_t jhd_ssl_srv_queue;
+
+static int jhd_ssl_listener_handler(jhd_listener_t *ev) {
+	jhd_queue_t *q;
+	jhd_ssl_srv_t *ssl;
+	SSL_CTX *ctx;
+	while (!jhd_queue_empty(&jhd_ssl_srv_queue)) {
+		q = jhd_queue_head(&jhd_ssl_srv_queue);
+		jhd_queue_only_remove(q);
+
+		ssl = jhd_queue_data(q, jhd_ssl_srv_t, queue);
+		X509 *cert, *next;
+		ctx = ssl->ctx;
+		if (ctx) {
+
+			cert = SSL_CTX_get_ex_data(ctx, jhd_ssl_certificate_index);
+
+			while (cert) {
+				next = X509_get_ex_data(cert, jhd_ssl_next_certificate_index);
+				X509_free(cert);
+				cert = next;
+			}
+
+			SSL_CTX_free(ctx);
+		}
+
+		if (ssl->name) {
+			free(ssl->name);
+			ssl->name = NULL;
+		}
+		if (ssl->certificates) {
+			free(ssl->certificates);
+			ssl->certificates = NULL;
+		}
+		if (ssl->certificate_keys) {
+			free(ssl->certificate_keys);
+			ssl->certificate_keys = NULL;
+		}
+		if (ssl->ciphers) {
+			free(ssl->ciphers);
+			ssl->ciphers = NULL;
+		}
+
+		free(ssl);
+
+	}
+
+}
+
 jhd_bool jhd_ssl_init() {
 #if OPENSSL_VERSION_NUMBER >= 0x10100003L
 
@@ -125,6 +174,11 @@ jhd_bool jhd_ssl_init() {
 		printf("X509_get_ex_new_index() failed");
 		return jhd_false;
 	}
+	jhd_queue_init(&jhd_ssl_srv_queue);
+
+	jhd_ssl_listener.handler = jhd_ssl_listener_handler;
+	jhd_add_master_shutdown_listener(&jhd_ssl_listener);
+
 	return jhd_true;
 }
 
