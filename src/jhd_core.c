@@ -55,10 +55,7 @@ int jhd_run_master_startup_listener() {
 	int ret;
 
 	jhd_update_time();
-	if(!jhd_ssl_init()){
-		return JHD_ERROR;
 
-	}
 	jhd_connection_init();
 	jhd_event_init();
 

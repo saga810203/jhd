@@ -38,12 +38,7 @@ struct jhd_http_server_s{
 };
 
 
-struct jhd_http_listening_s{
-
-
-
-}
-
+jhd_http_server_t*   jhd_http_find_server_by_host_name(jhd_connection_t *c,u_char* servername,size_t servername_len);
 
 
 

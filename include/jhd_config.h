@@ -69,6 +69,7 @@
 #include <sys/sendfile.h>
 
 #include <linux/capability.h>
+#include <openssl/ssl.h>
 
 
 #include <jhd_error.h>

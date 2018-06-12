@@ -45,6 +45,9 @@ int main(int argc, char * const *argv) {
 
 
 	jhd_update_time();
+	if(!jhd_ssl_init()){
+		return JHD_ERROR;
+	}
 	jhd_core_init();
 	if (JHD_OK != jhd_conf_parse_default()) {
 		jhd_err = 1;

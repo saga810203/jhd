@@ -43,7 +43,9 @@ struct jhd_listening_s{
 	    jhd_bool			ipv6only;
 	    jhd_bool			bind;
 
-	    jhd_queue_t			*queue;
+	    jhd_queue_t			queue;
+
+	    jhd_queue_t			sever_queue;
 
 
 };
@@ -66,6 +68,9 @@ struct jhd_connection_s {
     socklen_t           socklen;
 
     jhd_queue_t         queue;
+    void				*ssl;
+
+
 
     size_t   			idx;
 };
