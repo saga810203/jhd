@@ -14,7 +14,7 @@ jhd_connection_t *g_connections;
 
 static jhd_queue_t g_listening_queue;
 
-
+static jhd_queue_t inherited_listening_queue = { &inherited_listening_queue, &inherited_listening_queue };
 
 static jhd_listener_t m_connection_listener;
 static jhd_listener_t w_connection_listener;
@@ -27,13 +27,31 @@ uint32_t free_connection_count;
 
 int32_t jhd_open_listening_sockets(jhd_listening_t *lis) {
 	int reuseaddr, reuseport;
+	jhd_queue_t *q;
+	size_t len;
+
 	struct sockaddr *saddr;
 	int fd;
 	reuseaddr = 1;
 	reuseport = 1;
 	int err;
-	if(lis->fd!=-1){
+	jhd_listening_t o_lis;
+
+	if (lis->fd != -1) {
 		return JHD_OK;
+	}
+
+	for (q = jhd_queue_head(&inherited_listening_queue); q != &inherited_listening_queue; q = jhd_queue_next(q)) {
+		o_lis = jhd_queue_data(q, jhd_listening_t, queue);
+		if ((lis->addr_text_len == o_lis->addr_text_len) && (strncmp(lis->addr_text, o_lis->addr_text, lis->addr_text_len) == 0)) {
+			lis->fd = o_lis->fd;
+			lis->bind = jhd_true;
+			jhd_queue_only_remove(q);
+			free(o_lis->addr_text);
+			free(o_lis->sockaddr);
+			free(o_lis);
+			return JHD_OK;
+		}
 	}
 
 	saddr = (struct sockaddr *) lis->sockaddr;
@@ -176,24 +194,33 @@ static int jhd_connection_master_close_listening(jhd_listener_t* listener) {
 	jhd_queue_t *head, *q;
 	jhd_listening_t *lis;
 
-	head = &g_listening_queue;
-	while (!jhd_queue_empty(head)) {
-		q = jhd_queue_head(head);
-		lis = jhd_queue_data(q, jhd_listening_t, queue);
+	if (jhd_process == JHD_PROCESS_MASTER || (jhd_process == JHD_PROCESS_SINGLE)) {
+		head = &g_listening_queue;
+		while (!jhd_queue_empty(head)) {
+			q = jhd_queue_head(head);
+			if (jhd_quit) {
 
-		if (lis->fd != -1) {
-			close(lis->fd);
-			lis->fd = -1;
-			if (((struct sockaddr *) (lis->sockaddr))->sa_family == AF_UNIX) {
-				//TODO delete file  unix socket
+				lis = jhd_queue_data(q, jhd_listening_t, queue);
 
-			}
-			if (lis->ssl) {
-				//TODO free ssl
+				if (lis->fd != -1) {
+					close(lis->fd);
+					lis->fd = -1;
+					if (((struct sockaddr *) (lis->sockaddr))->sa_family == AF_UNIX) {
+						//TODO delete file  unix socket
+
+					}
+					if (lis->ssl) {
+						//TODO free ssl
+					}
+					free(lis->addr_text);
+					free(lis->sockaddr);
+				}
+				free(lis);
+			} else {
+				jhd_queue_only_remove(q);
+				jhd_queue_insert_tail(&inherited_listening_queue, q);
 			}
 		}
-
-		free(lis);
 	}
 	return JHD_OK;
 }
@@ -204,11 +231,12 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 
 	head = &g_listening_queue;
 
-	for (q = jhd_queue_head(head); q != jhd_queue_sentinel(head); q = jhd_queue_next(q))
+	for (q = jhd_queue_head(head); q != jhd_queue_sentinel(head); q = jhd_queue_next(q)) {
 		++listening_count;
-	lis = jhd_queue_data(q, jhd_listening_t, queue);
-	if (JHD_OK != jhd_open_listening_sockets(lis)) {
-		goto failed;
+		lis = jhd_queue_data(q, jhd_listening_t, queue);
+		if (JHD_OK != jhd_open_listening_sockets(lis)) {
+			goto failed;
+		}
 	}
 
 	if (listening_count == 0) {
@@ -219,6 +247,23 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 		goto failed;
 	}
 
+	for (q = jhd_queue_head(&inherited_listening_queue); q != &inherited_listening_queue; q = jhd_queue_next(q)) {
+		lis = jhd_queue_data(q, jhd_listening_t, queue);
+		if (lis->fd != (-1)) {
+			close(lis->fd);
+			lis->fd = -1;
+			if (((struct sockaddr *) (lis->sockaddr))->sa_family == AF_UNIX) {
+				//TODO delete file  unix socket
+
+			}
+			if (lis->ssl) {
+				//TODO free ssl
+			}
+			free(lis->addr_text);
+			free(lis->sockaddr);
+		}
+	}
+
 	listener->handler = jhd_connection_master_close_listening;
 	jhd_add_master_shutdown_listener(listener);
 	return JHD_OK;
@@ -227,7 +272,16 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 		lis = jhd_queue_data(q, jhd_listening_t, queue);
 		if (lis->fd != (-1)) {
 			close(lis->fd);
-			lis->fd = (-1);
+			lis->fd = -1;
+			if (((struct sockaddr *) (lis->sockaddr))->sa_family == AF_UNIX) {
+				//TODO delete file  unix socket
+
+			}
+			if (lis->ssl) {
+				//TODO free ssl
+			}
+			free(lis->addr_text);
+			free(lis->sockaddr);
 		}
 	}
 	return JHD_ERROR;

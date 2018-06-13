@@ -594,9 +594,6 @@ u_char* jhd_ssl_srv_add(jhd_ssl_srv_t *srv_ssl) {
 		return "create ssl session context error";
 	}
     SSL_CTX_set_session_cache_mode(srv_ssl->ctx, SSL_SESS_CACHE_OFF);
-
-
-
 	return NULL;
 
 }

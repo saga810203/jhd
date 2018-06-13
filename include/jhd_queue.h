@@ -82,7 +82,5 @@ struct jhd_queue_ptr_s{
 
 #define jhd_queue_data(q, type, link)   (type *) ((u_char *) q - offsetof(type, link))
 
-#define jhd_queue_ptr(q,type) 	((type *)(((jhd_queue_ptr_t*)((u_char *) q - offsetof(jhd_queue_ptr_t, queue)))->data))
-
 
 #endif /* JHD_QUEUE_H_ */
