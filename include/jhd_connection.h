@@ -39,13 +39,14 @@ struct jhd_listening_s{
 
 	    jhd_connection_t	*connection;
 
-	    jhd_bool			ssl;
+	    jhd_ssl_srv_t		*ssl;
 	    jhd_bool			ipv6only;
 	    jhd_bool			bind;
 
 	    jhd_queue_t			queue;
 
-	    jhd_queue_t			sever_queue;
+	    uint32_t			http_server_count;
+	    void				**http_servers;
 
 
 };
@@ -78,13 +79,18 @@ struct jhd_connection_s {
 
 
 
+
 void  jhd_connection_init();
 
 jhd_connection_t*  getconnection();
 void  free_connection(jhd_connection_t *c);
 
 
-jhd_bool  jhd_open_listening_sockets();
+//jhd_bool  jhd_open_listening_sockets();
+
+jhd_listening_t* jhd_listening_get(u_char *addr_text,size_t len);
+jhd_bool jhd_listening_add_server(jhd_listening_t *lis,void *http_server);
+
 
 
 

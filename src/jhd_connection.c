@@ -9,6 +9,7 @@
 #include <jhd_event.h>
 #include <jhd_core.h>
 #include <jhd_connection.h>
+#include <jhd_http.h>
 
 jhd_connection_t *g_connections;
 
@@ -24,6 +25,69 @@ static jhd_connection_t *free_connections;
 uint32_t listening_count;
 uint32_t connection_count;
 uint32_t free_connection_count;
+
+
+jhd_listening_t* jhd_listening_get(u_char *addr_text,size_t len){
+	jhd_queue_t *head,*q;
+	jhd_listening_t *lis;
+
+	head = &g_listening_queue;
+	for(q=jhd_queue_head(head);q!=head;q=jhd_queue_next(q)){
+		lis = jhd_queue_data(q,jhd_listening_t,queue);
+		if((lis->addr_text_len == len)&&(0 == strncmp(addr_text,lis->addr_text,len))){
+			return lis;
+		}
+
+
+	}
+	return NULL;
+}
+
+jhd_bool jhd_listening_add_server(jhd_listening_t *lis, void *http_server) {
+	void **old_http_servers;
+	old_http_servers = lis->http_servers;
+
+	lis->http_servers = calloc(sizeof(void*) * (lis->http_server_count + 1));
+	if (lis->http_servers == NULL) {
+		lis->http_servers = old_http_servers;
+		return jhd_false;
+
+	}
+	if (old_http_servers) {
+		memcpy(lis->http_servers, old_http_servers, sizeof(void*) * lis->http_server_count);
+		free(old_http_servers);
+	}
+	lis->http_servers[lis->http_server_count] = http_server;
+	++lis->http_server_count;
+	return jhd_true;
+
+}
+void jhd_listening_free(jhd_listening_t* lis, jhd_bool close_socket) {
+
+	if (close_socket && (lis->fd != -1)) {
+		close(lis->fd);
+		lis->fd = -1;
+		if (((struct sockaddr *) (lis->sockaddr))->sa_family == AF_UNIX) {
+			//TODO delete file  unix socket
+
+		}
+	}
+
+	if (lis->ssl) {
+		//TODO free ssl
+	}
+	if (lis->addr_text) {
+		free(lis->addr_text);
+	}
+	if (lis->sockaddr) {
+		free(lis->sockaddr);
+	}
+	if (lis->http_servers) {
+		free(lis->http_servers);
+	}
+	free(lis);
+
+}
 
 int32_t jhd_open_listening_sockets(jhd_listening_t *lis) {
 	int reuseaddr, reuseport;
@@ -47,9 +111,7 @@ int32_t jhd_open_listening_sockets(jhd_listening_t *lis) {
 			lis->fd = o_lis->fd;
 			lis->bind = jhd_true;
 			jhd_queue_only_remove(q);
-			free(o_lis->addr_text);
-			free(o_lis->sockaddr);
-			free(o_lis);
+			jhd_listening_free(o_lis, jhd_false);
 			return JHD_OK;
 		}
 	}
@@ -198,28 +260,20 @@ static int jhd_connection_master_close_listening(jhd_listener_t* listener) {
 		head = &g_listening_queue;
 		while (!jhd_queue_empty(head)) {
 			q = jhd_queue_head(head);
+			jhd_queue_remove(q);
 			if (jhd_quit) {
-
-				lis = jhd_queue_data(q, jhd_listening_t, queue);
-
-				if (lis->fd != -1) {
-					close(lis->fd);
-					lis->fd = -1;
-					if (((struct sockaddr *) (lis->sockaddr))->sa_family == AF_UNIX) {
-						//TODO delete file  unix socket
-
-					}
-					if (lis->ssl) {
-						//TODO free ssl
-					}
-					free(lis->addr_text);
-					free(lis->sockaddr);
-				}
-				free(lis);
+				jhd_listening_free(lis, jhd_true);
 			} else {
 				jhd_queue_only_remove(q);
 				jhd_queue_insert_tail(&inherited_listening_queue, q);
 			}
+		}
+	} else {
+		head = &g_listening_queue;
+		while (!jhd_queue_empty(head)) {
+			q = jhd_queue_head(head);
+			jhd_queue_remove(q);
+			jhd_listening_free(lis, jhd_false);
 		}
 	}
 	return JHD_OK;
@@ -249,19 +303,8 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 
 	for (q = jhd_queue_head(&inherited_listening_queue); q != &inherited_listening_queue; q = jhd_queue_next(q)) {
 		lis = jhd_queue_data(q, jhd_listening_t, queue);
-		if (lis->fd != (-1)) {
-			close(lis->fd);
-			lis->fd = -1;
-			if (((struct sockaddr *) (lis->sockaddr))->sa_family == AF_UNIX) {
-				//TODO delete file  unix socket
-
-			}
-			if (lis->ssl) {
-				//TODO free ssl
-			}
-			free(lis->addr_text);
-			free(lis->sockaddr);
-		}
+		jhd_queue_only_remove(q);
+		jhd_listening_free(lis,jhd_true);
 	}
 
 	listener->handler = jhd_connection_master_close_listening;
@@ -270,19 +313,8 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 
 	failed: for (q = jhd_queue_head(head); q != jhd_queue_sentinel(head); q = jhd_queue_next(q)) {
 		lis = jhd_queue_data(q, jhd_listening_t, queue);
-		if (lis->fd != (-1)) {
-			close(lis->fd);
-			lis->fd = -1;
-			if (((struct sockaddr *) (lis->sockaddr))->sa_family == AF_UNIX) {
-				//TODO delete file  unix socket
-
-			}
-			if (lis->ssl) {
-				//TODO free ssl
-			}
-			free(lis->addr_text);
-			free(lis->sockaddr);
-		}
+		jhd_queue_only_remove(q);
+		jhd_listening_free(lis,jhd_true);
 	}
 	return JHD_ERROR;
 

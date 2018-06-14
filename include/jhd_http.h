@@ -10,7 +10,9 @@
 
 #include <jhd_config.h>
 #include <jhd_queue.h>
-#include <jhd_string.h>
+//#include <jhd_string.h>
+#include <jhd_connection.h>
+
 
 
 typedef struct jhd_http_request_s  jhd_http_request_t;
@@ -31,14 +33,33 @@ struct jhd_http_service_s{
 
 
 struct jhd_http_server_s{
-		u_char			*name;
-		size_t			name_len;
-		jhd_queue_t		services;
-		jhd_queue_t		in_listening;
+		jhd_queue_t			queue;
+		jhd_queue_t			services;
+		uint32_t			servername_count;
+		u_char				**servernames;
+		uint32_t			listening_count;
+		jhd_listening_t		**listenings;
+
+
 };
 
 
 jhd_http_server_t*   jhd_http_find_server_by_host_name(jhd_connection_t *c,u_char* servername,size_t servername_len);
+jhd_bool jhd_http_server_servername_add(jhd_http_server_t *srv,u_char *name,size_t len);
+jhd_bool jhd_http_server_listening_add(jhd_http_server_t *srv,u_char *addr_text,size_t len);
+
+void  jhd_http_server_free(jhd_http_server_t *s);
+jhd_bool jhd_http_server_add(jhd_http_server_t *);
+
+
+
+
+
+
+
+void jhd_http_init();
+
+void jhd_http_free();
 
 
 

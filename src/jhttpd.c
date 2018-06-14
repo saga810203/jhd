@@ -48,6 +48,7 @@ int main(int argc, char * const *argv) {
 	if(!jhd_ssl_init()){
 		return JHD_ERROR;
 	}
+	jhd_http_init();
 	jhd_core_init();
 	if (JHD_OK != jhd_conf_parse_default()) {
 		jhd_err = 1;
@@ -91,6 +92,7 @@ int main(int argc, char * const *argv) {
     }
 
 	finish: jhd_run_master_shutdown_listener();
+	jhd_http_free();
 	jhd_ssl_free();
 	jhd_free_shm();
 	jhd_delete_pidfile();
