@@ -7,6 +7,8 @@
 
 #include <jhd_time.h>
 #include <jhd_config.h>
+#include <jhd_log.h>
+#include <inttypes.h>
 
 
 static u_char log_time_value[JHD_CACHE_LOG_TIME_LEN+1];
@@ -137,7 +139,7 @@ void jhd_update_time() {
 
 	jhd_current_msec = ts.tv_sec * 1000 + (ts.tv_nsec / 1000000);
 
-
+	log_debug("cpu time:%"PRIu64,jhd_current_msec);
 
 	if (jhd_cache_time == tv.tv_sec) {
 		return;
@@ -154,4 +156,8 @@ void jhd_update_time() {
 	tm->tm_year += 1900;
 
 	sprintf(jhd_cache_log_time, "%4d/%02d/%02d %02d:%02d:%02d", tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	log_debug("log time:%s",jhd_cache_log_time);
+
+
 }

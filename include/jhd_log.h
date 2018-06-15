@@ -10,12 +10,6 @@
 
 
 
-#define JHD_LOG_MASK_SOURCE_INFO  	((uint16_t)(1<<15))
-#define JHD_LOG_MASK_IN_MASTER 		((uint16_t)(1<<14))
-#define JHD_LOG_MASK_IN_WORKER 		((uint16_t)(1<<13))
-#define JHD_LOG_MASK_UTIL 			((uint16_t)(1<<12))
-#define JHD_LOG_MASK_DOWN 			((uint16_t)(1<<11))
-#define JHD_LOG_MASK_UP 			((uint16_t)(1<<10))
 
 
 #define JHD_LOG_STDERR           	((uint16_t) 0)
@@ -38,37 +32,55 @@
 
 typedef struct jhd_log_s  jhd_log_t;
 // JHD_OK do next log   JHD_ERROR  don‘t next log
-typedef int (*log_handler_pt)(jhd_log_t *log,u_char* buf,size_t len);
+typedef void (*log_handler_pt)(jhd_log_t *log,u_char* buf,size_t len,u_char* file_name,u_char *func_name,int line);
 
 struct jhd_log_s{
-		uint16_t  			mask;
 		uint16_t  			level;
 		log_handler_pt 		handler;
 		void				*data;
 		jhd_log_t			*next;
+		jhd_obj_free_pt		close;
+
 };
 
 
- extern uint16_t jhd_common_log_mask;
- extern jhd_log_t  * jhd_top_log;
 
 
-int jhd_std_log_handler(jhd_log_t  *log,u_char* buf,size_t len);
+void jhd_log_default_handler(jhd_log_t  *log,u_char* buf,size_t len,u_char* file_name,u_char *func_name,int line);
 
 
-void _log_out(u_char* file_name,u_char *func_name,int line,jhd_log_t *log,uint16_t log_mask,uint16_t level,const u_char* fmt,...);
+void _log_out(u_char* file_name,u_char *func_name,int line,uint16_t level,const u_char* fmt,...);
+
+void jhd_log_close();
+
+void jhd_log_replace(uint16_t level,log_handler_pt handler,void *data,jhd_obj_free_pt close);
+
+void jhd_log_add(jhd_log_t *log);
 
 
-#define  log_write(log,log_mask,level,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,log,log_mask,level,fmt,__VA_ARGS__)
-#define  log_debug(log,log_mask,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,log,log_mask,JHD_LOG_DEBUG,fmt,__VA_ARGS__)
-#define  log_info(log,log_mask,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,log,log_mask,JHD_LOG_INFO,fmt,__VA_ARGS__)
-#define  log_notice(log,log_mask,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,log,log_mask,JHD_LOG_NOTICE,fmt,__VA_ARGS__)
-#define  log_warn(log,log_mask,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,log,log_mask,JHD_LOG_WARN,fmt,__VA_ARGS__)
-#define  log_err(log,log_mask,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,log,log_mask,JHD_LOG_ERR,fmt,__VA_ARGS__)
-#define  log_crit(log,log_mask,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,log,log_mask,JHD_LOG_CRIT,fmt,__VA_ARGS__)
-#define  log_alert(log,log_mask,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,log,log_mask,JHD_LOG_ALERT,fmt,__VA_ARGS__)
-#define  log_emerg(log,log_mask,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,log,log_mask,JHD_LOG_EMERG,fmt,__VA_ARGS__)
-#define  log_stderr(log,log_mask,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,log,log_mask,level,STDERR,__VA_ARGS__)
+void jhd_log_init();
+
+
+void jhd_log_change_file(u_char* fn,size_t len);
+
+void jhd_log_swtich_file();
+
+
+
+
+
+
+
+#define  log_write(level,fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,level,fmt,__VA_ARGS__)
+#define  log_debug(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_DEBUG,fmt,__VA_ARGS__)
+#define  log_info(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_INFO,fmt,__VA_ARGS__)
+#define  log_notice(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_NOTICE,fmt,__VA_ARGS__)
+#define  log_warn(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_WARN,fmt,__VA_ARGS__)
+#define  log_err(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_ERR,fmt,__VA_ARGS__)
+#define  log_crit(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_CRIT,fmt,__VA_ARGS__)
+#define  log_alert(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_ALERT,fmt,__VA_ARGS__)
+#define  log_emerg(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_EMERG,fmt,__VA_ARGS__)
+#define  log_stderr(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_STDERR,fmt,__VA_ARGS__)
 
 
 

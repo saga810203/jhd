@@ -280,7 +280,7 @@ jhd_bool jhd_create_pidfile() {
 	int fd;
 	u_char pid[64];
 
-	fd = ngx_open_file(jhd_pid_file, O_RDWR | O_CREAT | O_TRUNC, 0644);
+	fd = open(jhd_pid_file, O_RDWR | O_CREAT | O_TRUNC, 0644);
 	if (fd == -1) {
 		//TODO:log
 		return jhd_false;
@@ -328,6 +328,7 @@ jhd_bool jhd_worker_init(){
 
 static void jhd_worker_process() {
 	jhd_process = JHD_PROCESS_WORKER;
+	jhd_log_swtich_file();
 	jhd_pool_init();
 	if(!jhd_worker_init()){
 		jhd_run_worker_shutdown_listener();

@@ -81,7 +81,7 @@ void jhd_process_events_and_timers() {
 	if (accepted) {
 		jhd_event_process_posted(&jhd_posted_accept_events);
 		accepted = jhd_false;
-		__sync_fetch_and_or(g_event_lock.addr, (uint64_t) 0);
+		__sync_fetch_and_set(g_event_lock.addr, (uint64_t) 0);
 	}
 	jhd_event_process_posted(&jhd_posted_events);
 

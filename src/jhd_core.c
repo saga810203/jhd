@@ -21,13 +21,13 @@ volatile sig_atomic_t jhd_reap;
 volatile sig_atomic_t jhd_restart;
 volatile sig_atomic_t jhd_daemonized;
 
-u_char *jhd_pid_file;
+u_char jhd_pid_file[1024];
 
-static jhd_queue_t jhd_master_startup_queue;
-static jhd_queue_t jhd_master_shutdown_queue;
+ jhd_queue_t jhd_master_startup_queue;
+ jhd_queue_t jhd_master_shutdown_queue;
 
-static jhd_queue_t jhd_worker_startup_queue;
-static jhd_queue_t jhd_worker_shutdown_queue;
+ jhd_queue_t jhd_worker_startup_queue;
+ jhd_queue_t jhd_worker_shutdown_queue;
 
 void jhd_core_init() {
 	jhd_single = 0;
@@ -42,7 +42,7 @@ void jhd_core_init() {
 	jhd_queue_init(&jhd_worker_shutdown_queue);
 	jhd_core_master_startup_time = 1000 * 60;
 	jhd_core_worker_startup_time = 1000 * 60;
-	jhd_pid_file = "/run/jhttpd.pid";
+	strcpy(jhd_pid_file , "/run/jhttpd.pid");
 
 }
 

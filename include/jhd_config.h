@@ -82,14 +82,7 @@
 
 #define jhd_random               random
 
-/* TODO: #ifndef */
-#define JHD_SHUTDOWN_SIGNAL      SIGQUIT
-#define JHD_TERMINATE_SIGNAL     SIGTERM
-#define JHD_NOACCEPT_SIGNAL      SIGWINCH
-#define JHD_RECONFIGURE_SIGNAL   SIGHUP
 
-#define JHD_REOPEN_SIGNAL        SIGUSR1
-#define JHD_CHANGEBIN_SIGNAL     SIGUSR2
 
 #ifndef JHD_ALIGNMENT
 #define JHD_ALIGNMENT   sizeof(unsigned long)    /* platform word */
@@ -127,6 +120,8 @@
 #define jhd_false 0
 
 extern  int jhd_err;
+
+typedef void (*jhd_obj_free_pt)(void*);
 
 
 #endif

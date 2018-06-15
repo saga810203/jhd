@@ -93,7 +93,7 @@ static jhd_inline void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 	jhd_rbtree_insert(&jhd_event_timer_rbtree, &ev->timer);
 }
 
-#define jhd_post_event(ev, queue)  if ((ev)->queue.next) { jhd_queue_insert_tail(queue, &(ev)->queue);}
+#define jhd_post_event(ev, queue)  if (!(ev)->queue.next) { jhd_queue_insert_tail((queue), &(ev)->queue);}
 
 #define jhd_delete_posted_event(ev)   jhd_queue_remove(&(ev)->queue)
 

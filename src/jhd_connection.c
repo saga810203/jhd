@@ -10,6 +10,7 @@
 #include <jhd_core.h>
 #include <jhd_connection.h>
 #include <jhd_http.h>
+#include <jhd_log.h>
 
 jhd_connection_t *g_connections;
 
@@ -26,18 +27,16 @@ uint32_t listening_count;
 uint32_t connection_count;
 uint32_t free_connection_count;
 
-
-jhd_listening_t* jhd_listening_get(u_char *addr_text,size_t len){
-	jhd_queue_t *head,*q;
+jhd_listening_t* jhd_listening_get(u_char *addr_text, size_t len) {
+	jhd_queue_t *head, *q;
 	jhd_listening_t *lis;
 
 	head = &g_listening_queue;
-	for(q=jhd_queue_head(head);q!=head;q=jhd_queue_next(q)){
-		lis = jhd_queue_data(q,jhd_listening_t,queue);
-		if((lis->addr_text_len == len)&&(0 == strncmp(addr_text,lis->addr_text,len))){
+	for (q = jhd_queue_head(head); q != head; q = jhd_queue_next(q)) {
+		lis = jhd_queue_data(q, jhd_listening_t, queue);
+		if ((lis->addr_text_len == len) && (0 == strncmp(addr_text, lis->addr_text, len))) {
 			return lis;
 		}
-
 
 	}
 	return NULL;
@@ -121,32 +120,20 @@ int32_t jhd_open_listening_sockets(jhd_listening_t *lis) {
 	fd = socket(saddr->sa_family, SOCK_STREAM, 0);
 
 	if (fd == -1) {
-		//TODO LOG
-		//log_error(NGX_LOG_EMERG, log, ngx_socket_errno, 			ngx_socket_n " %V failed", &ls[i].addr_text);
+		fd = saddr->sa_family;
+		log_stderr("exec socket(%d,SOCK_STREAM,0) failed  with %s", fd, lis->addr_text);
 		return JHD_ERROR;
 	}
 
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *) &reuseaddr, sizeof(int)) == -1) {
-
-		//TODO LOG
-		//ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno, 						"setsockopt(SO_REUSEADDR) %V failed", &ls[i].addr_text);
-
-		if (close(fd) == -1) {
-			//ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,ngx_close_socket_n " %V failed", &ls[i].addr_text);
-			//TODO LOG
-		}
-
+		log_stderr("setsockopt(SO_REUSEADDR) failed with %s", lis->addr_text);
+		close(fd);
 		return JHD_ERROR;
 	}
 
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void *) &reuseport, sizeof(int)) == -1) {
-		//	ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,				"setsockopt(SO_REUSEPORT) %V failed",	&ls[i].addr_text);
-		//TODO LOG
-
-		if (close(fd) == -1) {
-			//	ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,	ngx_close_socket_n " %V failed",&ls[i].addr_text);
-			//TODO LOG
-		}
+		log_stderr("setsockopt(SO_REUSEPORT) failed with %s", lis->addr_text);
+		close(fd);
 		return JHD_ERROR;
 	}
 
@@ -158,8 +145,7 @@ int32_t jhd_open_listening_sockets(jhd_listening_t *lis) {
 		ipv6only = lis.ipv6only ? 1 : 0;
 
 		if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const void *) &ipv6only, sizeof(int)) == -1) {
-			//ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,		"setsockopt(IPV6_V6ONLY) %V failed, ignored",	&ls[i].addr_text);
-			//TODO log
+			log_err("setsockopt(IPPROTO_IPV6) failed with %s", lis->addr_text);
 		}
 	}
 #endif
@@ -167,16 +153,9 @@ int32_t jhd_open_listening_sockets(jhd_listening_t *lis) {
 	reuseport = 1;
 
 	if (ioctl(fd, FIONBIO, &reuseport) == -1) {
+		log_stderr("ioctl(FIONBIO) failed with %s", lis->addr_text);
 
-		//ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno, ngx_nonblocking_n " %V failed", &ls[i].addr_text);
-
-		//TODO: LOG
-
-		if (close(fd) == -1) {
-			//		ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,				ngx_close_socket_n " %V failed", &ls[i].addr_text);
-			//TODO: LOG
-		}
-
+		close(fd);
 		return JHD_ERROR;
 	}
 	lis->fd = fd;
@@ -208,10 +187,10 @@ int32_t jhd_bind_listening_sockets() {
 				err = errno;
 
 				if (err == EADDRINUSE) {
-					//ngx_log_error(NGX_LOG_EMERG, log, err, "bind() to %V failed", &ls[i].addr_text);
-					//TODO:LOG
+					log_stderr("exec socket bind() failed  to exit  with %s", lis->addr_text);
 					return JHD_ERROR;
 				} else {
+					log_err("exec socket bind() failed  to retry  with %s", lis->addr_text);
 					failed = 1;
 					continue;
 				}
@@ -219,18 +198,13 @@ int32_t jhd_bind_listening_sockets() {
 
 			if (listen(fd, lis->backlog) == -1) {
 				err = errno;
-				if (err != EADDRINUSE) {
-					//ngx_log_error(NGX_LOG_EMERG, log, err, "listen() to %V, backlog %d failed", &ls[i].addr_text, ls[i].backlog);
-					//TODO LOG
+				if (err == EADDRINUSE) {
+					log_stderr("exec socket listen(%d) failed  to exit  with %s", lis->backlog, lis->addr_text);
 					return JHD_ERROR;
 				}
-
-				if (err != EADDRINUSE) {
-					return JHD_ERROR;
-				} else {
-					failed = 1;
-					continue;
-				}
+				log_err("exec socket listen(%d) failed  to retry  with %s", lis->backlog, lis->addr_text);
+				failed = 1;
+				continue;
 
 			}
 
@@ -244,8 +218,7 @@ int32_t jhd_bind_listening_sockets() {
 	}
 
 	if (failed) {
-//ngx_log_error(NGX_LOG_EMERG, log, 0, "still could not bind()");
-		//TODO:LOG
+		log_stderr("listen socket failed to exit  with %s", lis->addr_text);
 		return JHD_ERROR;
 	}
 
@@ -294,7 +267,7 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 	}
 
 	if (listening_count == 0) {
-		//TODO LOG
+		log_stderr("listening count is %d", (int )0);
 		return JHD_ERROR;
 	}
 	if (jhd_bind_listening_sockets() != JHD_OK) {
@@ -304,7 +277,7 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 	for (q = jhd_queue_head(&inherited_listening_queue); q != &inherited_listening_queue; q = jhd_queue_next(q)) {
 		lis = jhd_queue_data(q, jhd_listening_t, queue);
 		jhd_queue_only_remove(q);
-		jhd_listening_free(lis,jhd_true);
+		jhd_listening_free(lis, jhd_true);
 	}
 
 	listener->handler = jhd_connection_master_close_listening;
@@ -314,7 +287,7 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 	failed: for (q = jhd_queue_head(head); q != jhd_queue_sentinel(head); q = jhd_queue_next(q)) {
 		lis = jhd_queue_data(q, jhd_listening_t, queue);
 		jhd_queue_only_remove(q);
-		jhd_listening_free(lis,jhd_true);
+		jhd_listening_free(lis, jhd_true);
 	}
 	return JHD_ERROR;
 
@@ -347,8 +320,6 @@ static int jhd_connection_worker_close_listening(jhd_listener_t* listener) {
 			if (ev->queue.next) {
 				jhd_queue_only_remove(&ev->queue);
 			}
-
-//			jhd_post_event(ev, &jhd_posted_events);
 
 			jhd_queue_insert_tail(&jhd_posted_events, &(ev)->queue);
 
@@ -399,13 +370,13 @@ static int jhd_connection_worker_startup_listening(jhd_listener_t* listener) {
 
 	epoll_fd = epoll_create(connection_count);
 	if (epoll_fd == -1) {
-//TODO:LOG
+		log_stderr("epoll_create(%d) failed to exit",(int) connection_count);
 		goto failed;
 	}
 
 	event_list = calloc(sizeof(struct epoll_event) * event_count);
 	if (event_list == NULL) {
-		//TODO:LOG
+		log_stderr("calloc event_list failed with ",event_count);
 		goto failed;
 	}
 

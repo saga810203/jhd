@@ -13,11 +13,6 @@
 #include <jhd_pool.h>
 #include <jhd_string.h>
 
-#define JHD_CMD_OPEN_CHANNEL   1
-#define JHD_CMD_CLOSE_CHANNEL  2
-#define JHD_CMD_QUIT           3
-
-
 #define JHD_PROCESS_MASTER     0
 #define JHD_PROCESS_SINGLE     1
 #define JHD_PROCESS_WORKER     2
@@ -32,6 +27,11 @@ struct jhd_core_s {
 
 extern int jhd_core_master_startup_time;
 extern int jhd_core_worker_startup_time;
+extern jhd_queue_t jhd_master_startup_queue;
+extern jhd_queue_t jhd_master_shutdown_queue;
+
+extern jhd_queue_t jhd_worker_startup_queue;
+extern jhd_queue_t jhd_worker_shutdown_queue;
 
 extern int jhd_single;
 extern int jhd_process;
@@ -39,7 +39,7 @@ extern sig_atomic_t jhd_quit;
 extern sig_atomic_t jhd_restart;
 extern sig_atomic_t jhd_daemonized;
 extern sig_atomic_t jhd_reap;
-extern u_char *jhd_pid_file;
+extern u_char jhd_pid_file[1024];
 
 void jhd_inline jhd_add_master_startup_listener(jhd_listener_t *lis) {
 	jhd_queue_insert_tail(&jhd_master_startup_queue, &lis->queue);
