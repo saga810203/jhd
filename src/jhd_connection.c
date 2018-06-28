@@ -66,7 +66,7 @@ void jhd_listening_free(jhd_listening_t* lis, jhd_bool close_socket) {
 	if (close_socket && (lis->fd != -1)) {
 		close(lis->fd);
 		lis->fd = -1;
-		if (((struct sockaddr *) (lis->sockaddr))->sa_family == AF_UNIX) {
+		if (lis->sockaddr.sockaddr.sa_family == AF_UNIX) {
 			//TODO delete file  unix socket
 
 		}
@@ -78,9 +78,7 @@ void jhd_listening_free(jhd_listening_t* lis, jhd_bool close_socket) {
 	if (lis->addr_text) {
 		free(lis->addr_text);
 	}
-	if (lis->sockaddr) {
-		free(lis->sockaddr);
-	}
+
 	if (lis->http_servers) {
 		free(lis->http_servers);
 	}
@@ -115,7 +113,7 @@ int32_t jhd_open_listening_sockets(jhd_listening_t *lis) {
 		}
 	}
 
-	saddr = (struct sockaddr *) lis->sockaddr;
+	saddr = &lis->sockaddr;
 
 	fd = socket(saddr->sa_family, SOCK_STREAM, 0);
 
@@ -176,7 +174,7 @@ int32_t jhd_bind_listening_sockets() {
 		failed = 0;
 		for (q = jhd_queue_head(head); q != jhd_queue_sentinel(head); q = jhd_queue_next(q)) {
 			lis = jhd_listening_from_queue(q);
-			saddr = (struct sockaddr *) lis->sockaddr;
+			saddr = &lis->sockaddr;
 			fd = lis->fd;
 
 			if (lis->bind) {
@@ -370,13 +368,13 @@ static int jhd_connection_worker_startup_listening(jhd_listener_t* listener) {
 
 	epoll_fd = epoll_create(connection_count);
 	if (epoll_fd == -1) {
-		log_stderr("epoll_create(%d) failed to exit",(int) connection_count);
+		log_stderr("epoll_create(%d) failed to exit", (int ) connection_count);
 		goto failed;
 	}
 
 	event_list = calloc(sizeof(struct epoll_event) * event_count);
 	if (event_list == NULL) {
-		log_stderr("calloc event_list failed with ",event_count);
+		log_stderr("calloc event_list failed with ", event_count);
 		goto failed;
 	}
 
@@ -390,12 +388,19 @@ static int jhd_connection_worker_startup_listening(jhd_listener_t* listener) {
 			lis->connection->idx = i;
 			lis->connection->listening = lis;
 			++i;
+			lis->connection->read.data = lis->connection;
+			lis->connection->read.handler = jhd_connection_accept;
+			lis->connection->write.data = lis->connection;
+			lis->connection->write.handler = jhd_event_noop();
+
 		}
 
 		for (; i < connection_count;) {
 
 			connection = &g_connections[i];
 			connection->idx = i;
+			connection->read.data = connection;
+			connection->write.data = connection;
 			++i;
 			connection->data = free_connections;
 			free_connection = connection;
@@ -450,3 +455,169 @@ void jhd_connection_init() {
 	jhd_add_worker_startup_listener(&w_connection_listener);
 }
 
+ ssize_t jhd_connection_recv(jhd_connection_t *c, u_char *buf, size_t size) {
+	ssize_t n;
+	int err;
+	log_notice("%s", "enter function");
+
+	for (;;) {
+		n = recv(c->fd, buf, size, 0);
+		if (n == 0) {
+			log_debug("exec recv(%d,%"PRIu64",%"PRIu64",0)==0", c->fd, (uint64_t )buf, size);
+			log_notice("leave function return :%"PRId64, n);
+			break;
+		} else if (n > 0) {
+			log_debug("exec recv(fd:%d,buf:%"PRIu64",size:%"PRIu64",0)==%"PRId64, c->fd, (u_int64_t )buf, size, n);
+			log_notice("leave function return :%"PRId64, n);
+			break;
+		} else {
+			err = errno;
+			if (err == EAGAIN) {
+				log_debug("exec recv(fd:%d,buf:%"PRIu64",size:%"PRIu64",0)==%"PRId64",errno=%s", c->fd, (u_int64_t )buf, size, n, "EAGAIN");
+				log_notice("leave function return :%s", "JHD_AGAIN");
+				n = JHD_AGAIN;
+				break;
+			} else if (err != EINTR) {
+				log_debug("exec recv(fd:%d,buf:%"PRIu64",size:%"PRIu64",0)==%"PRId64",errno=%d", c->fd, (u_int64_t )buf, size, n, err);
+				log_notice("leave function return :%s", "JHD_ERROR");
+				n = JHD_ERROR;
+				break;
+			}
+			log_debug("exec recv(fd:%d,buf:%"PRIu64",size:%"PRIu64",0)==%"PRId64",errno=%s", c->fd, (u_int64_t )buf, size, n, "EINTR");
+		}
+	}
+	return n;
+}
+
+ ssize_t jhd_connection_send(jhd_connection_t *c, u_char *buf, size_t size) {
+	ssize_t n;
+	int err;
+
+	log_notice("%s", "enter function");
+
+	for (;;) {
+		n = send(c->fd, buf, size, 0);
+		if (n >= 0) {
+			log_debug("exec send(fd:%d,buf:%"PRIu64",size:%"PRIu64",0)==%"PRId64, c->fd, (u_int64_t )buf, size, n);
+			log_notice("leave function return :%"PRId64, n);
+			break;
+		} else {
+			err = errno;
+			if (err == EAGAIN) {
+				log_debug("exec send(fd:%d,buf:%"PRIu64",size:%"PRIu64",0)==%"PRId64 ",errno==EAGAIN", c->fd, (u_int64_t )buf, size, n);
+				log_notice("leave function return :%s", "JHD_AGAIN");
+				n = JHD_AGAIN;
+				break;
+			} else if (err != EINTR) {
+				log_debug("exec send(fd:%d,buf:%"PRIu64",size:%"PRIu64",0)==%"PRId64 ",errno==%d", c->fd, (u_int64_t )buf, size, n, err);
+				log_notice("leave function return :%s", "JHD_ERROR");
+				n = JHD_ERROR;
+				break;
+
+			}
+
+			log_debug("exec send(fd:%d,buf:%"PRIu64",size:%"PRIu64",0)==%"PRId64 ",errno==EINTR", c->fd, (u_int64_t )buf, size, n);
+
+		}
+	}
+	return n;
+}
+
+void jhd_connection_accept(jhd_event_t *ev) {
+	static int use_accept4 = 1;
+
+	jhd_listening_t lis;
+
+	jhd_connection_t *c, *sc;
+	int fd;
+	int err;
+	size_t idx;
+	int nb;
+
+	log_notice("%s", "enter function");
+
+	c = NULL;
+	if (ev->timedout) {
+		return;
+		ev->timedout = 0;
+	}
+	c = free_connections;
+	if (c) {
+		--free_connection_count;
+		free_connections = c->data;
+	} else {
+		log_notice("leave function return with:%s", "free_connections_count == 0");
+		return;
+	}
+
+	sc = ev->data;
+	lis = sc->listening;
+
+	log_info("begin connection acccept[%s]", lis->addr_text);
+
+	for (;;) {
+
+		c->socklen = sizeof(jhd_sockaddr_t);
+		if (use_accept4) {
+			fd = accept4(lis->fd, &c->sockaddr, &c->socklen, SOCK_NONBLOCK);
+			log_debug("exec accept4(...)==%d", fd);
+		} else {
+			fd = accept(lis->fd, &c->sockaddr, &c->socklen);
+			log_debug("exec accept(...)==%d", fd);
+		}
+
+		if (fd == (-1)) {
+			err = errno;
+			if ((err == EAGAIN)) {
+				++free_connection_count;
+				c->data = free_connections;
+				free_connections = c;
+				log_notice("leave function return with:%s", "accept(...) ==-1,errno = EAGAIN");
+				return;
+			}
+			if (use_accept4 && err == ENOSYS) {
+				use_accept4 = 0;
+				log_warn("exec accept4(...)==-1,errno == ENOSYS so:%s", "change use_accept4[static] = 0");
+				continue;
+			}
+			++free_connection_count;
+			c->data = free_connections;
+			free_connections = c;
+			log_err("connection acccept[%s] error with:%s", lis->addr_text, "accept(...)");
+			log_notice("leave function return with:%s", "accept(...)==-1,errno != EAGAIN ");
+			return;
+		}
+
+		c->listening = sc->listening;
+		nb = 1;
+
+		err = ioctl(fd, FIONBIO, &nb);
+
+		log_debug("exec ioctl(,FIONBIO,)==%d", err);
+
+		if (err == (-1)) {
+			++free_connection_count;
+			c->data = free_connections;
+			free_connections = c;
+			close(fd);
+			log_err("connection acccept[%s] error with:%s", lis->addr_text, "ioctl(,FIONBIO,)== -1");
+			log_notice("leave function return with:%s", "ioctl(,FIONBIO,)== -1");
+			return;
+		}
+		c->data = NULL;
+		c->fd = fd;
+		c->close = jhd_connection_close;
+		jhd_http_init_connection(c);
+
+	}
+
+}
+
+void jhd_connection_close(jhd_connection_t *c){
+	close(c->fd);
+	c->fd = -1;
+	++free_connection_count;
+	c->data = free_connections;
+	free_connections = c;
+	log_notice("%s","exec function");
+}

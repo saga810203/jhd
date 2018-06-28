@@ -8,7 +8,6 @@
 #include <jhd_time.h>
 #include <jhd_config.h>
 #include <jhd_log.h>
-#include <inttypes.h>
 
 
 static u_char log_time_value[JHD_CACHE_LOG_TIME_LEN+1];

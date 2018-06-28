@@ -70,6 +70,7 @@
 
 #include <linux/capability.h>
 #include <openssl/ssl.h>
+#include <inttypes.h>
 
 
 #include <jhd_error.h>

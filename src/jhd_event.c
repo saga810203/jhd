@@ -21,7 +21,9 @@ static jhd_listener_t w_event_listener;
 
 static jhd_bool accepted;
 
-
+void jhd_event_noop(jhd_event_t *ev){
+	log_notice("%s","exec function");
+}
 
 void jhd_process_events_and_timers() {
 	uint64_t timer, delta;
@@ -73,7 +75,7 @@ void jhd_process_events_and_timers() {
 			}
 			if (revents & EPOLLOUT) {
 				if (c->read.queue.next == NULL) {
-					jhd_queue_insert_tail(&jhd_posted_events, &c->read.queue);
+					jhd_queue_insert_tail(&jhd_posted_events, &c->write.queue);
 				}
 			}
 		}

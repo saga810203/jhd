@@ -12,22 +12,31 @@
 #include<jhd_config.h>
 #include<jhd_queue.h>
 #include<jhd_event.h>
+#include<jhd_ssl.h>
 
 typedef struct jhd_connection_s jhd_connection_t;
 
 typedef struct jhd_listening_s  jhd_listening_t;
 
+typedef union {
+    struct sockaddr           sockaddr;
+    struct sockaddr_in        sockaddr_in;
+
+    struct sockaddr_in6       sockaddr_in6;
+    struct sockaddr_un        sockaddr_un;
+} jhd_sockaddr_t;
+
 
 typedef ssize_t (*jhd_connection_recv_pt)(jhd_connection_t *c, u_char *buf, size_t size);
 
 typedef ssize_t (*jhd_connection_send_pt)(jhd_connection_t *c, u_char *buf, size_t size);
-typedef ssize_t (*jhd_connection_close_pt)(jhd_connection_t *c);
+typedef void (*jhd_connection_close_pt)(jhd_connection_t *c);
 
 
 struct jhd_listening_s{
 		int					fd;
 
-		void   				*sockaddr;
+		jhd_sockaddr_t		sockaddr;
 		socklen_t           socklen;
 
 		u_char* 			addr_text;
@@ -65,10 +74,9 @@ struct jhd_connection_s {
 
     jhd_listening_t    *listening;
 
-    void    			*sockaddr;
-    socklen_t           socklen;
+	jhd_sockaddr_t		sockaddr;
+	socklen_t           socklen;
 
-    jhd_queue_t         queue;
     void				*ssl;
 
 
@@ -92,9 +100,17 @@ jhd_listening_t* jhd_listening_get(u_char *addr_text,size_t len);
 jhd_bool jhd_listening_add_server(jhd_listening_t *lis,void *http_server);
 
 
+void jhd_connection_accept(jhd_event_t *ev);
 
+ssize_t jhd_connection_recv(jhd_connection_t *c, u_char *buf, size_t size);
 
+ssize_t jhd_connection_ssl_recv(jhd_connection_t *c, u_char *buf, size_t size);
 
+ssize_t jhd_connection_send(jhd_connection_t *c, u_char *buf, size_t size);
+
+ssize_t jhd_connection_ssl_send(jhd_connection_t *c, u_char *buf, size_t size);
+
+void jhd_connection_close(jhd_connection_t *c);
 
 
 extern jhd_connection_t *g_connections;

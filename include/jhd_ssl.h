@@ -42,8 +42,6 @@ struct jhd_ssl_srv_session_s{
 	SSL_CTX					*session_ctx;
 	SSL						*session;
 
-
-
     unsigned                    handshaked:1;
     unsigned                    renegotiation:1;
     unsigned                    buffer:1;

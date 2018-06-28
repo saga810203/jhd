@@ -55,8 +55,7 @@ extern int epoll_fd;
 /* =========================end extern var======================== */
 
 void jhd_event_init();
-void jhd_event_accept(jhd_event_t *ev);
-void jhd_event_recvmsg(jhd_event_t *ev);
+void jhd_event_noop(jhd_event_t *ev);
 void jhd_process_events_and_timers();
 
 uint64_t jhd_event_find_timer(void);

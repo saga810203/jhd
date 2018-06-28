@@ -1,4 +1,5 @@
 #include <jhd_http.h>
+#include <jhd_pool.h>
 
 static jhd_queue_t jhd_http_server_queue = { &jhd_http_server_queue, &jhd_http_server_queue };
 
@@ -97,4 +98,82 @@ jhd_http_server_t* jhd_http_find_server_by_host_name(jhd_connection_t *c, u_char
 		}
 	}
 	return NULL;
+}
+
+
+void jhd_http_empty_handler(jhd_event_t *ev){
+	log_notice("%s","exec function");
+}
+void jhd_http_h1_wait_request_handler(jhd_event_t *rev){
+
+
+
+}
+
+void jhd_http_h1_close_connection(jhd_connection_t *c){
+	jhd_h1c_t   *hc;
+
+	jhd_connection_close_pt cl;
+
+
+
+	log_notice("%s","enter function");
+
+	hc = c->data;
+	cl=hc->c_close_pt;
+
+
+
+
+
+
+
+
+	jhd_free(hc);
+	cl(c);
+	log_notice("%s","leave function");
+
+}
+
+
+void jhd_http_init_connection(jhd_connection_t *c){
+	jhd_h1c_t *hc;
+
+
+	log_notice("%s", "enter function");
+
+	if(c->listening->ssl){
+		log_info("connection[%s] with ssl",c->listening->addr_text);
+
+
+
+
+
+	}else{
+		log_info("connection[%s] without ssl",c->listening->addr_text);
+	}
+	hc = jhd_malloc(sizeof(jhd_h1c_t));
+	if(hc ==NULL){
+		log_warn("OutOfMemory with:%s","alloc jhd_h1c_t");
+		c->close(c);
+		log_notice("leave function return with:%s", "OutOfMemory");
+		return;
+	}
+
+
+	hc->c_close_pt = c->close;
+	c->data = hc;
+	hc->c = c;
+
+
+
+
+	c->close = jhd_http_h1_close_connection;
+	c->read->handler = jhd_http_h1_wait_request_handler;
+	c->write->handler = jhd_http_empty_handler;
+
+
+	jhd_http_h1_wait_request_handler(&c->read);
+
+	log_notice("leave function return with:%s", "success");
 }
