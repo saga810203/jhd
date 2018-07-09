@@ -135,6 +135,106 @@ void jhd_http_h1_close_connection(jhd_connection_t *c){
 
 }
 
+static void jhd_http_ssl_handshake(jhd_event_t *rev) {
+	u_char *p, buf[128];
+	size_t size;
+	ssize_t n;
+	int err;
+	ssize_t rc;
+	jhd_connection_t *c;
+
+
+	log_notice("%s","enter function");
+
+	c = rev->data;
+	if (rev->timedout) {
+		log_info("%s", "client timed out");
+		rev->timedout = 0;
+		if(c->write.queue.next){
+			jhd_queue_only_remove(&(c->write.queue));
+		}
+		c->close(c);
+		log_notice("leave function return with:%s", "connection read timeout");
+		return;
+	}
+
+
+
+	size = 1;
+    for(;;){
+		n = recv(c->fd, (char *) buf, size, MSG_PEEK);
+		if (n == -1) {
+			err = errno;
+			if (err == EAGAIN) {
+				log_debug("exec recv(fd:%d,buf:%"PRIu64",size:%"PRIu64",MSG_PEEK)==%"PRId64",errno=%s", c->fd, (u_int64_t )buf, size, n, "EAGAIN");
+
+				if(!rev->timer.key){
+					jhd_add_timer(rev,c->listening->accept_timeout);
+					log_notice("leave function return with:%s", "EAGAIN");
+					return;
+				}
+				return;
+			}else if(err == EINTR){
+				log_debug("exec recv(fd:%d,buf:%"PRIu64",size:%"PRIu64",MSG_PEEK)==%"PRId64",errno=%s", c->fd, (u_int64_t )buf, size, n, "EINTR");
+			}else{
+				log_debug("exec recv(fd:%d,buf:%"PRIu64",size:%"PRIu64",MSG_PEEK)==%"PRId64",errno=%d", c->fd, (u_int64_t )buf, size, n, err);
+
+
+			}
+			log_debug("exec recv(fd:%d,buf:%"PRIu64",size:%"PRIu64",MSG_PEEK)==%"PRId64",errno=%d", c->fd, (u_int64_t )buf, size, n, err);
+			c->close(c);
+			log_notice("leave function return with:%s", "connection read error");
+			return;
+		}else{
+			break;
+		}
+    }
+
+	if (n == 1) {
+		if (buf[0] & 0x80 /* SSLv2 */|| buf[0] == 0x16 /* SSLv3/TLSv1 */) {
+			log_debug("ssl first byte is %d",buf[0]);
+
+
+			if(!jhd_ssl_create_connection(c,JHD_SSL_BUFFER)){
+						c->close(c);
+						log_notice("leave function return with:%s", "create ssl session");
+						return;
+			}
+
+			rc = ngx_ssl_handshake(c);
+
+			if (rc == NGX_AGAIN) {
+
+				if (!rev->timer_set) {
+					ngx_add_timer(rev, c->listening->post_accept_timeout);
+				}
+
+				ngx_reusable_connection(c, 0);
+
+				c->ssl->handler = ngx_http_ssl_handshake_handler;
+				return;
+			}
+
+			ngx_http_ssl_handshake_handler(c);
+
+			return;
+		}
+
+		ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "plain http");
+
+		c->log->action = "waiting for request";
+
+		rev->handler = ngx_http_wait_request_handler;
+		ngx_http_wait_request_handler(rev);
+
+		return;
+	}
+
+	ngx_log_error(NGX_LOG_INFO, c->log, 0, "client closed connection");
+	ngx_http_close_connection(c);
+}
+
+
 
 void jhd_http_init_connection(jhd_connection_t *c){
 	jhd_h1c_t *hc;
@@ -144,10 +244,6 @@ void jhd_http_init_connection(jhd_connection_t *c){
 
 	if(c->listening->ssl){
 		log_info("connection[%s] with ssl",c->listening->addr_text);
-
-
-
-
 
 	}else{
 		log_info("connection[%s] without ssl",c->listening->addr_text);

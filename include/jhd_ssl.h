@@ -19,65 +19,62 @@
 #define JHD_SSL_TLSv1_3  0x0040
 
 
+#define JHD_SSL_BUFFER   1
+#define JHD_SSL_CLIENT   2
+
+#define JHD_SSL_BUFSIZE  16384
 
 #define jhd_ssl_get_connection(ssl_conn)  SSL_get_ex_data(ssl_conn, jhd_ssl_connection_index)
 
+typedef struct jhd_ssl_srv_s jhd_ssl_srv_t;
+typedef struct jhd_ssl_session_s jhd_ssl_session_t;
 
-typedef struct jhd_ssl_srv_s  jhd_ssl_srv_t;
-typedef struct jhd_ssl_srv_session_s jhd_ssl_srv_session_t;
-
-
-struct jhd_ssl_srv_s{
-		    jhd_queue_t 	queue;
-		   	SSL_CTX         *ctx;
-		    size_t          buffer_size;
-		    u_char			*name;
-		    u_char			*certificate;
-		    u_char			*certificate_key;
-		    ssize_t			timeout;
-		    u_char			*ciphers;
-		    uint64_t		protocols;
+struct jhd_ssl_srv_s {
+	jhd_queue_t queue;
+	SSL_CTX *ctx;
+	size_t buffer_size;
+	u_char *name;
+	u_char *certificate;
+	u_char *certificate_key;
+	ssize_t timeout;
+	u_char *ciphers;
+	uint64_t protocols;
 };
-struct jhd_ssl_srv_session_s{
-	SSL_CTX					*session_ctx;
-	SSL						*session;
+struct jhd_ssl_session_s {
+	SSL_CTX *session_ctx;
+	SSL *session;
+	void	*c_close;
 
-    unsigned                    handshaked:1;
-    unsigned                    renegotiation:1;
-    unsigned                    buffer:1;
-    unsigned                    no_wait_shutdown:1;
-    unsigned                    no_send_shutdown:1;
-    unsigned                    handshake_buffer_set:1;
+	uint64_t	last;
+
+	unsigned handshaked :1;
+	unsigned renegotiation :1;
+	unsigned buffer :1;
+	unsigned no_wait_shutdown :1;
+	unsigned no_send_shutdown :1;
+	unsigned handshake_buffer_set :1;
+	unsigned client:1;
 
 };
 
+jhd_bool jhd_ssl_init();
 
+void jhd_ssl_free();
 
+jhd_ssl_srv_t* jhd_ssl_srv_get(u_char* name);
+u_char* jhd_ssl_srv_add(jhd_ssl_srv_t *srv_ssl);
 
-	jhd_bool jhd_ssl_init();
+jhd_bool jhd_ssl_create_connection(jhd_connection_t *c, int flags);
 
-	void jhd_ssl_free();
+int jhd_ssl_handshake(jhd_connection_t *c);
 
-
-	jhd_ssl_srv_t*  jhd_ssl_srv_get(u_char* name);
-	u_char*		jhd_ssl_srv_add(jhd_ssl_srv_t *srv_ssl);
-
-
-
-
-
-
-
-
-
-
-extern	int  jhd_ssl_connection_index;
-extern	int  jhd_ssl_server_conf_index;
-extern	int  jhd_ssl_session_cache_index;
-extern	int  jhd_ssl_session_ticket_keys_index;
-extern	int  jhd_ssl_certificate_index;
-extern	int  jhd_ssl_next_certificate_index;
-extern	int  jhd_ssl_certificate_name_index;
-extern	int  jhd_ssl_stapling_index;
+extern int jhd_ssl_connection_index;
+extern int jhd_ssl_server_conf_index;
+extern int jhd_ssl_session_cache_index;
+extern int jhd_ssl_session_ticket_keys_index;
+extern int jhd_ssl_certificate_index;
+extern int jhd_ssl_next_certificate_index;
+extern int jhd_ssl_certificate_name_index;
+extern int jhd_ssl_stapling_index;
 
 #endif /* JHD_SSL_H_ */

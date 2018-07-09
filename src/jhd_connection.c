@@ -455,7 +455,7 @@ void jhd_connection_init() {
 	jhd_add_worker_startup_listener(&w_connection_listener);
 }
 
- ssize_t jhd_connection_recv(jhd_connection_t *c, u_char *buf, size_t size) {
+ssize_t jhd_connection_recv(jhd_connection_t *c, u_char *buf, size_t size) {
 	ssize_t n;
 	int err;
 	log_notice("%s", "enter function");
@@ -489,7 +489,7 @@ void jhd_connection_init() {
 	return n;
 }
 
- ssize_t jhd_connection_send(jhd_connection_t *c, u_char *buf, size_t size) {
+ssize_t jhd_connection_send(jhd_connection_t *c, u_char *buf, size_t size) {
 	ssize_t n;
 	int err;
 
@@ -613,11 +613,20 @@ void jhd_connection_accept(jhd_event_t *ev) {
 
 }
 
-void jhd_connection_close(jhd_connection_t *c){
-	close(c->fd);
-	c->fd = -1;
+void jhd_connection_close(jhd_connection_t *c) {
+	int op;
+	struct epoll_event ee;
+
+	if (c->fd != (-1)) {
+		op = EPOLL_CTL_DEL;
+		ee.events = 0;
+		ee.data.ptr = NULL;
+		epoll_ctl(epoll_fd, op, c->fd, &ee);
+		close(c->fd);
+		c->fd = -1;
+	}
 	++free_connection_count;
 	c->data = free_connections;
 	free_connections = c;
-	log_notice("%s","exec function");
+	log_notice("%s", "exec function");
 }
