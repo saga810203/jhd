@@ -21,30 +21,28 @@
  *
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
-#ifndef MBEDTLS_CAMELLIA_H
-#define MBEDTLS_CAMELLIA_H
+#ifndef JHD_TLS_CAMELLIA_H
+#define JHD_TLS_CAMELLIA_H
 
-#if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#if !defined(JHD_TLS_CONFIG_FILE)
+#include <tls/jhd_tls_config.h>
 #else
-#include MBEDTLS_CONFIG_FILE
+#include JHD_TLS_CONFIG_FILE
 #endif
 
 #include <stddef.h>
 #include <stdint.h>
 
-#define MBEDTLS_CAMELLIA_ENCRYPT     1
-#define MBEDTLS_CAMELLIA_DECRYPT     0
+#define JHD_TLS_CAMELLIA_ENCRYPT     1
+#define JHD_TLS_CAMELLIA_DECRYPT     0
 
-#define MBEDTLS_ERR_CAMELLIA_INVALID_KEY_LENGTH           -0x0024  /**< Invalid key length. */
-#define MBEDTLS_ERR_CAMELLIA_INVALID_INPUT_LENGTH         -0x0026  /**< Invalid data input length. */
-#define MBEDTLS_ERR_CAMELLIA_HW_ACCEL_FAILED              -0x0027  /**< Camellia hardware accelerator failed. */
+#define JHD_TLS_ERR_CAMELLIA_INVALID_KEY_LENGTH           -0x0024  /**< Invalid key length. */
+#define JHD_TLS_ERR_CAMELLIA_INVALID_INPUT_LENGTH         -0x0026  /**< Invalid data input length. */
+#define JHD_TLS_ERR_CAMELLIA_HW_ACCEL_FAILED              -0x0027  /**< Camellia hardware accelerator failed. */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-#if !defined(MBEDTLS_CAMELLIA_ALT)
+
+#if !defined(JHD_TLS_CAMELLIA_ALT)
 // Regular implementation
 //
 
@@ -56,25 +54,25 @@ typedef struct
     int nr;                     /*!<  number of rounds  */
     uint32_t rk[68];            /*!<  CAMELLIA round keys    */
 }
-mbedtls_camellia_context;
+jhd_tls_camellia_context;
 
-#else  /* MBEDTLS_CAMELLIA_ALT */
-#include "camellia_alt.h"
-#endif /* MBEDTLS_CAMELLIA_ALT */
+#else  /* JHD_TLS_CAMELLIA_ALT */
+#include "jhd_tls_camellia_alt.h"
+#endif /* JHD_TLS_CAMELLIA_ALT */
 
 /**
  * \brief          Initialize CAMELLIA context
  *
  * \param ctx      CAMELLIA context to be initialized
  */
-void mbedtls_camellia_init( mbedtls_camellia_context *ctx );
+void jhd_tls_camellia_init( jhd_tls_camellia_context *ctx );
 
 /**
  * \brief          Clear CAMELLIA context
  *
  * \param ctx      CAMELLIA context to be cleared
  */
-void mbedtls_camellia_free( mbedtls_camellia_context *ctx );
+void jhd_tls_camellia_free( jhd_tls_camellia_context *ctx );
 
 /**
  * \brief          CAMELLIA key schedule (encryption)
@@ -83,9 +81,9 @@ void mbedtls_camellia_free( mbedtls_camellia_context *ctx );
  * \param key      encryption key
  * \param keybits  must be 128, 192 or 256
  *
- * \return         0 if successful, or MBEDTLS_ERR_CAMELLIA_INVALID_KEY_LENGTH
+ * \return         0 if successful, or JHD_TLS_ERR_CAMELLIA_INVALID_KEY_LENGTH
  */
-int mbedtls_camellia_setkey_enc( mbedtls_camellia_context *ctx, const unsigned char *key,
+int jhd_tls_camellia_setkey_enc( jhd_tls_camellia_context *ctx, const unsigned char *key,
                          unsigned int keybits );
 
 /**
@@ -95,27 +93,27 @@ int mbedtls_camellia_setkey_enc( mbedtls_camellia_context *ctx, const unsigned c
  * \param key      decryption key
  * \param keybits  must be 128, 192 or 256
  *
- * \return         0 if successful, or MBEDTLS_ERR_CAMELLIA_INVALID_KEY_LENGTH
+ * \return         0 if successful, or JHD_TLS_ERR_CAMELLIA_INVALID_KEY_LENGTH
  */
-int mbedtls_camellia_setkey_dec( mbedtls_camellia_context *ctx, const unsigned char *key,
+int jhd_tls_camellia_setkey_dec( jhd_tls_camellia_context *ctx, const unsigned char *key,
                          unsigned int keybits );
 
 /**
  * \brief          CAMELLIA-ECB block encryption/decryption
  *
  * \param ctx      CAMELLIA context
- * \param mode     MBEDTLS_CAMELLIA_ENCRYPT or MBEDTLS_CAMELLIA_DECRYPT
+ * \param mode     JHD_TLS_CAMELLIA_ENCRYPT or JHD_TLS_CAMELLIA_DECRYPT
  * \param input    16-byte input block
  * \param output   16-byte output block
  *
  * \return         0 if successful
  */
-int mbedtls_camellia_crypt_ecb( mbedtls_camellia_context *ctx,
+int jhd_tls_camellia_crypt_ecb( jhd_tls_camellia_context *ctx,
                     int mode,
                     const unsigned char input[16],
                     unsigned char output[16] );
 
-#if defined(MBEDTLS_CIPHER_MODE_CBC)
+#if defined(JHD_TLS_CIPHER_MODE_CBC)
 /**
  * \brief          CAMELLIA-CBC buffer encryption/decryption
  *                 Length should be a multiple of the block
@@ -130,30 +128,30 @@ int mbedtls_camellia_crypt_ecb( mbedtls_camellia_context *ctx,
  *                 module instead.
  *
  * \param ctx      CAMELLIA context
- * \param mode     MBEDTLS_CAMELLIA_ENCRYPT or MBEDTLS_CAMELLIA_DECRYPT
+ * \param mode     JHD_TLS_CAMELLIA_ENCRYPT or JHD_TLS_CAMELLIA_DECRYPT
  * \param length   length of the input data
  * \param iv       initialization vector (updated after use)
  * \param input    buffer holding the input data
  * \param output   buffer holding the output data
  *
  * \return         0 if successful, or
- *                 MBEDTLS_ERR_CAMELLIA_INVALID_INPUT_LENGTH
+ *                 JHD_TLS_ERR_CAMELLIA_INVALID_INPUT_LENGTH
  */
-int mbedtls_camellia_crypt_cbc( mbedtls_camellia_context *ctx,
+int jhd_tls_camellia_crypt_cbc( jhd_tls_camellia_context *ctx,
                     int mode,
                     size_t length,
                     unsigned char iv[16],
                     const unsigned char *input,
                     unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_CBC */
+#endif /* JHD_TLS_CIPHER_MODE_CBC */
 
-#if defined(MBEDTLS_CIPHER_MODE_CFB)
+#if defined(JHD_TLS_CIPHER_MODE_CFB)
 /**
  * \brief          CAMELLIA-CFB128 buffer encryption/decryption
  *
  * Note: Due to the nature of CFB you should use the same key schedule for
  * both encryption and decryption. So a context initialized with
- * mbedtls_camellia_setkey_enc() for both MBEDTLS_CAMELLIA_ENCRYPT and CAMELLIE_DECRYPT.
+ * jhd_tls_camellia_setkey_enc() for both JHD_TLS_CAMELLIA_ENCRYPT and CAMELLIE_DECRYPT.
  *
  * \note           Upon exit, the content of the IV is updated so that you can
  *                 call the function same function again on the following
@@ -164,7 +162,7 @@ int mbedtls_camellia_crypt_cbc( mbedtls_camellia_context *ctx,
  *                 module instead.
  *
  * \param ctx      CAMELLIA context
- * \param mode     MBEDTLS_CAMELLIA_ENCRYPT or MBEDTLS_CAMELLIA_DECRYPT
+ * \param mode     JHD_TLS_CAMELLIA_ENCRYPT or JHD_TLS_CAMELLIA_DECRYPT
  * \param length   length of the input data
  * \param iv_off   offset in IV (updated after use)
  * \param iv       initialization vector (updated after use)
@@ -172,24 +170,24 @@ int mbedtls_camellia_crypt_cbc( mbedtls_camellia_context *ctx,
  * \param output   buffer holding the output data
  *
  * \return         0 if successful, or
- *                 MBEDTLS_ERR_CAMELLIA_INVALID_INPUT_LENGTH
+ *                 JHD_TLS_ERR_CAMELLIA_INVALID_INPUT_LENGTH
  */
-int mbedtls_camellia_crypt_cfb128( mbedtls_camellia_context *ctx,
+int jhd_tls_camellia_crypt_cfb128( jhd_tls_camellia_context *ctx,
                        int mode,
                        size_t length,
                        size_t *iv_off,
                        unsigned char iv[16],
                        const unsigned char *input,
                        unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_CFB */
+#endif /* JHD_TLS_CIPHER_MODE_CFB */
 
-#if defined(MBEDTLS_CIPHER_MODE_CTR)
+#if defined(JHD_TLS_CIPHER_MODE_CTR)
 /**
  * \brief               CAMELLIA-CTR buffer encryption/decryption
  *
  * Note: Due to the nature of CTR you should use the same key schedule for
  * both encryption and decryption. So a context initialized with
- * mbedtls_camellia_setkey_enc() for both MBEDTLS_CAMELLIA_ENCRYPT and MBEDTLS_CAMELLIA_DECRYPT.
+ * jhd_tls_camellia_setkey_enc() for both JHD_TLS_CAMELLIA_ENCRYPT and JHD_TLS_CAMELLIA_DECRYPT.
  *
  * \warning    You must never reuse a nonce value with the same key. Doing so
  *             would void the encryption for the two messages encrypted with
@@ -248,24 +246,22 @@ int mbedtls_camellia_crypt_cfb128( mbedtls_camellia_context *ctx,
  *
  * \return         0 if successful
  */
-int mbedtls_camellia_crypt_ctr( mbedtls_camellia_context *ctx,
+int jhd_tls_camellia_crypt_ctr( jhd_tls_camellia_context *ctx,
                        size_t length,
                        size_t *nc_off,
                        unsigned char nonce_counter[16],
                        unsigned char stream_block[16],
                        const unsigned char *input,
                        unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_CTR */
+#endif /* JHD_TLS_CIPHER_MODE_CTR */
 
 /**
  * \brief          Checkup routine
  *
  * \return         0 if successful, or 1 if the test failed
  */
-int mbedtls_camellia_self_test( int verbose );
+int jhd_tls_camellia_self_test( int verbose );
 
-#ifdef __cplusplus
-}
-#endif
+
 
 #endif /* camellia.h */

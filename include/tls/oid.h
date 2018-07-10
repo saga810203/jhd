@@ -25,12 +25,12 @@
 #define MBEDTLS_OID_H
 
 #if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include MBEDTLS_CONFIG_FILE
 #endif
 
-#include "asn1.h"
+#include <tls/jhd_tls_asn1.h>
 #include "pk.h"
 
 #include <stddef.h>

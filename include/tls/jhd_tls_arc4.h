@@ -25,24 +25,22 @@
  *  This file is part of mbed TLS (https://tls.mbed.org)
  *
  */
-#ifndef MBEDTLS_ARC4_H
-#define MBEDTLS_ARC4_H
+#ifndef JHD_TLS_ARC4_H
+#define JHD_TLS_ARC4_H
 
-#if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#if !defined(JHD_TLS_CONFIG_FILE)
+#include <tls/jhd_tls_config.h>
 #else
-#include MBEDTLS_CONFIG_FILE
+#include JHD_TLS_CONFIG_FILE
 #endif
 
 #include <stddef.h>
 
-#define MBEDTLS_ERR_ARC4_HW_ACCEL_FAILED                  -0x0019  /**< ARC4 hardware accelerator failed. */
+#define JHD_TLS_ERR_ARC4_HW_ACCEL_FAILED                  -0x0019  /**< ARC4 hardware accelerator failed. */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-#if !defined(MBEDTLS_ARC4_ALT)
+
+#if !defined(JHD_TLS_ARC4_ALT)
 // Regular implementation
 //
 
@@ -59,11 +57,11 @@ typedef struct
     int y;                      /*!< permutation index */
     unsigned char m[256];       /*!< permutation table */
 }
-mbedtls_arc4_context;
+jhd_tls_arc4_context;
 
-#else  /* MBEDTLS_ARC4_ALT */
+#else  /* JHD_TLS_ARC4_ALT */
 #include "arc4_alt.h"
-#endif /* MBEDTLS_ARC4_ALT */
+#endif /* JHD_TLS_ARC4_ALT */
 
 /**
  * \brief          Initialize ARC4 context
@@ -75,7 +73,7 @@ mbedtls_arc4_context;
  *                 instead.
  *
  */
-void mbedtls_arc4_init( mbedtls_arc4_context *ctx );
+void jhd_tls_arc4_init( jhd_tls_arc4_context *ctx );
 
 /**
  * \brief          Clear ARC4 context
@@ -87,7 +85,7 @@ void mbedtls_arc4_init( mbedtls_arc4_context *ctx );
  *                 instead.
  *
  */
-void mbedtls_arc4_free( mbedtls_arc4_context *ctx );
+void jhd_tls_arc4_free( jhd_tls_arc4_context *ctx );
 
 /**
  * \brief          ARC4 key schedule
@@ -101,7 +99,7 @@ void mbedtls_arc4_free( mbedtls_arc4_context *ctx );
  *                 instead.
  *
  */
-void mbedtls_arc4_setup( mbedtls_arc4_context *ctx, const unsigned char *key,
+void jhd_tls_arc4_setup( jhd_tls_arc4_context *ctx, const unsigned char *key,
                  unsigned int keylen );
 
 /**
@@ -119,7 +117,7 @@ void mbedtls_arc4_setup( mbedtls_arc4_context *ctx, const unsigned char *key,
  *                 instead.
  *
  */
-int mbedtls_arc4_crypt( mbedtls_arc4_context *ctx, size_t length, const unsigned char *input,
+int jhd_tls_arc4_crypt( jhd_tls_arc4_context *ctx, size_t length, const unsigned char *input,
                 unsigned char *output );
 
 /**
@@ -132,10 +130,8 @@ int mbedtls_arc4_crypt( mbedtls_arc4_context *ctx, size_t length, const unsigned
  *                 instead.
  *
  */
-int mbedtls_arc4_self_test( int verbose );
+int jhd_tls_arc4_self_test( int verbose );
 
-#ifdef __cplusplus
-}
-#endif
+
 
 #endif /* arc4.h */

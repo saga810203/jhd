@@ -21,34 +21,32 @@
  *
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
-#ifndef MBEDTLS_BLOWFISH_H
-#define MBEDTLS_BLOWFISH_H
+#ifndef JHD_TLS_BLOWFISH_H
+#define JHD_TLS_BLOWFISH_H
 
-#if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#if !defined(JHD_TLS_CONFIG_FILE)
+#include <tls/jhd_tls_config.h>
 #else
-#include MBEDTLS_CONFIG_FILE
+#include JHD_TLS_CONFIG_FILE
 #endif
 
 #include <stddef.h>
 #include <stdint.h>
 
-#define MBEDTLS_BLOWFISH_ENCRYPT     1
-#define MBEDTLS_BLOWFISH_DECRYPT     0
-#define MBEDTLS_BLOWFISH_MAX_KEY_BITS     448
-#define MBEDTLS_BLOWFISH_MIN_KEY_BITS     32
-#define MBEDTLS_BLOWFISH_ROUNDS      16         /**< Rounds to use. When increasing this value, make sure to extend the initialisation vectors */
-#define MBEDTLS_BLOWFISH_BLOCKSIZE   8          /* Blowfish uses 64 bit blocks */
+#define JHD_TLS_BLOWFISH_ENCRYPT     1
+#define JHD_TLS_BLOWFISH_DECRYPT     0
+#define JHD_TLS_BLOWFISH_MAX_KEY_BITS     448
+#define JHD_TLS_BLOWFISH_MIN_KEY_BITS     32
+#define JHD_TLS_BLOWFISH_ROUNDS      16         /**< Rounds to use. When increasing this value, make sure to extend the initialisation vectors */
+#define JHD_TLS_BLOWFISH_BLOCKSIZE   8          /* Blowfish uses 64 bit blocks */
 
-#define MBEDTLS_ERR_BLOWFISH_INVALID_KEY_LENGTH                -0x0016  /**< Invalid key length. */
-#define MBEDTLS_ERR_BLOWFISH_HW_ACCEL_FAILED                   -0x0017  /**< Blowfish hardware accelerator failed. */
-#define MBEDTLS_ERR_BLOWFISH_INVALID_INPUT_LENGTH              -0x0018  /**< Invalid data input length. */
+#define JHD_TLS_ERR_BLOWFISH_INVALID_KEY_LENGTH                -0x0016  /**< Invalid key length. */
+#define JHD_TLS_ERR_BLOWFISH_HW_ACCEL_FAILED                   -0x0017  /**< Blowfish hardware accelerator failed. */
+#define JHD_TLS_ERR_BLOWFISH_INVALID_INPUT_LENGTH              -0x0018  /**< Invalid data input length. */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-#if !defined(MBEDTLS_BLOWFISH_ALT)
+
+#if !defined(JHD_TLS_BLOWFISH_ALT)
 // Regular implementation
 //
 
@@ -57,28 +55,28 @@ extern "C" {
  */
 typedef struct
 {
-    uint32_t P[MBEDTLS_BLOWFISH_ROUNDS + 2];    /*!<  Blowfish round keys    */
+    uint32_t P[JHD_TLS_BLOWFISH_ROUNDS + 2];    /*!<  Blowfish round keys    */
     uint32_t S[4][256];                 /*!<  key dependent S-boxes  */
 }
-mbedtls_blowfish_context;
+jhd_tls_blowfish_context;
 
-#else  /* MBEDTLS_BLOWFISH_ALT */
+#else  /* JHD_TLS_BLOWFISH_ALT */
 #include "blowfish_alt.h"
-#endif /* MBEDTLS_BLOWFISH_ALT */
+#endif /* JHD_TLS_BLOWFISH_ALT */
 
 /**
  * \brief          Initialize Blowfish context
  *
  * \param ctx      Blowfish context to be initialized
  */
-void mbedtls_blowfish_init( mbedtls_blowfish_context *ctx );
+void jhd_tls_blowfish_init( jhd_tls_blowfish_context *ctx );
 
 /**
  * \brief          Clear Blowfish context
  *
  * \param ctx      Blowfish context to be cleared
  */
-void mbedtls_blowfish_free( mbedtls_blowfish_context *ctx );
+void jhd_tls_blowfish_free( jhd_tls_blowfish_context *ctx );
 
 /**
  * \brief          Blowfish key schedule
@@ -87,27 +85,27 @@ void mbedtls_blowfish_free( mbedtls_blowfish_context *ctx );
  * \param key      encryption key
  * \param keybits  must be between 32 and 448 bits
  *
- * \return         0 if successful, or MBEDTLS_ERR_BLOWFISH_INVALID_KEY_LENGTH
+ * \return         0 if successful, or JHD_TLS_ERR_BLOWFISH_INVALID_KEY_LENGTH
  */
-int mbedtls_blowfish_setkey( mbedtls_blowfish_context *ctx, const unsigned char *key,
+int jhd_tls_blowfish_setkey( jhd_tls_blowfish_context *ctx, const unsigned char *key,
                      unsigned int keybits );
 
 /**
  * \brief          Blowfish-ECB block encryption/decryption
  *
  * \param ctx      Blowfish context
- * \param mode     MBEDTLS_BLOWFISH_ENCRYPT or MBEDTLS_BLOWFISH_DECRYPT
+ * \param mode     JHD_TLS_BLOWFISH_ENCRYPT or JHD_TLS_BLOWFISH_DECRYPT
  * \param input    8-byte input block
  * \param output   8-byte output block
  *
  * \return         0 if successful
  */
-int mbedtls_blowfish_crypt_ecb( mbedtls_blowfish_context *ctx,
+int jhd_tls_blowfish_crypt_ecb( jhd_tls_blowfish_context *ctx,
                         int mode,
-                        const unsigned char input[MBEDTLS_BLOWFISH_BLOCKSIZE],
-                        unsigned char output[MBEDTLS_BLOWFISH_BLOCKSIZE] );
+                        const unsigned char input[JHD_TLS_BLOWFISH_BLOCKSIZE],
+                        unsigned char output[JHD_TLS_BLOWFISH_BLOCKSIZE] );
 
-#if defined(MBEDTLS_CIPHER_MODE_CBC)
+#if defined(JHD_TLS_CIPHER_MODE_CBC)
 /**
  * \brief          Blowfish-CBC buffer encryption/decryption
  *                 Length should be a multiple of the block
@@ -122,24 +120,24 @@ int mbedtls_blowfish_crypt_ecb( mbedtls_blowfish_context *ctx,
  *                 module instead.
  *
  * \param ctx      Blowfish context
- * \param mode     MBEDTLS_BLOWFISH_ENCRYPT or MBEDTLS_BLOWFISH_DECRYPT
+ * \param mode     JHD_TLS_BLOWFISH_ENCRYPT or JHD_TLS_BLOWFISH_DECRYPT
  * \param length   length of the input data
  * \param iv       initialization vector (updated after use)
  * \param input    buffer holding the input data
  * \param output   buffer holding the output data
  *
  * \return         0 if successful, or
- *                 MBEDTLS_ERR_BLOWFISH_INVALID_INPUT_LENGTH
+ *                 JHD_TLS_ERR_BLOWFISH_INVALID_INPUT_LENGTH
  */
-int mbedtls_blowfish_crypt_cbc( mbedtls_blowfish_context *ctx,
+int jhd_tls_blowfish_crypt_cbc( jhd_tls_blowfish_context *ctx,
                         int mode,
                         size_t length,
-                        unsigned char iv[MBEDTLS_BLOWFISH_BLOCKSIZE],
+                        unsigned char iv[JHD_TLS_BLOWFISH_BLOCKSIZE],
                         const unsigned char *input,
                         unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_CBC */
+#endif /* JHD_TLS_CIPHER_MODE_CBC */
 
-#if defined(MBEDTLS_CIPHER_MODE_CFB)
+#if defined(JHD_TLS_CIPHER_MODE_CFB)
 /**
  * \brief          Blowfish CFB buffer encryption/decryption.
  *
@@ -152,7 +150,7 @@ int mbedtls_blowfish_crypt_cbc( mbedtls_blowfish_context *ctx,
  *                 module instead.
  *
  * \param ctx      Blowfish context
- * \param mode     MBEDTLS_BLOWFISH_ENCRYPT or MBEDTLS_BLOWFISH_DECRYPT
+ * \param mode     JHD_TLS_BLOWFISH_ENCRYPT or JHD_TLS_BLOWFISH_DECRYPT
  * \param length   length of the input data
  * \param iv_off   offset in IV (updated after use)
  * \param iv       initialization vector (updated after use)
@@ -161,16 +159,16 @@ int mbedtls_blowfish_crypt_cbc( mbedtls_blowfish_context *ctx,
  *
  * \return         0 if successful
  */
-int mbedtls_blowfish_crypt_cfb64( mbedtls_blowfish_context *ctx,
+int jhd_tls_blowfish_crypt_cfb64( jhd_tls_blowfish_context *ctx,
                           int mode,
                           size_t length,
                           size_t *iv_off,
-                          unsigned char iv[MBEDTLS_BLOWFISH_BLOCKSIZE],
+                          unsigned char iv[JHD_TLS_BLOWFISH_BLOCKSIZE],
                           const unsigned char *input,
                           unsigned char *output );
-#endif /*MBEDTLS_CIPHER_MODE_CFB */
+#endif /*JHD_TLS_CIPHER_MODE_CFB */
 
-#if defined(MBEDTLS_CIPHER_MODE_CTR)
+#if defined(JHD_TLS_CIPHER_MODE_CTR)
 /**
  * \brief               Blowfish-CTR buffer encryption/decryption
  *
@@ -228,17 +226,15 @@ int mbedtls_blowfish_crypt_cfb64( mbedtls_blowfish_context *ctx,
  *
  * \return         0 if successful
  */
-int mbedtls_blowfish_crypt_ctr( mbedtls_blowfish_context *ctx,
+int jhd_tls_blowfish_crypt_ctr( jhd_tls_blowfish_context *ctx,
                         size_t length,
                         size_t *nc_off,
-                        unsigned char nonce_counter[MBEDTLS_BLOWFISH_BLOCKSIZE],
-                        unsigned char stream_block[MBEDTLS_BLOWFISH_BLOCKSIZE],
+                        unsigned char nonce_counter[JHD_TLS_BLOWFISH_BLOCKSIZE],
+                        unsigned char stream_block[JHD_TLS_BLOWFISH_BLOCKSIZE],
                         const unsigned char *input,
                         unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_CTR */
+#endif /* JHD_TLS_CIPHER_MODE_CTR */
 
-#ifdef __cplusplus
-}
-#endif
+
 
 #endif /* blowfish.h */

@@ -21,158 +21,156 @@
  *
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
-#ifndef MBEDTLS_BIGNUM_H
-#define MBEDTLS_BIGNUM_H
+#ifndef JHD_TLS_BIGNUM_H
+#define JHD_TLS_BIGNUM_H
 
-#if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#if !defined(JHD_TLS_CONFIG_FILE)
+#include <tls/jhd_tls_config.h>
 #else
-#include MBEDTLS_CONFIG_FILE
+#include JHD_TLS_CONFIG_FILE
 #endif
 
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined(MBEDTLS_FS_IO)
+#if defined(JHD_TLS_FS_IO)
 #include <stdio.h>
 #endif
 
-#define MBEDTLS_ERR_MPI_FILE_IO_ERROR                     -0x0002  /**< An error occurred while reading from or writing to a file. */
-#define MBEDTLS_ERR_MPI_BAD_INPUT_DATA                    -0x0004  /**< Bad input parameters to function. */
-#define MBEDTLS_ERR_MPI_INVALID_CHARACTER                 -0x0006  /**< There is an invalid character in the digit string. */
-#define MBEDTLS_ERR_MPI_BUFFER_TOO_SMALL                  -0x0008  /**< The buffer is too small to write to. */
-#define MBEDTLS_ERR_MPI_NEGATIVE_VALUE                    -0x000A  /**< The input arguments are negative or result in illegal output. */
-#define MBEDTLS_ERR_MPI_DIVISION_BY_ZERO                  -0x000C  /**< The input argument for division is zero, which is not allowed. */
-#define MBEDTLS_ERR_MPI_NOT_ACCEPTABLE                    -0x000E  /**< The input arguments are not acceptable. */
-#define MBEDTLS_ERR_MPI_ALLOC_FAILED                      -0x0010  /**< Memory allocation failed. */
+#define JHD_TLS_ERR_MPI_FILE_IO_ERROR                     -0x0002  /**< An error occurred while reading from or writing to a file. */
+#define JHD_TLS_ERR_MPI_BAD_INPUT_DATA                    -0x0004  /**< Bad input parameters to function. */
+#define JHD_TLS_ERR_MPI_INVALID_CHARACTER                 -0x0006  /**< There is an invalid character in the digit string. */
+#define JHD_TLS_ERR_MPI_BUFFER_TOO_SMALL                  -0x0008  /**< The buffer is too small to write to. */
+#define JHD_TLS_ERR_MPI_NEGATIVE_VALUE                    -0x000A  /**< The input arguments are negative or result in illegal output. */
+#define JHD_TLS_ERR_MPI_DIVISION_BY_ZERO                  -0x000C  /**< The input argument for division is zero, which is not allowed. */
+#define JHD_TLS_ERR_MPI_NOT_ACCEPTABLE                    -0x000E  /**< The input arguments are not acceptable. */
+#define JHD_TLS_ERR_MPI_ALLOC_FAILED                      -0x0010  /**< Memory allocation failed. */
 
-#define MBEDTLS_MPI_CHK(f) do { if( ( ret = f ) != 0 ) goto cleanup; } while( 0 )
+#define JHD_TLS_MPI_CHK(f) do { if( ( ret = f ) != 0 ) goto cleanup; } while( 0 )
 
 /*
  * Maximum size MPIs are allowed to grow to in number of limbs.
  */
-#define MBEDTLS_MPI_MAX_LIMBS                             10000
+#define JHD_TLS_MPI_MAX_LIMBS                             10000
 
-#if !defined(MBEDTLS_MPI_WINDOW_SIZE)
+#if !defined(JHD_TLS_MPI_WINDOW_SIZE)
 /*
  * Maximum window size used for modular exponentiation. Default: 6
  * Minimum value: 1. Maximum value: 6.
  *
- * Result is an array of ( 2 << MBEDTLS_MPI_WINDOW_SIZE ) MPIs used
+ * Result is an array of ( 2 << JHD_TLS_MPI_WINDOW_SIZE ) MPIs used
  * for the sliding window calculation. (So 64 by default)
  *
  * Reduction in size, reduces speed.
  */
-#define MBEDTLS_MPI_WINDOW_SIZE                           6        /**< Maximum windows size used. */
-#endif /* !MBEDTLS_MPI_WINDOW_SIZE */
+#define JHD_TLS_MPI_WINDOW_SIZE                           6        /**< Maximum windows size used. */
+#endif /* !JHD_TLS_MPI_WINDOW_SIZE */
 
-#if !defined(MBEDTLS_MPI_MAX_SIZE)
+#if !defined(JHD_TLS_MPI_MAX_SIZE)
 /*
  * Maximum size of MPIs allowed in bits and bytes for user-MPIs.
  * ( Default: 512 bytes => 4096 bits, Maximum tested: 2048 bytes => 16384 bits )
  *
  * Note: Calculations can temporarily result in larger MPIs. So the number
- * of limbs required (MBEDTLS_MPI_MAX_LIMBS) is higher.
+ * of limbs required (JHD_TLS_MPI_MAX_LIMBS) is higher.
  */
-#define MBEDTLS_MPI_MAX_SIZE                              1024     /**< Maximum number of bytes for usable MPIs. */
-#endif /* !MBEDTLS_MPI_MAX_SIZE */
+#define JHD_TLS_MPI_MAX_SIZE                              1024     /**< Maximum number of bytes for usable MPIs. */
+#endif /* !JHD_TLS_MPI_MAX_SIZE */
 
-#define MBEDTLS_MPI_MAX_BITS                              ( 8 * MBEDTLS_MPI_MAX_SIZE )    /**< Maximum number of bits for usable MPIs. */
+#define JHD_TLS_MPI_MAX_BITS                              ( 8 * JHD_TLS_MPI_MAX_SIZE )    /**< Maximum number of bits for usable MPIs. */
 
 /*
- * When reading from files with mbedtls_mpi_read_file() and writing to files with
- * mbedtls_mpi_write_file() the buffer should have space
+ * When reading from files with jhd_tls_mpi_read_file() and writing to files with
+ * jhd_tls_mpi_write_file() the buffer should have space
  * for a (short) label, the MPI (in the provided radix), the newline
  * characters and the '\0'.
  *
  * By default we assume at least a 10 char label, a minimum radix of 10
  * (decimal) and a maximum of 4096 bit numbers (1234 decimal chars).
  * Autosized at compile time for at least a 10 char label, a minimum radix
- * of 10 (decimal) for a number of MBEDTLS_MPI_MAX_BITS size.
+ * of 10 (decimal) for a number of JHD_TLS_MPI_MAX_BITS size.
  *
  * This used to be statically sized to 1250 for a maximum of 4096 bit
  * numbers (1234 decimal chars).
  *
  * Calculate using the formula:
- *  MBEDTLS_MPI_RW_BUFFER_SIZE = ceil(MBEDTLS_MPI_MAX_BITS / ln(10) * ln(2)) +
+ *  JHD_TLS_MPI_RW_BUFFER_SIZE = ceil(JHD_TLS_MPI_MAX_BITS / ln(10) * ln(2)) +
  *                                LabelSize + 6
  */
-#define MBEDTLS_MPI_MAX_BITS_SCALE100          ( 100 * MBEDTLS_MPI_MAX_BITS )
-#define MBEDTLS_LN_2_DIV_LN_10_SCALE100                 332
-#define MBEDTLS_MPI_RW_BUFFER_SIZE             ( ((MBEDTLS_MPI_MAX_BITS_SCALE100 + MBEDTLS_LN_2_DIV_LN_10_SCALE100 - 1) / MBEDTLS_LN_2_DIV_LN_10_SCALE100) + 10 + 6 )
+#define JHD_TLS_MPI_MAX_BITS_SCALE100          ( 100 * JHD_TLS_MPI_MAX_BITS )
+#define JHD_TLS_LN_2_DIV_LN_10_SCALE100                 332
+#define JHD_TLS_MPI_RW_BUFFER_SIZE             ( ((JHD_TLS_MPI_MAX_BITS_SCALE100 + JHD_TLS_LN_2_DIV_LN_10_SCALE100 - 1) / JHD_TLS_LN_2_DIV_LN_10_SCALE100) + 10 + 6 )
 
 /*
  * Define the base integer type, architecture-wise.
  *
  * 32 or 64-bit integer types can be forced regardless of the underlying
- * architecture by defining MBEDTLS_HAVE_INT32 or MBEDTLS_HAVE_INT64
- * respectively and undefining MBEDTLS_HAVE_ASM.
+ * architecture by defining JHD_TLS_HAVE_INT32 or JHD_TLS_HAVE_INT64
+ * respectively and undefining JHD_TLS_HAVE_ASM.
  *
  * Double-width integers (e.g. 128-bit in 64-bit architectures) can be
- * disabled by defining MBEDTLS_NO_UDBL_DIVISION.
+ * disabled by defining JHD_TLS_NO_UDBL_DIVISION.
  */
-#if !defined(MBEDTLS_HAVE_INT32)
+#if !defined(JHD_TLS_HAVE_INT32)
     #if defined(_MSC_VER) && defined(_M_AMD64)
         /* Always choose 64-bit when using MSC */
-        #if !defined(MBEDTLS_HAVE_INT64)
-            #define MBEDTLS_HAVE_INT64
-        #endif /* !MBEDTLS_HAVE_INT64 */
-        typedef  int64_t mbedtls_mpi_sint;
-        typedef uint64_t mbedtls_mpi_uint;
+        #if !defined(JHD_TLS_HAVE_INT64)
+            #define JHD_TLS_HAVE_INT64
+        #endif /* !JHD_TLS_HAVE_INT64 */
+        typedef  int64_t jhd_tls_mpi_sint;
+        typedef uint64_t jhd_tls_mpi_uint;
     #elif defined(__GNUC__) && (                         \
         defined(__amd64__) || defined(__x86_64__)     || \
         defined(__ppc64__) || defined(__powerpc64__)  || \
         defined(__ia64__)  || defined(__alpha__)      || \
         ( defined(__sparc__) && defined(__arch64__) ) || \
         defined(__s390x__) || defined(__mips64) )
-        #if !defined(MBEDTLS_HAVE_INT64)
-            #define MBEDTLS_HAVE_INT64
-        #endif /* MBEDTLS_HAVE_INT64 */
-        typedef  int64_t mbedtls_mpi_sint;
-        typedef uint64_t mbedtls_mpi_uint;
-        #if !defined(MBEDTLS_NO_UDBL_DIVISION)
-            /* mbedtls_t_udbl defined as 128-bit unsigned int */
-            typedef unsigned int mbedtls_t_udbl __attribute__((mode(TI)));
-            #define MBEDTLS_HAVE_UDBL
-        #endif /* !MBEDTLS_NO_UDBL_DIVISION */
+        #if !defined(JHD_TLS_HAVE_INT64)
+            #define JHD_TLS_HAVE_INT64
+        #endif /* JHD_TLS_HAVE_INT64 */
+        typedef  int64_t jhd_tls_mpi_sint;
+        typedef uint64_t jhd_tls_mpi_uint;
+        #if !defined(JHD_TLS_NO_UDBL_DIVISION)
+            /* jhd_tls_t_udbl defined as 128-bit unsigned int */
+            typedef unsigned int jhd_tls_t_udbl __attribute__((mode(TI)));
+            #define JHD_TLS_HAVE_UDBL
+        #endif /* !JHD_TLS_NO_UDBL_DIVISION */
     #elif defined(__ARMCC_VERSION) && defined(__aarch64__)
         /*
          * __ARMCC_VERSION is defined for both armcc and armclang and
          * __aarch64__ is only defined by armclang when compiling 64-bit code
          */
-        #if !defined(MBEDTLS_HAVE_INT64)
-            #define MBEDTLS_HAVE_INT64
-        #endif /* !MBEDTLS_HAVE_INT64 */
-        typedef  int64_t mbedtls_mpi_sint;
-        typedef uint64_t mbedtls_mpi_uint;
-        #if !defined(MBEDTLS_NO_UDBL_DIVISION)
-            /* mbedtls_t_udbl defined as 128-bit unsigned int */
-            typedef __uint128_t mbedtls_t_udbl;
-            #define MBEDTLS_HAVE_UDBL
-        #endif /* !MBEDTLS_NO_UDBL_DIVISION */
-    #elif defined(MBEDTLS_HAVE_INT64)
+        #if !defined(JHD_TLS_HAVE_INT64)
+            #define JHD_TLS_HAVE_INT64
+        #endif /* !JHD_TLS_HAVE_INT64 */
+        typedef  int64_t jhd_tls_mpi_sint;
+        typedef uint64_t jhd_tls_mpi_uint;
+        #if !defined(JHD_TLS_NO_UDBL_DIVISION)
+            /* jhd_tls_t_udbl defined as 128-bit unsigned int */
+            typedef __uint128_t jhd_tls_t_udbl;
+            #define JHD_TLS_HAVE_UDBL
+        #endif /* !JHD_TLS_NO_UDBL_DIVISION */
+    #elif defined(JHD_TLS_HAVE_INT64)
         /* Force 64-bit integers with unknown compiler */
-        typedef  int64_t mbedtls_mpi_sint;
-        typedef uint64_t mbedtls_mpi_uint;
+        typedef  int64_t jhd_tls_mpi_sint;
+        typedef uint64_t jhd_tls_mpi_uint;
     #endif
-#endif /* !MBEDTLS_HAVE_INT32 */
+#endif /* !JHD_TLS_HAVE_INT32 */
 
-#if !defined(MBEDTLS_HAVE_INT64)
+#if !defined(JHD_TLS_HAVE_INT64)
     /* Default to 32-bit compilation */
-    #if !defined(MBEDTLS_HAVE_INT32)
-        #define MBEDTLS_HAVE_INT32
-    #endif /* !MBEDTLS_HAVE_INT32 */
-    typedef  int32_t mbedtls_mpi_sint;
-    typedef uint32_t mbedtls_mpi_uint;
-    #if !defined(MBEDTLS_NO_UDBL_DIVISION)
-        typedef uint64_t mbedtls_t_udbl;
-        #define MBEDTLS_HAVE_UDBL
-    #endif /* !MBEDTLS_NO_UDBL_DIVISION */
-#endif /* !MBEDTLS_HAVE_INT64 */
+    #if !defined(JHD_TLS_HAVE_INT32)
+        #define JHD_TLS_HAVE_INT32
+    #endif /* !JHD_TLS_HAVE_INT32 */
+    typedef  int32_t jhd_tls_mpi_sint;
+    typedef uint32_t jhd_tls_mpi_uint;
+    #if !defined(JHD_TLS_NO_UDBL_DIVISION)
+        typedef uint64_t jhd_tls_t_udbl;
+        #define JHD_TLS_HAVE_UDBL
+    #endif /* !JHD_TLS_NO_UDBL_DIVISION */
+#endif /* !JHD_TLS_HAVE_INT64 */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 
 /**
  * \brief          MPI structure
@@ -181,9 +179,9 @@ typedef struct
 {
     int s;              /*!<  integer sign      */
     size_t n;           /*!<  total # of limbs  */
-    mbedtls_mpi_uint *p;          /*!<  pointer to limbs  */
+    jhd_tls_mpi_uint *p;          /*!<  pointer to limbs  */
 }
-mbedtls_mpi;
+jhd_tls_mpi;
 
 /**
  * \brief           Initialize one MPI (make internal references valid)
@@ -192,14 +190,14 @@ mbedtls_mpi;
  *
  * \param X         One MPI to initialize.
  */
-void mbedtls_mpi_init( mbedtls_mpi *X );
+void jhd_tls_mpi_init( jhd_tls_mpi *X );
 
 /**
  * \brief          Unallocate one MPI
  *
  * \param X        One MPI to unallocate.
  */
-void mbedtls_mpi_free( mbedtls_mpi *X );
+void jhd_tls_mpi_free( jhd_tls_mpi *X );
 
 /**
  * \brief          Enlarge to the specified number of limbs
@@ -210,9 +208,9 @@ void mbedtls_mpi_free( mbedtls_mpi *X );
  * \param nblimbs  The target number of limbs
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_grow( mbedtls_mpi *X, size_t nblimbs );
+int jhd_tls_mpi_grow( jhd_tls_mpi *X, size_t nblimbs );
 
 /**
  * \brief          Resize down, keeping at least the specified number of limbs
@@ -224,10 +222,10 @@ int mbedtls_mpi_grow( mbedtls_mpi *X, size_t nblimbs );
  * \param nblimbs  The minimum number of limbs to keep
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  *                 (this can only happen when resizing up).
  */
-int mbedtls_mpi_shrink( mbedtls_mpi *X, size_t nblimbs );
+int jhd_tls_mpi_shrink( jhd_tls_mpi *X, size_t nblimbs );
 
 /**
  * \brief          Copy the contents of Y into X
@@ -236,9 +234,9 @@ int mbedtls_mpi_shrink( mbedtls_mpi *X, size_t nblimbs );
  * \param Y        Source MPI.
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_copy( mbedtls_mpi *X, const mbedtls_mpi *Y );
+int jhd_tls_mpi_copy( jhd_tls_mpi *X, const jhd_tls_mpi *Y );
 
 /**
  * \brief          Swap the contents of X and Y
@@ -246,7 +244,7 @@ int mbedtls_mpi_copy( mbedtls_mpi *X, const mbedtls_mpi *Y );
  * \param X        First MPI value
  * \param Y        Second MPI value
  */
-void mbedtls_mpi_swap( mbedtls_mpi *X, mbedtls_mpi *Y );
+void jhd_tls_mpi_swap( jhd_tls_mpi *X, jhd_tls_mpi *Y );
 
 /**
  * \brief          Safe conditional assignement X = Y if assign is 1
@@ -256,35 +254,35 @@ void mbedtls_mpi_swap( mbedtls_mpi *X, mbedtls_mpi *Y );
  * \param assign   1: perform the assignment, 0: keep X's original value
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
  *
  * \note           This function is equivalent to
- *                      if( assign ) mbedtls_mpi_copy( X, Y );
+ *                      if( assign ) jhd_tls_mpi_copy( X, Y );
  *                 except that it avoids leaking any information about whether
  *                 the assignment was done or not (the above code may leak
  *                 information through branch prediction and/or memory access
  *                 patterns analysis).
  */
-int mbedtls_mpi_safe_cond_assign( mbedtls_mpi *X, const mbedtls_mpi *Y, unsigned char assign );
+int jhd_tls_mpi_safe_cond_assign( jhd_tls_mpi *X, const jhd_tls_mpi *Y, unsigned char assign );
 
 /**
  * \brief          Safe conditional swap X <-> Y if swap is 1
  *
- * \param X        First mbedtls_mpi value
- * \param Y        Second mbedtls_mpi value
+ * \param X        First jhd_tls_mpi value
+ * \param Y        Second jhd_tls_mpi value
  * \param assign   1: perform the swap, 0: keep X and Y's original values
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
  *
  * \note           This function is equivalent to
- *                      if( assign ) mbedtls_mpi_swap( X, Y );
+ *                      if( assign ) jhd_tls_mpi_swap( X, Y );
  *                 except that it avoids leaking any information about whether
  *                 the assignment was done or not (the above code may leak
  *                 information through branch prediction and/or memory access
  *                 patterns analysis).
  */
-int mbedtls_mpi_safe_cond_swap( mbedtls_mpi *X, mbedtls_mpi *Y, unsigned char assign );
+int jhd_tls_mpi_safe_cond_swap( jhd_tls_mpi *X, jhd_tls_mpi *Y, unsigned char assign );
 
 /**
  * \brief          Set value from integer
@@ -293,9 +291,9 @@ int mbedtls_mpi_safe_cond_swap( mbedtls_mpi *X, mbedtls_mpi *Y, unsigned char as
  * \param z        Value to use
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_lset( mbedtls_mpi *X, mbedtls_mpi_sint z );
+int jhd_tls_mpi_lset( jhd_tls_mpi *X, jhd_tls_mpi_sint z );
 
 /**
  * \brief          Get a specific bit from X
@@ -305,7 +303,7 @@ int mbedtls_mpi_lset( mbedtls_mpi *X, mbedtls_mpi_sint z );
  *
  * \return         Either a 0 or a 1
  */
-int mbedtls_mpi_get_bit( const mbedtls_mpi *X, size_t pos );
+int jhd_tls_mpi_get_bit( const jhd_tls_mpi *X, size_t pos );
 
 /**
  * \brief          Set a bit of X to a specific value of 0 or 1
@@ -318,10 +316,10 @@ int mbedtls_mpi_get_bit( const mbedtls_mpi *X, size_t pos );
  * \param val      The value to set the bit to (0 or 1)
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
- *                 MBEDTLS_ERR_MPI_BAD_INPUT_DATA if val is not 0 or 1
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_BAD_INPUT_DATA if val is not 0 or 1
  */
-int mbedtls_mpi_set_bit( mbedtls_mpi *X, size_t pos, unsigned char val );
+int jhd_tls_mpi_set_bit( jhd_tls_mpi *X, size_t pos, unsigned char val );
 
 /**
  * \brief          Return the number of zero-bits before the least significant
@@ -331,7 +329,7 @@ int mbedtls_mpi_set_bit( mbedtls_mpi *X, size_t pos, unsigned char val );
  *
  * \param X        MPI to use
  */
-size_t mbedtls_mpi_lsb( const mbedtls_mpi *X );
+size_t jhd_tls_mpi_lsb( const jhd_tls_mpi *X );
 
 /**
  * \brief          Return the number of bits up to and including the most
@@ -341,14 +339,14 @@ size_t mbedtls_mpi_lsb( const mbedtls_mpi *X );
  *
  * \param X        MPI to use
  */
-size_t mbedtls_mpi_bitlen( const mbedtls_mpi *X );
+size_t jhd_tls_mpi_bitlen( const jhd_tls_mpi *X );
 
 /**
  * \brief          Return the total size in bytes
  *
  * \param X        MPI to use
  */
-size_t mbedtls_mpi_size( const mbedtls_mpi *X );
+size_t jhd_tls_mpi_size( const jhd_tls_mpi *X );
 
 /**
  * \brief          Import from an ASCII string
@@ -357,9 +355,9 @@ size_t mbedtls_mpi_size( const mbedtls_mpi *X );
  * \param radix    Input numeric base
  * \param s        Null-terminated string buffer
  *
- * \return         0 if successful, or a MBEDTLS_ERR_MPI_XXX error code
+ * \return         0 if successful, or a JHD_TLS_ERR_MPI_XXX error code
  */
-int mbedtls_mpi_read_string( mbedtls_mpi *X, int radix, const char *s );
+int jhd_tls_mpi_read_string( jhd_tls_mpi *X, int radix, const char *s );
 
 /**
  * \brief          Export into an ASCII string
@@ -370,17 +368,17 @@ int mbedtls_mpi_read_string( mbedtls_mpi *X, int radix, const char *s );
  * \param buflen   Length of buf
  * \param olen     Length of the string written, including final NUL byte
  *
- * \return         0 if successful, or a MBEDTLS_ERR_MPI_XXX error code.
+ * \return         0 if successful, or a JHD_TLS_ERR_MPI_XXX error code.
  *                 *olen is always updated to reflect the amount
  *                 of data that has (or would have) been written.
  *
  * \note           Call this function with buflen = 0 to obtain the
  *                 minimum required buffer size in *olen.
  */
-int mbedtls_mpi_write_string( const mbedtls_mpi *X, int radix,
+int jhd_tls_mpi_write_string( const jhd_tls_mpi *X, int radix,
                               char *buf, size_t buflen, size_t *olen );
 
-#if defined(MBEDTLS_FS_IO)
+#if defined(JHD_TLS_FS_IO)
 /**
  * \brief          Read MPI from a line in an opened file
  *
@@ -388,9 +386,9 @@ int mbedtls_mpi_write_string( const mbedtls_mpi *X, int radix,
  * \param radix    Input numeric base
  * \param fin      Input file handle
  *
- * \return         0 if successful, MBEDTLS_ERR_MPI_BUFFER_TOO_SMALL if
+ * \return         0 if successful, JHD_TLS_ERR_MPI_BUFFER_TOO_SMALL if
  *                 the file read buffer is too small or a
- *                 MBEDTLS_ERR_MPI_XXX error code
+ *                 JHD_TLS_ERR_MPI_XXX error code
  *
  * \note           On success, this function advances the file stream
  *                 to the end of the current line or to EOF.
@@ -401,7 +399,7 @@ int mbedtls_mpi_write_string( const mbedtls_mpi *X, int radix,
  *                 '0x' prefix for radix 16.
  *
  */
-int mbedtls_mpi_read_file( mbedtls_mpi *X, int radix, FILE *fin );
+int jhd_tls_mpi_read_file( jhd_tls_mpi *X, int radix, FILE *fin );
 
 /**
  * \brief          Write X into an opened file, or stdout if fout is NULL
@@ -411,12 +409,12 @@ int mbedtls_mpi_read_file( mbedtls_mpi *X, int radix, FILE *fin );
  * \param radix    Output numeric base
  * \param fout     Output file handle (can be NULL)
  *
- * \return         0 if successful, or a MBEDTLS_ERR_MPI_XXX error code
+ * \return         0 if successful, or a JHD_TLS_ERR_MPI_XXX error code
  *
  * \note           Set fout == NULL to print X on the console.
  */
-int mbedtls_mpi_write_file( const char *p, const mbedtls_mpi *X, int radix, FILE *fout );
-#endif /* MBEDTLS_FS_IO */
+int jhd_tls_mpi_write_file( const char *p, const jhd_tls_mpi *X, int radix, FILE *fout );
+#endif /* JHD_TLS_FS_IO */
 
 /**
  * \brief          Import X from unsigned binary data, big endian
@@ -426,9 +424,9 @@ int mbedtls_mpi_write_file( const char *p, const mbedtls_mpi *X, int radix, FILE
  * \param buflen   Input buffer size
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_read_binary( mbedtls_mpi *X, const unsigned char *buf, size_t buflen );
+int jhd_tls_mpi_read_binary( jhd_tls_mpi *X, const unsigned char *buf, size_t buflen );
 
 /**
  * \brief          Export X into unsigned binary data, big endian.
@@ -440,9 +438,9 @@ int mbedtls_mpi_read_binary( mbedtls_mpi *X, const unsigned char *buf, size_t bu
  * \param buflen   Output buffer size
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_BUFFER_TOO_SMALL if buf isn't large enough
+ *                 JHD_TLS_ERR_MPI_BUFFER_TOO_SMALL if buf isn't large enough
  */
-int mbedtls_mpi_write_binary( const mbedtls_mpi *X, unsigned char *buf, size_t buflen );
+int jhd_tls_mpi_write_binary( const jhd_tls_mpi *X, unsigned char *buf, size_t buflen );
 
 /**
  * \brief          Left-shift: X <<= count
@@ -451,9 +449,9 @@ int mbedtls_mpi_write_binary( const mbedtls_mpi *X, unsigned char *buf, size_t b
  * \param count    Amount to shift
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_shift_l( mbedtls_mpi *X, size_t count );
+int jhd_tls_mpi_shift_l( jhd_tls_mpi *X, size_t count );
 
 /**
  * \brief          Right-shift: X >>= count
@@ -462,9 +460,9 @@ int mbedtls_mpi_shift_l( mbedtls_mpi *X, size_t count );
  * \param count    Amount to shift
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_shift_r( mbedtls_mpi *X, size_t count );
+int jhd_tls_mpi_shift_r( jhd_tls_mpi *X, size_t count );
 
 /**
  * \brief          Compare unsigned values
@@ -476,7 +474,7 @@ int mbedtls_mpi_shift_r( mbedtls_mpi *X, size_t count );
  *                -1 if |X| is lesser  than |Y| or
  *                 0 if |X| is equal to |Y|
  */
-int mbedtls_mpi_cmp_abs( const mbedtls_mpi *X, const mbedtls_mpi *Y );
+int jhd_tls_mpi_cmp_abs( const jhd_tls_mpi *X, const jhd_tls_mpi *Y );
 
 /**
  * \brief          Compare signed values
@@ -488,7 +486,7 @@ int mbedtls_mpi_cmp_abs( const mbedtls_mpi *X, const mbedtls_mpi *Y );
  *                -1 if X is lesser  than Y or
  *                 0 if X is equal to Y
  */
-int mbedtls_mpi_cmp_mpi( const mbedtls_mpi *X, const mbedtls_mpi *Y );
+int jhd_tls_mpi_cmp_mpi( const jhd_tls_mpi *X, const jhd_tls_mpi *Y );
 
 /**
  * \brief          Compare signed values
@@ -500,7 +498,7 @@ int mbedtls_mpi_cmp_mpi( const mbedtls_mpi *X, const mbedtls_mpi *Y );
  *                -1 if X is lesser  than z or
  *                 0 if X is equal to z
  */
-int mbedtls_mpi_cmp_int( const mbedtls_mpi *X, mbedtls_mpi_sint z );
+int jhd_tls_mpi_cmp_int( const jhd_tls_mpi *X, jhd_tls_mpi_sint z );
 
 /**
  * \brief          Unsigned addition: X = |A| + |B|
@@ -510,9 +508,9 @@ int mbedtls_mpi_cmp_int( const mbedtls_mpi *X, mbedtls_mpi_sint z );
  * \param B        Right-hand MPI
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_add_abs( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi *B );
+int jhd_tls_mpi_add_abs( jhd_tls_mpi *X, const jhd_tls_mpi *A, const jhd_tls_mpi *B );
 
 /**
  * \brief          Unsigned subtraction: X = |A| - |B|
@@ -522,9 +520,9 @@ int mbedtls_mpi_add_abs( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi
  * \param B        Right-hand MPI
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_NEGATIVE_VALUE if B is greater than A
+ *                 JHD_TLS_ERR_MPI_NEGATIVE_VALUE if B is greater than A
  */
-int mbedtls_mpi_sub_abs( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi *B );
+int jhd_tls_mpi_sub_abs( jhd_tls_mpi *X, const jhd_tls_mpi *A, const jhd_tls_mpi *B );
 
 /**
  * \brief          Signed addition: X = A + B
@@ -534,9 +532,9 @@ int mbedtls_mpi_sub_abs( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi
  * \param B        Right-hand MPI
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_add_mpi( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi *B );
+int jhd_tls_mpi_add_mpi( jhd_tls_mpi *X, const jhd_tls_mpi *A, const jhd_tls_mpi *B );
 
 /**
  * \brief          Signed subtraction: X = A - B
@@ -546,9 +544,9 @@ int mbedtls_mpi_add_mpi( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi
  * \param B        Right-hand MPI
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_sub_mpi( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi *B );
+int jhd_tls_mpi_sub_mpi( jhd_tls_mpi *X, const jhd_tls_mpi *A, const jhd_tls_mpi *B );
 
 /**
  * \brief          Signed addition: X = A + b
@@ -558,9 +556,9 @@ int mbedtls_mpi_sub_mpi( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi
  * \param b        The integer value to add
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_add_int( mbedtls_mpi *X, const mbedtls_mpi *A, mbedtls_mpi_sint b );
+int jhd_tls_mpi_add_int( jhd_tls_mpi *X, const jhd_tls_mpi *A, jhd_tls_mpi_sint b );
 
 /**
  * \brief          Signed subtraction: X = A - b
@@ -570,9 +568,9 @@ int mbedtls_mpi_add_int( mbedtls_mpi *X, const mbedtls_mpi *A, mbedtls_mpi_sint 
  * \param b        The integer value to subtract
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_sub_int( mbedtls_mpi *X, const mbedtls_mpi *A, mbedtls_mpi_sint b );
+int jhd_tls_mpi_sub_int( jhd_tls_mpi *X, const jhd_tls_mpi *A, jhd_tls_mpi_sint b );
 
 /**
  * \brief          Baseline multiplication: X = A * B
@@ -582,9 +580,9 @@ int mbedtls_mpi_sub_int( mbedtls_mpi *X, const mbedtls_mpi *A, mbedtls_mpi_sint 
  * \param B        Right-hand MPI
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_mul_mpi( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi *B );
+int jhd_tls_mpi_mul_mpi( jhd_tls_mpi *X, const jhd_tls_mpi *A, const jhd_tls_mpi *B );
 
 /**
  * \brief          Baseline multiplication: X = A * b
@@ -596,12 +594,12 @@ int mbedtls_mpi_mul_mpi( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi
  * \note           b is unsigned
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_mul_int( mbedtls_mpi *X, const mbedtls_mpi *A, mbedtls_mpi_uint b );
+int jhd_tls_mpi_mul_int( jhd_tls_mpi *X, const jhd_tls_mpi *A, jhd_tls_mpi_uint b );
 
 /**
- * \brief          Division by mbedtls_mpi: A = Q * B + R
+ * \brief          Division by jhd_tls_mpi: A = Q * B + R
  *
  * \param Q        Destination MPI for the quotient
  * \param R        Destination MPI for the rest value
@@ -609,12 +607,12 @@ int mbedtls_mpi_mul_int( mbedtls_mpi *X, const mbedtls_mpi *A, mbedtls_mpi_uint 
  * \param B        Right-hand MPI
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
- *                 MBEDTLS_ERR_MPI_DIVISION_BY_ZERO if B == 0
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_DIVISION_BY_ZERO if B == 0
  *
  * \note           Either Q or R can be NULL.
  */
-int mbedtls_mpi_div_mpi( mbedtls_mpi *Q, mbedtls_mpi *R, const mbedtls_mpi *A, const mbedtls_mpi *B );
+int jhd_tls_mpi_div_mpi( jhd_tls_mpi *Q, jhd_tls_mpi *R, const jhd_tls_mpi *A, const jhd_tls_mpi *B );
 
 /**
  * \brief          Division by int: A = Q * b + R
@@ -625,12 +623,12 @@ int mbedtls_mpi_div_mpi( mbedtls_mpi *Q, mbedtls_mpi *R, const mbedtls_mpi *A, c
  * \param b        Integer to divide by
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
- *                 MBEDTLS_ERR_MPI_DIVISION_BY_ZERO if b == 0
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_DIVISION_BY_ZERO if b == 0
  *
  * \note           Either Q or R can be NULL.
  */
-int mbedtls_mpi_div_int( mbedtls_mpi *Q, mbedtls_mpi *R, const mbedtls_mpi *A, mbedtls_mpi_sint b );
+int jhd_tls_mpi_div_int( jhd_tls_mpi *Q, jhd_tls_mpi *R, const jhd_tls_mpi *A, jhd_tls_mpi_sint b );
 
 /**
  * \brief          Modulo: R = A mod B
@@ -640,25 +638,25 @@ int mbedtls_mpi_div_int( mbedtls_mpi *Q, mbedtls_mpi *R, const mbedtls_mpi *A, m
  * \param B        Right-hand MPI
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
- *                 MBEDTLS_ERR_MPI_DIVISION_BY_ZERO if B == 0,
- *                 MBEDTLS_ERR_MPI_NEGATIVE_VALUE if B < 0
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_DIVISION_BY_ZERO if B == 0,
+ *                 JHD_TLS_ERR_MPI_NEGATIVE_VALUE if B < 0
  */
-int mbedtls_mpi_mod_mpi( mbedtls_mpi *R, const mbedtls_mpi *A, const mbedtls_mpi *B );
+int jhd_tls_mpi_mod_mpi( jhd_tls_mpi *R, const jhd_tls_mpi *A, const jhd_tls_mpi *B );
 
 /**
  * \brief          Modulo: r = A mod b
  *
- * \param r        Destination mbedtls_mpi_uint
+ * \param r        Destination jhd_tls_mpi_uint
  * \param A        Left-hand MPI
  * \param b        Integer to divide by
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
- *                 MBEDTLS_ERR_MPI_DIVISION_BY_ZERO if b == 0,
- *                 MBEDTLS_ERR_MPI_NEGATIVE_VALUE if b < 0
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_DIVISION_BY_ZERO if b == 0,
+ *                 JHD_TLS_ERR_MPI_NEGATIVE_VALUE if b < 0
  */
-int mbedtls_mpi_mod_int( mbedtls_mpi_uint *r, const mbedtls_mpi *A, mbedtls_mpi_sint b );
+int jhd_tls_mpi_mod_int( jhd_tls_mpi_uint *r, const jhd_tls_mpi *A, jhd_tls_mpi_sint b );
 
 /**
  * \brief          Sliding-window exponentiation: X = A^E mod N
@@ -670,15 +668,15 @@ int mbedtls_mpi_mod_int( mbedtls_mpi_uint *r, const mbedtls_mpi *A, mbedtls_mpi_
  * \param _RR      Speed-up MPI used for recalculations
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
- *                 MBEDTLS_ERR_MPI_BAD_INPUT_DATA if N is negative or even or
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_BAD_INPUT_DATA if N is negative or even or
  *                 if E is negative
  *
  * \note           _RR is used to avoid re-computing R*R mod N across
  *                 multiple calls, which speeds up things a bit. It can
  *                 be set to NULL if the extra performance is unneeded.
  */
-int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi *E, const mbedtls_mpi *N, mbedtls_mpi *_RR );
+int jhd_tls_mpi_exp_mod( jhd_tls_mpi *X, const jhd_tls_mpi *A, const jhd_tls_mpi *E, const jhd_tls_mpi *N, jhd_tls_mpi *_RR );
 
 /**
  * \brief          Fill an MPI X with size bytes of random
@@ -689,13 +687,13 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi
  * \param p_rng    RNG parameter
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  *
  * \note           The bytes obtained from the PRNG are interpreted
  *                 as a big-endian representation of an MPI; this can
  *                 be relevant in applications like deterministic ECDSA.
  */
-int mbedtls_mpi_fill_random( mbedtls_mpi *X, size_t size,
+int jhd_tls_mpi_fill_random( jhd_tls_mpi *X, size_t size,
                      int (*f_rng)(void *, unsigned char *, size_t),
                      void *p_rng );
 
@@ -707,9 +705,9 @@ int mbedtls_mpi_fill_random( mbedtls_mpi *X, size_t size,
  * \param B        Right-hand MPI
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed
  */
-int mbedtls_mpi_gcd( mbedtls_mpi *G, const mbedtls_mpi *A, const mbedtls_mpi *B );
+int jhd_tls_mpi_gcd( jhd_tls_mpi *G, const jhd_tls_mpi *A, const jhd_tls_mpi *B );
 
 /**
  * \brief          Modular inverse: X = A^-1 mod N
@@ -719,11 +717,11 @@ int mbedtls_mpi_gcd( mbedtls_mpi *G, const mbedtls_mpi *A, const mbedtls_mpi *B 
  * \param N        Right-hand MPI
  *
  * \return         0 if successful,
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
- *                 MBEDTLS_ERR_MPI_BAD_INPUT_DATA if N is <= 1,
-                   MBEDTLS_ERR_MPI_NOT_ACCEPTABLE if A has no inverse mod N.
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_BAD_INPUT_DATA if N is <= 1,
+                   JHD_TLS_ERR_MPI_NOT_ACCEPTABLE if A has no inverse mod N.
  */
-int mbedtls_mpi_inv_mod( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi *N );
+int jhd_tls_mpi_inv_mod( jhd_tls_mpi *X, const jhd_tls_mpi *A, const jhd_tls_mpi *N );
 
 /**
  * \brief          Miller-Rabin primality test
@@ -733,10 +731,10 @@ int mbedtls_mpi_inv_mod( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi
  * \param p_rng    RNG parameter
  *
  * \return         0 if successful (probably prime),
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
- *                 MBEDTLS_ERR_MPI_NOT_ACCEPTABLE if X is not prime
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_NOT_ACCEPTABLE if X is not prime
  */
-int mbedtls_mpi_is_prime( const mbedtls_mpi *X,
+int jhd_tls_mpi_is_prime( const jhd_tls_mpi *X,
                   int (*f_rng)(void *, unsigned char *, size_t),
                   void *p_rng );
 
@@ -745,16 +743,16 @@ int mbedtls_mpi_is_prime( const mbedtls_mpi *X,
  *
  * \param X        Destination MPI
  * \param nbits    Required size of X in bits
- *                 ( 3 <= nbits <= MBEDTLS_MPI_MAX_BITS )
+ *                 ( 3 <= nbits <= JHD_TLS_MPI_MAX_BITS )
  * \param dh_flag  If 1, then (X-1)/2 will be prime too
  * \param f_rng    RNG function
  * \param p_rng    RNG parameter
  *
  * \return         0 if successful (probably prime),
- *                 MBEDTLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
- *                 MBEDTLS_ERR_MPI_BAD_INPUT_DATA if nbits is < 3
+ *                 JHD_TLS_ERR_MPI_ALLOC_FAILED if memory allocation failed,
+ *                 JHD_TLS_ERR_MPI_BAD_INPUT_DATA if nbits is < 3
  */
-int mbedtls_mpi_gen_prime( mbedtls_mpi *X, size_t nbits, int dh_flag,
+int jhd_tls_mpi_gen_prime( jhd_tls_mpi *X, size_t nbits, int dh_flag,
                    int (*f_rng)(void *, unsigned char *, size_t),
                    void *p_rng );
 
@@ -763,10 +761,8 @@ int mbedtls_mpi_gen_prime( mbedtls_mpi *X, size_t nbits, int dh_flag,
  *
  * \return         0 if successful, or 1 if the test failed
  */
-int mbedtls_mpi_self_test( int verbose );
+int jhd_tls_mpi_self_test( int verbose );
 
-#ifdef __cplusplus
-}
-#endif
+
 
 #endif /* bignum.h */

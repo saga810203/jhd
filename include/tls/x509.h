@@ -25,12 +25,12 @@
 #define MBEDTLS_X509_H
 
 #if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include MBEDTLS_CONFIG_FILE
 #endif
 
-#include "asn1.h"
+#include <tls/jhd_tls_asn1.h>
 #include "pk.h"
 
 #if defined(MBEDTLS_RSA_C)

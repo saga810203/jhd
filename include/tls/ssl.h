@@ -25,12 +25,12 @@
 #define MBEDTLS_SSL_H
 
 #if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include MBEDTLS_CONFIG_FILE
 #endif
 
-#include "bignum.h"
+#include <tls/jhd_tls_bignum.h>
 #include "ecp.h"
 
 #include "ssl_ciphersuites.h"

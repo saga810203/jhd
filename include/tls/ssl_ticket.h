@@ -30,8 +30,8 @@
  * secrecy, when MBEDTLS_HAVE_TIME is defined.
  */
 
+#include <tls/jhd_tls_cipher.h>
 #include "ssl.h"
-#include "cipher.h"
 
 #if defined(MBEDTLS_THREADING_C)
 #include "threading.h"

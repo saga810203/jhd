@@ -1,78 +1,36 @@
-/**
- * \file aes.h
- *
- * \brief   This file contains AES definitions and functions.
- *
- *          The Advanced Encryption Standard (AES) specifies a FIPS-approved
- *          cryptographic algorithm that can be used to protect electronic
- *          data.
- *
- *          The AES algorithm is a symmetric block cipher that can
- *          encrypt and decrypt information. For more information, see
- *          <em>FIPS Publication 197: Advanced Encryption Standard</em> and
- *          <em>ISO/IEC 18033-2:2006: Information technology -- Security
- *          techniques -- Encryption algorithms -- Part 2: Asymmetric
- *          ciphers</em>.
- *
- *          The AES-XTS block mode is standardized by NIST SP 800-38E
- *          <https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-38e.pdf>
- *          and described in detail by IEEE P1619
- *          <https://ieeexplore.ieee.org/servlet/opac?punumber=4375278>.
- */
+#ifndef JHD_TLS_AES_H
+#define JHD_TLS_AES_H
 
-/*  Copyright (C) 2006-2018, Arm Limited (or its affiliates), All Rights Reserved.
- *  SPDX-License-Identifier: Apache-2.0
- *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may
- *  not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- *  This file is part of Mbed TLS (https://tls.mbed.org)
- */
-
-#ifndef MBEDTLS_AES_H
-#define MBEDTLS_AES_H
-
-#if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#if !defined(JHD_TLS_CONFIG_FILE)
+#include "jhd_tls_config.h"
 #else
-#include MBEDTLS_CONFIG_FILE
+#include JHD_TLS_CONFIG_FILE
 #endif
 
 #include <stddef.h>
 #include <stdint.h>
 
 /* padlock.c and aesni.c rely on these values! */
-#define MBEDTLS_AES_ENCRYPT     1 /**< AES encryption. */
-#define MBEDTLS_AES_DECRYPT     0 /**< AES decryption. */
+#define JHD_TLS_AES_ENCRYPT     1 /**< AES encryption. */
+#define JHD_TLS_AES_DECRYPT     0 /**< AES decryption. */
 
 /* Error codes in range 0x0020-0x0022 */
-#define MBEDTLS_ERR_AES_INVALID_KEY_LENGTH                -0x0020  /**< Invalid key length. */
-#define MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH              -0x0022  /**< Invalid data input length. */
+#define JHD_TLS_ERR_AES_INVALID_KEY_LENGTH                -0x0020  /**< Invalid key length. */
+#define JHD_TLS_ERR_AES_INVALID_INPUT_LENGTH              -0x0022  /**< Invalid data input length. */
 
 /* Error codes in range 0x0021-0x0025 */
-#define MBEDTLS_ERR_AES_BAD_INPUT_DATA                    -0x0021  /**< Invalid input data. */
-#define MBEDTLS_ERR_AES_FEATURE_UNAVAILABLE               -0x0023  /**< Feature not available. For example, an unsupported AES key size. */
-#define MBEDTLS_ERR_AES_HW_ACCEL_FAILED                   -0x0025  /**< AES hardware accelerator failed. */
+#define JHD_TLS_ERR_AES_BAD_INPUT_DATA                    -0x0021  /**< Invalid input data. */
+#define JHD_TLS_ERR_AES_FEATURE_UNAVAILABLE               -0x0023  /**< Feature not available. For example, an unsupported AES key size. */
+#define JHD_TLS_ERR_AES_HW_ACCEL_FAILED                   -0x0025  /**< AES hardware accelerator failed. */
 
 #if ( defined(__ARMCC_VERSION) || defined(_MSC_VER) ) && \
     !defined(inline) && !defined(__cplusplus)
 #define inline __inline
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-#if !defined(MBEDTLS_AES_ALT)
+
+#if !defined(JHD_TLS_AES_ALT)
 // Regular implementation
 //
 
@@ -92,24 +50,24 @@ typedef struct
                                          case by generating an extra round key.
                                          </li></ul> */
 }
-mbedtls_aes_context;
+jhd_tls_aes_context;
 
-#if defined(MBEDTLS_CIPHER_MODE_XTS)
+#if defined(JHD_TLS_CIPHER_MODE_XTS)
 /**
  * \brief The AES XTS context-type definition.
  */
 typedef struct
 {
-    mbedtls_aes_context crypt; /*!< The AES context to use for AES block
+    jhd_tls_aes_context crypt; /*!< The AES context to use for AES block
                                         encryption or decryption. */
-    mbedtls_aes_context tweak; /*!< The AES context used for tweak
+    jhd_tls_aes_context tweak; /*!< The AES context used for tweak
                                         computation. */
-} mbedtls_aes_xts_context;
-#endif /* MBEDTLS_CIPHER_MODE_XTS */
+} jhd_tls_aes_xts_context;
+#endif /* JHD_TLS_CIPHER_MODE_XTS */
 
-#else  /* MBEDTLS_AES_ALT */
-#include "aes_alt.h"
-#endif /* MBEDTLS_AES_ALT */
+#else  /* JHD_TLS_AES_ALT */
+#include "jhd_tls_aes_alt.h"
+#endif /* JHD_TLS_AES_ALT */
 
 /**
  * \brief          This function initializes the specified AES context.
@@ -119,16 +77,16 @@ typedef struct
  *
  * \param ctx      The AES context to initialize.
  */
-void mbedtls_aes_init( mbedtls_aes_context *ctx );
+void jhd_tls_aes_init( jhd_tls_aes_context *ctx );
 
 /**
  * \brief          This function releases and clears the specified AES context.
  *
  * \param ctx      The AES context to clear.
  */
-void mbedtls_aes_free( mbedtls_aes_context *ctx );
+void jhd_tls_aes_free( jhd_tls_aes_context *ctx );
 
-#if defined(MBEDTLS_CIPHER_MODE_XTS)
+#if defined(JHD_TLS_CIPHER_MODE_XTS)
 /**
  * \brief          This function initializes the specified AES XTS context.
  *
@@ -137,15 +95,15 @@ void mbedtls_aes_free( mbedtls_aes_context *ctx );
  *
  * \param ctx      The AES XTS context to initialize.
  */
-void mbedtls_aes_xts_init( mbedtls_aes_xts_context *ctx );
+void jhd_tls_aes_xts_init( jhd_tls_aes_xts_context *ctx );
 
 /**
  * \brief          This function releases and clears the specified AES XTS context.
  *
  * \param ctx      The AES XTS context to clear.
  */
-void mbedtls_aes_xts_free( mbedtls_aes_xts_context *ctx );
-#endif /* MBEDTLS_CIPHER_MODE_XTS */
+void jhd_tls_aes_xts_free( jhd_tls_aes_xts_context *ctx );
+#endif /* JHD_TLS_CIPHER_MODE_XTS */
 
 /**
  * \brief          This function sets the encryption key.
@@ -158,9 +116,9 @@ void mbedtls_aes_xts_free( mbedtls_aes_xts_context *ctx );
  *                 <li>256 bits</li></ul>
  *
  * \return         \c 0 on success.
- * \return         #MBEDTLS_ERR_AES_INVALID_KEY_LENGTH on failure.
+ * \return         #JHD_TLS_ERR_AES_INVALID_KEY_LENGTH on failure.
  */
-int mbedtls_aes_setkey_enc( mbedtls_aes_context *ctx, const unsigned char *key,
+int jhd_tls_aes_setkey_enc( jhd_tls_aes_context *ctx, const unsigned char *key,
                     unsigned int keybits );
 
 /**
@@ -174,12 +132,12 @@ int mbedtls_aes_setkey_enc( mbedtls_aes_context *ctx, const unsigned char *key,
  *                 <li>256 bits</li></ul>
  *
  * \return         \c 0 on success.
- * \return         #MBEDTLS_ERR_AES_INVALID_KEY_LENGTH on failure.
+ * \return         #JHD_TLS_ERR_AES_INVALID_KEY_LENGTH on failure.
  */
-int mbedtls_aes_setkey_dec( mbedtls_aes_context *ctx, const unsigned char *key,
+int jhd_tls_aes_setkey_dec( jhd_tls_aes_context *ctx, const unsigned char *key,
                     unsigned int keybits );
 
-#if defined(MBEDTLS_CIPHER_MODE_XTS)
+#if defined(JHD_TLS_CIPHER_MODE_XTS)
 /**
  * \brief          This function prepares an XTS context for encryption and
  *                 sets the encryption key.
@@ -192,9 +150,9 @@ int mbedtls_aes_setkey_dec( mbedtls_aes_context *ctx, const unsigned char *key,
  *                 <li>512 bits (each of key1 and key2 is a 256-bit key)</li></ul>
  *
  * \return         \c 0 on success.
- * \return         #MBEDTLS_ERR_AES_INVALID_KEY_LENGTH on failure.
+ * \return         #JHD_TLS_ERR_AES_INVALID_KEY_LENGTH on failure.
  */
-int mbedtls_aes_xts_setkey_enc( mbedtls_aes_xts_context *ctx,
+int jhd_tls_aes_xts_setkey_enc( jhd_tls_aes_xts_context *ctx,
                                 const unsigned char *key,
                                 unsigned int keybits );
 
@@ -210,12 +168,12 @@ int mbedtls_aes_xts_setkey_enc( mbedtls_aes_xts_context *ctx,
  *                 <li>512 bits (each of key1 and key2 is a 256-bit key)</li></ul>
  *
  * \return         \c 0 on success.
- * \return         #MBEDTLS_ERR_AES_INVALID_KEY_LENGTH on failure.
+ * \return         #JHD_TLS_ERR_AES_INVALID_KEY_LENGTH on failure.
  */
-int mbedtls_aes_xts_setkey_dec( mbedtls_aes_xts_context *ctx,
+int jhd_tls_aes_xts_setkey_dec( jhd_tls_aes_xts_context *ctx,
                                 const unsigned char *key,
                                 unsigned int keybits );
-#endif /* MBEDTLS_CIPHER_MODE_XTS */
+#endif /* JHD_TLS_CIPHER_MODE_XTS */
 
 /**
  * \brief          This function performs an AES single-block encryption or
@@ -225,24 +183,24 @@ int mbedtls_aes_xts_setkey_dec( mbedtls_aes_xts_context *ctx,
  *                 (encrypt or decrypt), on the input data buffer defined in
  *                 the \p input parameter.
  *
- *                 mbedtls_aes_init(), and either mbedtls_aes_setkey_enc() or
- *                 mbedtls_aes_setkey_dec() must be called before the first
+ *                 jhd_tls_aes_init(), and either jhd_tls_aes_setkey_enc() or
+ *                 jhd_tls_aes_setkey_dec() must be called before the first
  *                 call to this API with the same context.
  *
  * \param ctx      The AES context to use for encryption or decryption.
- * \param mode     The AES operation: #MBEDTLS_AES_ENCRYPT or
- *                 #MBEDTLS_AES_DECRYPT.
+ * \param mode     The AES operation: #JHD_TLS_AES_ENCRYPT or
+ *                 #JHD_TLS_AES_DECRYPT.
  * \param input    The 16-Byte buffer holding the input data.
  * \param output   The 16-Byte buffer holding the output data.
 
  * \return         \c 0 on success.
  */
-int mbedtls_aes_crypt_ecb( mbedtls_aes_context *ctx,
+int jhd_tls_aes_crypt_ecb( jhd_tls_aes_context *ctx,
                     int mode,
                     const unsigned char input[16],
                     unsigned char output[16] );
 
-#if defined(MBEDTLS_CIPHER_MODE_CBC)
+#if defined(JHD_TLS_CIPHER_MODE_CBC)
 /**
  * \brief  This function performs an AES-CBC encryption or decryption operation
  *         on full blocks.
@@ -252,8 +210,8 @@ int mbedtls_aes_crypt_ecb( mbedtls_aes_context *ctx,
  *         the \p input parameter.
  *
  *         It can be called as many times as needed, until all the input
- *         data is processed. mbedtls_aes_init(), and either
- *         mbedtls_aes_setkey_enc() or mbedtls_aes_setkey_dec() must be called
+ *         data is processed. jhd_tls_aes_init(), and either
+ *         jhd_tls_aes_setkey_enc() or jhd_tls_aes_setkey_dec() must be called
  *         before the first call to this API with the same context.
  *
  * \note   This function operates on aligned blocks, that is, the input size
@@ -268,8 +226,8 @@ int mbedtls_aes_crypt_ecb( mbedtls_aes_context *ctx,
  *
  *
  * \param ctx      The AES context to use for encryption or decryption.
- * \param mode     The AES operation: #MBEDTLS_AES_ENCRYPT or
- *                 #MBEDTLS_AES_DECRYPT.
+ * \param mode     The AES operation: #JHD_TLS_AES_ENCRYPT or
+ *                 #JHD_TLS_AES_DECRYPT.
  * \param length   The length of the input data in Bytes. This must be a
  *                 multiple of the block size (16 Bytes).
  * \param iv       Initialization vector (updated after use).
@@ -277,18 +235,18 @@ int mbedtls_aes_crypt_ecb( mbedtls_aes_context *ctx,
  * \param output   The buffer holding the output data.
  *
  * \return         \c 0 on success.
- * \return         #MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH
+ * \return         #JHD_TLS_ERR_AES_INVALID_INPUT_LENGTH
  *                 on failure.
  */
-int mbedtls_aes_crypt_cbc( mbedtls_aes_context *ctx,
+int jhd_tls_aes_crypt_cbc( jhd_tls_aes_context *ctx,
                     int mode,
                     size_t length,
                     unsigned char iv[16],
                     const unsigned char *input,
                     unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_CBC */
+#endif /* JHD_TLS_CIPHER_MODE_CBC */
 
-#if defined(MBEDTLS_CIPHER_MODE_XTS)
+#if defined(JHD_TLS_CIPHER_MODE_XTS)
 /**
  * \brief      This function performs an AES-XTS encryption or decryption
  *             operation for an entire XTS data unit.
@@ -299,11 +257,11 @@ int mbedtls_aes_crypt_cbc( mbedtls_aes_context *ctx,
  *
  *             NIST SP 800-38E limits the maximum size of a data unit to 2^20
  *             AES blocks. If the data unit is larger than this, this function
- *             returns #MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH.
+ *             returns #JHD_TLS_ERR_AES_INVALID_INPUT_LENGTH.
  *
  * \param ctx          The AES XTS context to use for AES XTS operations.
- * \param mode         The AES operation: #MBEDTLS_AES_ENCRYPT or
- *                     #MBEDTLS_AES_DECRYPT.
+ * \param mode         The AES operation: #JHD_TLS_AES_ENCRYPT or
+ *                     #JHD_TLS_AES_DECRYPT.
  * \param length       The length of a data unit in bytes. This can be any
  *                     length between 16 bytes and 2^24 bytes inclusive
  *                     (between 1 and 2^20 block cipher blocks).
@@ -319,19 +277,19 @@ int mbedtls_aes_crypt_cbc( mbedtls_aes_context *ctx,
  *                     output.
  *
  * \return             \c 0 on success.
- * \return             #MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH if \p length is
+ * \return             #JHD_TLS_ERR_AES_INVALID_INPUT_LENGTH if \p length is
  *                     smaller than an AES block in size (16 bytes) or if \p
  *                     length is larger than 2^20 blocks (16 MiB).
  */
-int mbedtls_aes_crypt_xts( mbedtls_aes_xts_context *ctx,
+int jhd_tls_aes_crypt_xts( jhd_tls_aes_xts_context *ctx,
                            int mode,
                            size_t length,
                            const unsigned char data_unit[16],
                            const unsigned char *input,
                            unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_XTS */
+#endif /* JHD_TLS_CIPHER_MODE_XTS */
 
-#if defined(MBEDTLS_CIPHER_MODE_CFB)
+#if defined(JHD_TLS_CIPHER_MODE_CFB)
 /**
  * \brief This function performs an AES-CFB128 encryption or decryption
  *        operation.
@@ -340,7 +298,7 @@ int mbedtls_aes_crypt_xts( mbedtls_aes_xts_context *ctx,
  *        parameter (encrypt or decrypt), on the input data buffer
  *        defined in the \p input parameter.
  *
- *        For CFB, you must set up the context with mbedtls_aes_setkey_enc(),
+ *        For CFB, you must set up the context with jhd_tls_aes_setkey_enc(),
  *        regardless of whether you are performing an encryption or decryption
  *        operation, that is, regardless of the \p mode parameter. This is
  *        because CFB mode uses the same key schedule for encryption and
@@ -356,8 +314,8 @@ int mbedtls_aes_crypt_xts( mbedtls_aes_xts_context *ctx,
  *
  *
  * \param ctx      The AES context to use for encryption or decryption.
- * \param mode     The AES operation: #MBEDTLS_AES_ENCRYPT or
- *                 #MBEDTLS_AES_DECRYPT.
+ * \param mode     The AES operation: #JHD_TLS_AES_ENCRYPT or
+ *                 #JHD_TLS_AES_DECRYPT.
  * \param length   The length of the input data.
  * \param iv_off   The offset in IV (updated after use).
  * \param iv       The initialization vector (updated after use).
@@ -366,7 +324,7 @@ int mbedtls_aes_crypt_xts( mbedtls_aes_xts_context *ctx,
  *
  * \return         \c 0 on success.
  */
-int mbedtls_aes_crypt_cfb128( mbedtls_aes_context *ctx,
+int jhd_tls_aes_crypt_cfb128( jhd_tls_aes_context *ctx,
                        int mode,
                        size_t length,
                        size_t *iv_off,
@@ -384,8 +342,8 @@ int mbedtls_aes_crypt_cfb128( mbedtls_aes_context *ctx,
  *
  *        Due to the nature of CFB, you must use the same key schedule for
  *        both encryption and decryption operations. Therefore, you must
- *        use the context initialized with mbedtls_aes_setkey_enc() for
- *        both #MBEDTLS_AES_ENCRYPT and #MBEDTLS_AES_DECRYPT.
+ *        use the context initialized with jhd_tls_aes_setkey_enc() for
+ *        both #JHD_TLS_AES_ENCRYPT and #JHD_TLS_AES_DECRYPT.
  *
  * \note  Upon exit, the content of the IV is updated so that you can
  *        call the same function again on the next
@@ -397,8 +355,8 @@ int mbedtls_aes_crypt_cfb128( mbedtls_aes_context *ctx,
  *
  *
  * \param ctx      The AES context to use for encryption or decryption.
- * \param mode     The AES operation: #MBEDTLS_AES_ENCRYPT or
- *                 #MBEDTLS_AES_DECRYPT
+ * \param mode     The AES operation: #JHD_TLS_AES_ENCRYPT or
+ *                 #JHD_TLS_AES_DECRYPT
  * \param length   The length of the input data.
  * \param iv       The initialization vector (updated after use).
  * \param input    The buffer holding the input data.
@@ -406,21 +364,21 @@ int mbedtls_aes_crypt_cfb128( mbedtls_aes_context *ctx,
  *
  * \return         \c 0 on success.
  */
-int mbedtls_aes_crypt_cfb8( mbedtls_aes_context *ctx,
+int jhd_tls_aes_crypt_cfb8( jhd_tls_aes_context *ctx,
                     int mode,
                     size_t length,
                     unsigned char iv[16],
                     const unsigned char *input,
                     unsigned char *output );
-#endif /*MBEDTLS_CIPHER_MODE_CFB */
+#endif /*JHD_TLS_CIPHER_MODE_CFB */
 
-#if defined(MBEDTLS_CIPHER_MODE_OFB)
+#if defined(JHD_TLS_CIPHER_MODE_OFB)
 /**
  * \brief       This function performs an AES-OFB (Output Feedback Mode)
  *              encryption or decryption operation.
  *
  *              For OFB, you must set up the context with
- *              mbedtls_aes_setkey_enc(), regardless of whether you are
+ *              jhd_tls_aes_setkey_enc(), regardless of whether you are
  *              performing an encryption or decryption operation. This is
  *              because OFB mode uses the same key schedule for encryption and
  *              decryption.
@@ -455,16 +413,16 @@ int mbedtls_aes_crypt_cfb8( mbedtls_aes_context *ctx,
  *
  * \return         \c 0 on success.
  */
-int mbedtls_aes_crypt_ofb( mbedtls_aes_context *ctx,
+int jhd_tls_aes_crypt_ofb( jhd_tls_aes_context *ctx,
                        size_t length,
                        size_t *iv_off,
                        unsigned char iv[16],
                        const unsigned char *input,
                        unsigned char *output );
 
-#endif /* MBEDTLS_CIPHER_MODE_OFB */
+#endif /* JHD_TLS_CIPHER_MODE_OFB */
 
-#if defined(MBEDTLS_CIPHER_MODE_CTR)
+#if defined(JHD_TLS_CIPHER_MODE_CTR)
 /**
  * \brief      This function performs an AES-CTR encryption or decryption
  *             operation.
@@ -475,8 +433,8 @@ int mbedtls_aes_crypt_ofb( mbedtls_aes_context *ctx,
  *
  *             Due to the nature of CTR, you must use the same key schedule
  *             for both encryption and decryption operations. Therefore, you
- *             must use the context initialized with mbedtls_aes_setkey_enc()
- *             for both #MBEDTLS_AES_ENCRYPT and #MBEDTLS_AES_DECRYPT.
+ *             must use the context initialized with jhd_tls_aes_setkey_enc()
+ *             for both #JHD_TLS_AES_ENCRYPT and #JHD_TLS_AES_DECRYPT.
  *
  * \warning    You must never reuse a nonce value with the same key. Doing so
  *             would void the encryption for the two messages encrypted with
@@ -535,19 +493,19 @@ int mbedtls_aes_crypt_ofb( mbedtls_aes_context *ctx,
  *
  * \return                 \c 0 on success.
  */
-int mbedtls_aes_crypt_ctr( mbedtls_aes_context *ctx,
+int jhd_tls_aes_crypt_ctr( jhd_tls_aes_context *ctx,
                        size_t length,
                        size_t *nc_off,
                        unsigned char nonce_counter[16],
                        unsigned char stream_block[16],
                        const unsigned char *input,
                        unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_CTR */
+#endif /* JHD_TLS_CIPHER_MODE_CTR */
 
 /**
  * \brief           Internal AES block encryption function. This is only
  *                  exposed to allow overriding it using
- *                  \c MBEDTLS_AES_ENCRYPT_ALT.
+ *                  \c JHD_TLS_AES_ENCRYPT_ALT.
  *
  * \param ctx       The AES context to use for encryption.
  * \param input     The plaintext block.
@@ -555,14 +513,14 @@ int mbedtls_aes_crypt_ctr( mbedtls_aes_context *ctx,
  *
  * \return          \c 0 on success.
  */
-int mbedtls_internal_aes_encrypt( mbedtls_aes_context *ctx,
+int jhd_tls_internal_aes_encrypt( jhd_tls_aes_context *ctx,
                                   const unsigned char input[16],
                                   unsigned char output[16] );
 
 /**
  * \brief           Internal AES block decryption function. This is only
  *                  exposed to allow overriding it using see
- *                  \c MBEDTLS_AES_DECRYPT_ALT.
+ *                  \c JHD_TLS_AES_DECRYPT_ALT.
  *
  * \param ctx       The AES context to use for decryption.
  * \param input     The ciphertext block.
@@ -570,27 +528,27 @@ int mbedtls_internal_aes_encrypt( mbedtls_aes_context *ctx,
  *
  * \return          \c 0 on success.
  */
-int mbedtls_internal_aes_decrypt( mbedtls_aes_context *ctx,
+int jhd_tls_internal_aes_decrypt( jhd_tls_aes_context *ctx,
                                   const unsigned char input[16],
                                   unsigned char output[16] );
 
-#if !defined(MBEDTLS_DEPRECATED_REMOVED)
-#if defined(MBEDTLS_DEPRECATED_WARNING)
-#define MBEDTLS_DEPRECATED      __attribute__((deprecated))
+#if !defined(JHD_TLS_DEPRECATED_REMOVED)
+#if defined(JHD_TLS_DEPRECATED_WARNING)
+#define JHD_TLS_DEPRECATED      __attribute__((deprecated))
 #else
-#define MBEDTLS_DEPRECATED
+#define JHD_TLS_DEPRECATED
 #endif
 /**
  * \brief           Deprecated internal AES block encryption function
  *                  without return value.
  *
- * \deprecated      Superseded by mbedtls_aes_encrypt_ext() in 2.5.0.
+ * \deprecated      Superseded by jhd_tls_aes_encrypt_ext() in 2.5.0.
  *
  * \param ctx       The AES context to use for encryption.
  * \param input     Plaintext block.
  * \param output    Output (ciphertext) block.
  */
-MBEDTLS_DEPRECATED void mbedtls_aes_encrypt( mbedtls_aes_context *ctx,
+JHD_TLS_DEPRECATED void jhd_tls_aes_encrypt( jhd_tls_aes_context *ctx,
                                              const unsigned char input[16],
                                              unsigned char output[16] );
 
@@ -598,18 +556,18 @@ MBEDTLS_DEPRECATED void mbedtls_aes_encrypt( mbedtls_aes_context *ctx,
  * \brief           Deprecated internal AES block decryption function
  *                  without return value.
  *
- * \deprecated      Superseded by mbedtls_aes_decrypt_ext() in 2.5.0.
+ * \deprecated      Superseded by jhd_tls_aes_decrypt_ext() in 2.5.0.
  *
  * \param ctx       The AES context to use for decryption.
  * \param input     Ciphertext block.
  * \param output    Output (plaintext) block.
  */
-MBEDTLS_DEPRECATED void mbedtls_aes_decrypt( mbedtls_aes_context *ctx,
+JHD_TLS_DEPRECATED void jhd_tls_aes_decrypt( jhd_tls_aes_context *ctx,
                                              const unsigned char input[16],
                                              unsigned char output[16] );
 
-#undef MBEDTLS_DEPRECATED
-#endif /* !MBEDTLS_DEPRECATED_REMOVED */
+#undef JHD_TLS_DEPRECATED
+#endif /* !JHD_TLS_DEPRECATED_REMOVED */
 
 /**
  * \brief          Checkup routine.
@@ -617,10 +575,8 @@ MBEDTLS_DEPRECATED void mbedtls_aes_decrypt( mbedtls_aes_context *ctx,
  * \return         \c 0 on success.
  * \return         \c 1 on failure.
  */
-int mbedtls_aes_self_test( int verbose );
+int jhd_tls_aes_self_test( int verbose );
 
-#ifdef __cplusplus
-}
-#endif
+
 
 #endif /* aes.h */

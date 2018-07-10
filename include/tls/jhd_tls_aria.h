@@ -27,37 +27,35 @@
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
-#ifndef MBEDTLS_ARIA_H
-#define MBEDTLS_ARIA_H
+#ifndef JHD_TLS_ARIA_H
+#define JHD_TLS_ARIA_H
 
-#if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#if !defined(JHD_TLS_CONFIG_FILE)
+#include <tls/jhd_tls_config.h>
 #else
-#include MBEDTLS_CONFIG_FILE
+#include JHD_TLS_CONFIG_FILE
 #endif
 
 #include <stddef.h>
 #include <stdint.h>
 
-#define MBEDTLS_ARIA_ENCRYPT     1 /**< ARIA encryption. */
-#define MBEDTLS_ARIA_DECRYPT     0 /**< ARIA decryption. */
+#define JHD_TLS_ARIA_ENCRYPT     1 /**< ARIA encryption. */
+#define JHD_TLS_ARIA_DECRYPT     0 /**< ARIA decryption. */
 
-#define MBEDTLS_ARIA_BLOCKSIZE   16 /**< ARIA block size in bytes. */
-#define MBEDTLS_ARIA_MAX_ROUNDS  16 /**< Maxiumum number of rounds in ARIA. */
-#define MBEDTLS_ARIA_MAX_KEYSIZE 32 /**< Maximum size of an ARIA key in bytes. */
+#define JHD_TLS_ARIA_BLOCKSIZE   16 /**< ARIA block size in bytes. */
+#define JHD_TLS_ARIA_MAX_ROUNDS  16 /**< Maxiumum number of rounds in ARIA. */
+#define JHD_TLS_ARIA_MAX_KEYSIZE 32 /**< Maximum size of an ARIA key in bytes. */
 
-#define MBEDTLS_ERR_ARIA_INVALID_KEY_LENGTH   -0x005C  /**< Invalid key length. */
-#define MBEDTLS_ERR_ARIA_INVALID_INPUT_LENGTH -0x005E  /**< Invalid data input length. */
-#define MBEDTLS_ERR_ARIA_FEATURE_UNAVAILABLE  -0x005A  /**< Feature not available. For example, an unsupported ARIA key size. */
-#define MBEDTLS_ERR_ARIA_HW_ACCEL_FAILED      -0x0058  /**< ARIA hardware accelerator failed. */
+#define JHD_TLS_ERR_ARIA_INVALID_KEY_LENGTH   -0x005C  /**< Invalid key length. */
+#define JHD_TLS_ERR_ARIA_INVALID_INPUT_LENGTH -0x005E  /**< Invalid data input length. */
+#define JHD_TLS_ERR_ARIA_FEATURE_UNAVAILABLE  -0x005A  /**< Feature not available. For example, an unsupported ARIA key size. */
+#define JHD_TLS_ERR_ARIA_HW_ACCEL_FAILED      -0x0058  /**< ARIA hardware accelerator failed. */
 
-#if !defined(MBEDTLS_ARIA_ALT)
+#if !defined(JHD_TLS_ARIA_ALT)
 // Regular implementation
 //
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 
 /**
  * \brief The ARIA context-type definition.
@@ -66,13 +64,13 @@ typedef struct
 {
     unsigned char nr;           /*!< The number of rounds (12, 14 or 16) */
     /*! The ARIA round keys. */
-    uint32_t rk[MBEDTLS_ARIA_MAX_ROUNDS + 1][MBEDTLS_ARIA_BLOCKSIZE / 4];
+    uint32_t rk[JHD_TLS_ARIA_MAX_ROUNDS + 1][JHD_TLS_ARIA_BLOCKSIZE / 4];
 }
-mbedtls_aria_context;
+jhd_tls_aria_context;
 
-#else  /* MBEDTLS_ARIA_ALT */
+#else  /* JHD_TLS_ARIA_ALT */
 #include "aria_alt.h"
-#endif /* MBEDTLS_ARIA_ALT */
+#endif /* JHD_TLS_ARIA_ALT */
 
 /**
  * \brief          This function initializes the specified ARIA context.
@@ -82,14 +80,14 @@ mbedtls_aria_context;
  *
  * \param ctx      The ARIA context to initialize.
  */
-void mbedtls_aria_init( mbedtls_aria_context *ctx );
+void jhd_tls_aria_init( jhd_tls_aria_context *ctx );
 
 /**
  * \brief          This function releases and clears the specified ARIA context.
  *
  * \param ctx      The ARIA context to clear.
  */
-void mbedtls_aria_free( mbedtls_aria_context *ctx );
+void jhd_tls_aria_free( jhd_tls_aria_context *ctx );
 
 /**
  * \brief          This function sets the encryption key.
@@ -101,10 +99,10 @@ void mbedtls_aria_free( mbedtls_aria_context *ctx );
  *                 <li>192 bits</li>
  *                 <li>256 bits</li></ul>
  *
- * \return         \c 0 on success or #MBEDTLS_ERR_ARIA_INVALID_KEY_LENGTH
+ * \return         \c 0 on success or #JHD_TLS_ERR_ARIA_INVALID_KEY_LENGTH
  *                 on failure.
  */
-int mbedtls_aria_setkey_enc( mbedtls_aria_context *ctx,
+int jhd_tls_aria_setkey_enc( jhd_tls_aria_context *ctx,
                              const unsigned char *key,
                              unsigned int keybits );
 
@@ -118,9 +116,9 @@ int mbedtls_aria_setkey_enc( mbedtls_aria_context *ctx,
  *                 <li>192 bits</li>
  *                 <li>256 bits</li></ul>
  *
- * \return         \c 0 on success, or #MBEDTLS_ERR_ARIA_INVALID_KEY_LENGTH on failure.
+ * \return         \c 0 on success, or #JHD_TLS_ERR_ARIA_INVALID_KEY_LENGTH on failure.
  */
-int mbedtls_aria_setkey_dec( mbedtls_aria_context *ctx,
+int jhd_tls_aria_setkey_dec( jhd_tls_aria_context *ctx,
                              const unsigned char *key,
                              unsigned int keybits );
 
@@ -132,8 +130,8 @@ int mbedtls_aria_setkey_dec( mbedtls_aria_context *ctx,
  *                 the key was set for encryption on decryption) on the input
  *                 data buffer defined in the \p input parameter.
  *
- *                 mbedtls_aria_init(), and either mbedtls_aria_setkey_enc() or
- *                 mbedtls_aria_setkey_dec() must be called before the first
+ *                 jhd_tls_aria_init(), and either jhd_tls_aria_setkey_enc() or
+ *                 jhd_tls_aria_setkey_dec() must be called before the first
  *                 call to this API with the same context.
  *
  * \param ctx      The ARIA context to use for encryption or decryption.
@@ -142,11 +140,11 @@ int mbedtls_aria_setkey_dec( mbedtls_aria_context *ctx,
 
  * \return         \c 0 on success.
  */
-int mbedtls_aria_crypt_ecb( mbedtls_aria_context *ctx,
-                            const unsigned char input[MBEDTLS_ARIA_BLOCKSIZE],
-                            unsigned char output[MBEDTLS_ARIA_BLOCKSIZE] );
+int jhd_tls_aria_crypt_ecb( jhd_tls_aria_context *ctx,
+                            const unsigned char input[JHD_TLS_ARIA_BLOCKSIZE],
+                            unsigned char output[JHD_TLS_ARIA_BLOCKSIZE] );
 
-#if defined(MBEDTLS_CIPHER_MODE_CBC)
+#if defined(JHD_TLS_CIPHER_MODE_CBC)
 /**
  * \brief  This function performs an ARIA-CBC encryption or decryption operation
  *         on full blocks.
@@ -156,8 +154,8 @@ int mbedtls_aria_crypt_ecb( mbedtls_aria_context *ctx,
  *         the \p input parameter.
  *
  *         It can be called as many times as needed, until all the input
- *         data is processed. mbedtls_aria_init(), and either
- *         mbedtls_aria_setkey_enc() or mbedtls_aria_setkey_dec() must be called
+ *         data is processed. jhd_tls_aria_init(), and either
+ *         jhd_tls_aria_setkey_enc() or jhd_tls_aria_setkey_dec() must be called
  *         before the first call to this API with the same context.
  *
  * \note   This function operates on aligned blocks, that is, the input size
@@ -172,26 +170,26 @@ int mbedtls_aria_crypt_ecb( mbedtls_aria_context *ctx,
  *
  *
  * \param ctx      The ARIA context to use for encryption or decryption.
- * \param mode     The ARIA operation: #MBEDTLS_ARIA_ENCRYPT or
- *                 #MBEDTLS_ARIA_DECRYPT.
+ * \param mode     The ARIA operation: #JHD_TLS_ARIA_ENCRYPT or
+ *                 #JHD_TLS_ARIA_DECRYPT.
  * \param length   The length of the input data in Bytes. This must be a
  *                 multiple of the block size (16 Bytes).
  * \param iv       Initialization vector (updated after use).
  * \param input    The buffer holding the input data.
  * \param output   The buffer holding the output data.
  *
- * \return         \c 0 on success, or #MBEDTLS_ERR_ARIA_INVALID_INPUT_LENGTH
+ * \return         \c 0 on success, or #JHD_TLS_ERR_ARIA_INVALID_INPUT_LENGTH
  *                 on failure.
  */
-int mbedtls_aria_crypt_cbc( mbedtls_aria_context *ctx,
+int jhd_tls_aria_crypt_cbc( jhd_tls_aria_context *ctx,
                             int mode,
                             size_t length,
-                            unsigned char iv[MBEDTLS_ARIA_BLOCKSIZE],
+                            unsigned char iv[JHD_TLS_ARIA_BLOCKSIZE],
                             const unsigned char *input,
                             unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_CBC */
+#endif /* JHD_TLS_CIPHER_MODE_CBC */
 
-#if defined(MBEDTLS_CIPHER_MODE_CFB)
+#if defined(JHD_TLS_CIPHER_MODE_CFB)
 /**
  * \brief This function performs an ARIA-CFB128 encryption or decryption
  *        operation.
@@ -200,7 +198,7 @@ int mbedtls_aria_crypt_cbc( mbedtls_aria_context *ctx,
  *        parameter (encrypt or decrypt), on the input data buffer
  *        defined in the \p input parameter.
  *
- *        For CFB, you must set up the context with mbedtls_aria_setkey_enc(),
+ *        For CFB, you must set up the context with jhd_tls_aria_setkey_enc(),
  *        regardless of whether you are performing an encryption or decryption
  *        operation, that is, regardless of the \p mode parameter. This is
  *        because CFB mode uses the same key schedule for encryption and
@@ -216,8 +214,8 @@ int mbedtls_aria_crypt_cbc( mbedtls_aria_context *ctx,
  *
  *
  * \param ctx      The ARIA context to use for encryption or decryption.
- * \param mode     The ARIA operation: #MBEDTLS_ARIA_ENCRYPT or
- *                 #MBEDTLS_ARIA_DECRYPT.
+ * \param mode     The ARIA operation: #JHD_TLS_ARIA_ENCRYPT or
+ *                 #JHD_TLS_ARIA_DECRYPT.
  * \param length   The length of the input data.
  * \param iv_off   The offset in IV (updated after use).
  * \param iv       The initialization vector (updated after use).
@@ -226,16 +224,16 @@ int mbedtls_aria_crypt_cbc( mbedtls_aria_context *ctx,
  *
  * \return         \c 0 on success.
  */
-int mbedtls_aria_crypt_cfb128( mbedtls_aria_context *ctx,
+int jhd_tls_aria_crypt_cfb128( jhd_tls_aria_context *ctx,
                                int mode,
                                size_t length,
                                size_t *iv_off,
-                               unsigned char iv[MBEDTLS_ARIA_BLOCKSIZE],
+                               unsigned char iv[JHD_TLS_ARIA_BLOCKSIZE],
                                const unsigned char *input,
                                unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_CFB */
+#endif /* JHD_TLS_CIPHER_MODE_CFB */
 
-#if defined(MBEDTLS_CIPHER_MODE_CTR)
+#if defined(JHD_TLS_CIPHER_MODE_CTR)
 /**
  * \brief      This function performs an ARIA-CTR encryption or decryption
  *             operation.
@@ -246,8 +244,8 @@ int mbedtls_aria_crypt_cfb128( mbedtls_aria_context *ctx,
  *
  *             Due to the nature of CTR, you must use the same key schedule
  *             for both encryption and decryption operations. Therefore, you
- *             must use the context initialized with mbedtls_aria_setkey_enc()
- *             for both #MBEDTLS_ARIA_ENCRYPT and #MBEDTLS_ARIA_DECRYPT.
+ *             must use the context initialized with jhd_tls_aria_setkey_enc()
+ *             for both #JHD_TLS_ARIA_ENCRYPT and #JHD_TLS_ARIA_DECRYPT.
  *
  * \warning    You must never reuse a nonce value with the same key. Doing so
  *             would void the encryption for the two messages encrypted with
@@ -306,26 +304,24 @@ int mbedtls_aria_crypt_cfb128( mbedtls_aria_context *ctx,
  *
  * \return     \c 0 on success.
  */
-int mbedtls_aria_crypt_ctr( mbedtls_aria_context *ctx,
+int jhd_tls_aria_crypt_ctr( jhd_tls_aria_context *ctx,
                             size_t length,
                             size_t *nc_off,
-                            unsigned char nonce_counter[MBEDTLS_ARIA_BLOCKSIZE],
-                            unsigned char stream_block[MBEDTLS_ARIA_BLOCKSIZE],
+                            unsigned char nonce_counter[JHD_TLS_ARIA_BLOCKSIZE],
+                            unsigned char stream_block[JHD_TLS_ARIA_BLOCKSIZE],
                             const unsigned char *input,
                             unsigned char *output );
-#endif /* MBEDTLS_CIPHER_MODE_CTR */
+#endif /* JHD_TLS_CIPHER_MODE_CTR */
 
-#if defined(MBEDTLS_SELF_TEST)
+#if defined(JHD_TLS_SELF_TEST)
 /**
  * \brief          Checkup routine.
  *
  * \return         \c 0 on success, or \c 1 on failure.
  */
-int mbedtls_aria_self_test( int verbose );
-#endif /* MBEDTLS_SELF_TEST */
+int jhd_tls_aria_self_test( int verbose );
+#endif /* JHD_TLS_SELF_TEST */
 
-#ifdef __cplusplus
-}
-#endif
+
 
 #endif /* aria.h */

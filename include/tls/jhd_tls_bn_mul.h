@@ -35,12 +35,12 @@
  *         . Alpha                . MIPS32
  *         . C, longlong          . C, generic
  */
-#ifndef MBEDTLS_BN_MUL_H
-#define MBEDTLS_BN_MUL_H
+#ifndef JHD_TLS_BN_MUL_H
+#define JHD_TLS_BN_MUL_H
 
-#include "bignum.h"
+#include <tls/jhd_tls_bignum.h>
 
-#if defined(MBEDTLS_HAVE_ASM)
+#if defined(JHD_TLS_HAVE_ASM)
 
 #ifndef asm
 #define asm __asm
@@ -69,7 +69,7 @@
         "movl   %%edx,   %%ecx      \n\t"   \
         "stosl                      \n\t"
 
-#if defined(MBEDTLS_HAVE_SSE2)
+#if defined(JHD_TLS_HAVE_SSE2)
 
 #define MULADDC_HUIT                            \
         "movd     %%ecx,     %%mm1      \n\t"   \
@@ -751,7 +751,7 @@
     __asm   mov     ecx, edx                    \
     __asm   stosd
 
-#if defined(MBEDTLS_HAVE_SSE2)
+#if defined(JHD_TLS_HAVE_SSE2)
 
 #define EMIT __asm _emit
 
@@ -834,20 +834,20 @@
 #endif /* SSE2 */
 #endif /* MSVC */
 
-#endif /* MBEDTLS_HAVE_ASM */
+#endif /* JHD_TLS_HAVE_ASM */
 
 #if !defined(MULADDC_CORE)
-#if defined(MBEDTLS_HAVE_UDBL)
+#if defined(JHD_TLS_HAVE_UDBL)
 
 #define MULADDC_INIT                    \
 {                                       \
-    mbedtls_t_udbl r;                           \
-    mbedtls_mpi_uint r0, r1;
+    jhd_tls_t_udbl r;                           \
+    jhd_tls_mpi_uint r0, r1;
 
 #define MULADDC_CORE                    \
-    r   = *(s++) * (mbedtls_t_udbl) b;          \
-    r0  = (mbedtls_mpi_uint) r;                   \
-    r1  = (mbedtls_mpi_uint)( r >> biL );         \
+    r   = *(s++) * (jhd_tls_t_udbl) b;          \
+    r0  = (jhd_tls_mpi_uint) r;                   \
+    r1  = (jhd_tls_mpi_uint)( r >> biL );         \
     r0 += c;  r1 += (r0 <  c);          \
     r0 += *d; r1 += (r0 < *d);          \
     c = r1; *(d++) = r0;
@@ -858,8 +858,8 @@
 #else
 #define MULADDC_INIT                    \
 {                                       \
-    mbedtls_mpi_uint s0, s1, b0, b1;              \
-    mbedtls_mpi_uint r0, r1, rx, ry;              \
+    jhd_tls_mpi_uint s0, s1, b0, b1;              \
+    jhd_tls_mpi_uint r0, r1, rx, ry;              \
     b0 = ( b << biH ) >> biH;           \
     b1 = ( b >> biH );
 

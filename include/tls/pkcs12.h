@@ -25,10 +25,9 @@
 #define MBEDTLS_PKCS12_H
 
 #include "md.h"
-#include "cipher.h"
-#include "asn1.h"
-
 #include <stddef.h>
+#include <tls/jhd_tls_asn1.h>
+#include <tls/jhd_tls_cipher.h>
 
 #define MBEDTLS_ERR_PKCS12_BAD_INPUT_DATA                 -0x1F80  /**< Bad input parameters to function. */
 #define MBEDTLS_ERR_PKCS12_FEATURE_UNAVAILABLE            -0x1F00  /**< Feature not available, e.g. unsupported encryption scheme. */

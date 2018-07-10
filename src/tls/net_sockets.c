@@ -20,7 +20,7 @@
  */
 
 #if !defined(MBEDTLS_CONFIG_FILE)
-#include "tls/config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include MBEDTLS_CONFIG_FILE
 #endif

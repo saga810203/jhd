@@ -34,7 +34,7 @@
 #define MBEDTLS_PLATFORM_H
 
 #if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include MBEDTLS_CONFIG_FILE
 #endif

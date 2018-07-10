@@ -36,7 +36,7 @@
 #ifndef MBEDTLS_ECP_H
 #define MBEDTLS_ECP_H
 
-#include "bignum.h"
+#include <tls/jhd_tls_bignum.h>
 
 /*
  * ECP error codes

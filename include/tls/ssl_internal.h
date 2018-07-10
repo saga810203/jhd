@@ -24,8 +24,8 @@
 #ifndef MBEDTLS_SSL_INTERNAL_H
 #define MBEDTLS_SSL_INTERNAL_H
 
+#include <tls/jhd_tls_cipher.h>
 #include "ssl.h"
-#include "cipher.h"
 
 #if defined(MBEDTLS_MD5_C)
 #include "md5.h"

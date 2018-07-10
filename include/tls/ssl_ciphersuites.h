@@ -24,8 +24,8 @@
 #ifndef MBEDTLS_SSL_CIPHERSUITES_H
 #define MBEDTLS_SSL_CIPHERSUITES_H
 
+#include <tls/jhd_tls_cipher.h>
 #include "pk.h"
-#include "cipher.h"
 #include "md.h"
 
 #ifdef __cplusplus

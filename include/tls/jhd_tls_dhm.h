@@ -62,36 +62,36 @@
  *  This file is part of Mbed TLS (https://tls.mbed.org)
  */
 
-#ifndef MBEDTLS_DHM_H
-#define MBEDTLS_DHM_H
+#ifndef JHD_TLS_DHM_H
+#define JHD_TLS_DHM_H
 
-#if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#if !defined(JHD_TLS_CONFIG_FILE)
+#include <tls/jhd_tls_config.h>
 #else
-#include MBEDTLS_CONFIG_FILE
+#include JHD_TLS_CONFIG_FILE
 #endif
-#include "bignum.h"
+#include <tls/jhd_tls_bignum.h>
 
 /*
  * DHM Error codes
  */
-#define MBEDTLS_ERR_DHM_BAD_INPUT_DATA                    -0x3080  /**< Bad input parameters. */
-#define MBEDTLS_ERR_DHM_READ_PARAMS_FAILED                -0x3100  /**< Reading of the DHM parameters failed. */
-#define MBEDTLS_ERR_DHM_MAKE_PARAMS_FAILED                -0x3180  /**< Making of the DHM parameters failed. */
-#define MBEDTLS_ERR_DHM_READ_PUBLIC_FAILED                -0x3200  /**< Reading of the public values failed. */
-#define MBEDTLS_ERR_DHM_MAKE_PUBLIC_FAILED                -0x3280  /**< Making of the public value failed. */
-#define MBEDTLS_ERR_DHM_CALC_SECRET_FAILED                -0x3300  /**< Calculation of the DHM secret failed. */
-#define MBEDTLS_ERR_DHM_INVALID_FORMAT                    -0x3380  /**< The ASN.1 data is not formatted correctly. */
-#define MBEDTLS_ERR_DHM_ALLOC_FAILED                      -0x3400  /**< Allocation of memory failed. */
-#define MBEDTLS_ERR_DHM_FILE_IO_ERROR                     -0x3480  /**< Read or write of file failed. */
-#define MBEDTLS_ERR_DHM_HW_ACCEL_FAILED                   -0x3500  /**< DHM hardware accelerator failed. */
-#define MBEDTLS_ERR_DHM_SET_GROUP_FAILED                  -0x3580  /**< Setting the modulus and generator failed. */
+#define JHD_TLS_ERR_DHM_BAD_INPUT_DATA                    -0x3080  /**< Bad input parameters. */
+#define JHD_TLS_ERR_DHM_READ_PARAMS_FAILED                -0x3100  /**< Reading of the DHM parameters failed. */
+#define JHD_TLS_ERR_DHM_MAKE_PARAMS_FAILED                -0x3180  /**< Making of the DHM parameters failed. */
+#define JHD_TLS_ERR_DHM_READ_PUBLIC_FAILED                -0x3200  /**< Reading of the public values failed. */
+#define JHD_TLS_ERR_DHM_MAKE_PUBLIC_FAILED                -0x3280  /**< Making of the public value failed. */
+#define JHD_TLS_ERR_DHM_CALC_SECRET_FAILED                -0x3300  /**< Calculation of the DHM secret failed. */
+#define JHD_TLS_ERR_DHM_INVALID_FORMAT                    -0x3380  /**< The ASN.1 data is not formatted correctly. */
+#define JHD_TLS_ERR_DHM_ALLOC_FAILED                      -0x3400  /**< Allocation of memory failed. */
+#define JHD_TLS_ERR_DHM_FILE_IO_ERROR                     -0x3480  /**< Read or write of file failed. */
+#define JHD_TLS_ERR_DHM_HW_ACCEL_FAILED                   -0x3500  /**< DHM hardware accelerator failed. */
+#define JHD_TLS_ERR_DHM_SET_GROUP_FAILED                  -0x3580  /**< Setting the modulus and generator failed. */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if !defined(MBEDTLS_DHM_ALT)
+#if !defined(JHD_TLS_DHM_ALT)
 
 /**
  * \brief          The DHM context structure.
@@ -99,29 +99,29 @@ extern "C" {
 typedef struct
 {
     size_t len;         /*!<  The size of \p P in Bytes. */
-    mbedtls_mpi P;      /*!<  The prime modulus. */
-    mbedtls_mpi G;      /*!<  The generator. */
-    mbedtls_mpi X;      /*!<  Our secret value. */
-    mbedtls_mpi GX;     /*!<  Our public key = \c G^X mod \c P. */
-    mbedtls_mpi GY;     /*!<  The public key of the peer = \c G^Y mod \c P. */
-    mbedtls_mpi K;      /*!<  The shared secret = \c G^(XY) mod \c P. */
-    mbedtls_mpi RP;     /*!<  The cached value = \c R^2 mod \c P. */
-    mbedtls_mpi Vi;     /*!<  The blinding value. */
-    mbedtls_mpi Vf;     /*!<  The unblinding value. */
-    mbedtls_mpi pX;     /*!<  The previous \c X. */
+    jhd_tls_mpi P;      /*!<  The prime modulus. */
+    jhd_tls_mpi G;      /*!<  The generator. */
+    jhd_tls_mpi X;      /*!<  Our secret value. */
+    jhd_tls_mpi GX;     /*!<  Our public key = \c G^X mod \c P. */
+    jhd_tls_mpi GY;     /*!<  The public key of the peer = \c G^Y mod \c P. */
+    jhd_tls_mpi K;      /*!<  The shared secret = \c G^(XY) mod \c P. */
+    jhd_tls_mpi RP;     /*!<  The cached value = \c R^2 mod \c P. */
+    jhd_tls_mpi Vi;     /*!<  The blinding value. */
+    jhd_tls_mpi Vf;     /*!<  The unblinding value. */
+    jhd_tls_mpi pX;     /*!<  The previous \c X. */
 }
-mbedtls_dhm_context;
+jhd_tls_dhm_context;
 
-#else /* MBEDTLS_DHM_ALT */
+#else /* JHD_TLS_DHM_ALT */
 #include "dhm_alt.h"
-#endif /* MBEDTLS_DHM_ALT */
+#endif /* JHD_TLS_DHM_ALT */
 
 /**
  * \brief          This function initializes the DHM context.
  *
  * \param ctx      The DHM context to initialize.
  */
-void mbedtls_dhm_init( mbedtls_dhm_context *ctx );
+void jhd_tls_dhm_init( jhd_tls_dhm_context *ctx );
 
 /**
  * \brief          This function parses the ServerKeyExchange parameters.
@@ -137,9 +137,9 @@ void mbedtls_dhm_init( mbedtls_dhm_context *ctx );
  * \param end      The end of the input buffer.
  *
  * \return         \c 0 on success.
- * \return         An \c MBEDTLS_ERR_DHM_XXX error code on failure.
+ * \return         An \c JHD_TLS_ERR_DHM_XXX error code on failure.
  */
-int mbedtls_dhm_read_params( mbedtls_dhm_context *ctx,
+int jhd_tls_dhm_read_params( jhd_tls_dhm_context *ctx,
                      unsigned char **p,
                      const unsigned char *end );
 
@@ -151,13 +151,13 @@ int mbedtls_dhm_read_params( mbedtls_dhm_context *ctx,
  *                 the reduced binary presentation of the modulus, the generator
  *                 and the public key, each wrapped with a 2-byte length field.
  *                 It is the responsibility of the caller to ensure that enough
- *                 space is available. Refer to \c mbedtls_mpi_size to computing
+ *                 space is available. Refer to \c jhd_tls_mpi_size to computing
  *                 the byte-size of an MPI.
  *
  * \note           This function assumes that \c ctx->P and \c ctx->G
  *                 have already been properly set. For that, use
- *                 mbedtls_dhm_set_group() below in conjunction with
- *                 mbedtls_mpi_read_binary() and mbedtls_mpi_read_string().
+ *                 jhd_tls_dhm_set_group() below in conjunction with
+ *                 jhd_tls_mpi_read_binary() and jhd_tls_mpi_read_string().
  *
  * \param ctx      The DHM context.
  * \param x_size   The private key size in Bytes.
@@ -167,9 +167,9 @@ int mbedtls_dhm_read_params( mbedtls_dhm_context *ctx,
  * \param p_rng    The RNG context.
  *
  * \return         \c 0 on success.
- * \return         An \c MBEDTLS_ERR_DHM_XXX error code on failure.
+ * \return         An \c JHD_TLS_ERR_DHM_XXX error code on failure.
  */
-int mbedtls_dhm_make_params( mbedtls_dhm_context *ctx, int x_size,
+int jhd_tls_dhm_make_params( jhd_tls_dhm_context *ctx, int x_size,
                      unsigned char *output, size_t *olen,
                      int (*f_rng)(void *, unsigned char *, size_t),
                      void *p_rng );
@@ -178,18 +178,18 @@ int mbedtls_dhm_make_params( mbedtls_dhm_context *ctx, int x_size,
  * \brief          This function sets the prime modulus and generator.
  *
  * \note           This function can be used to set \p P, \p G
- *                 in preparation for mbedtls_dhm_make_params().
+ *                 in preparation for jhd_tls_dhm_make_params().
  *
  * \param ctx      The DHM context.
  * \param P        The MPI holding the DHM prime modulus.
  * \param G        The MPI holding the DHM generator.
  *
  * \return         \c 0 if successful.
- * \return         An \c MBEDTLS_ERR_DHM_XXX error code on failure.
+ * \return         An \c JHD_TLS_ERR_DHM_XXX error code on failure.
  */
-int mbedtls_dhm_set_group( mbedtls_dhm_context *ctx,
-                           const mbedtls_mpi *P,
-                           const mbedtls_mpi *G );
+int jhd_tls_dhm_set_group( jhd_tls_dhm_context *ctx,
+                           const jhd_tls_mpi *P,
+                           const jhd_tls_mpi *G );
 
 /**
  * \brief          This function imports the public value of the peer, G^Y.
@@ -199,9 +199,9 @@ int mbedtls_dhm_set_group( mbedtls_dhm_context *ctx,
  * \param ilen     The size of the input buffer.
  *
  * \return         \c 0 on success.
- * \return         An \c MBEDTLS_ERR_DHM_XXX error code on failure.
+ * \return         An \c JHD_TLS_ERR_DHM_XXX error code on failure.
  */
-int mbedtls_dhm_read_public( mbedtls_dhm_context *ctx,
+int jhd_tls_dhm_read_public( jhd_tls_dhm_context *ctx,
                      const unsigned char *input, size_t ilen );
 
 /**
@@ -222,9 +222,9 @@ int mbedtls_dhm_read_public( mbedtls_dhm_context *ctx,
  * \param p_rng    The RNG context.
  *
  * \return         \c 0 on success.
- * \return         An \c MBEDTLS_ERR_DHM_XXX error code on failure.
+ * \return         An \c JHD_TLS_ERR_DHM_XXX error code on failure.
  */
-int mbedtls_dhm_make_public( mbedtls_dhm_context *ctx, int x_size,
+int jhd_tls_dhm_make_public( jhd_tls_dhm_context *ctx, int x_size,
                      unsigned char *output, size_t olen,
                      int (*f_rng)(void *, unsigned char *, size_t),
                      void *p_rng );
@@ -248,9 +248,9 @@ int mbedtls_dhm_make_public( mbedtls_dhm_context *ctx, int x_size,
  * \param p_rng         The RNG context.
  *
  * \return              \c 0 on success.
- * \return              An \c MBEDTLS_ERR_DHM_XXX error code on failure.
+ * \return              An \c JHD_TLS_ERR_DHM_XXX error code on failure.
  */
-int mbedtls_dhm_calc_secret( mbedtls_dhm_context *ctx,
+int jhd_tls_dhm_calc_secret( jhd_tls_dhm_context *ctx,
                      unsigned char *output, size_t output_size, size_t *olen,
                      int (*f_rng)(void *, unsigned char *, size_t),
                      void *p_rng );
@@ -260,9 +260,9 @@ int mbedtls_dhm_calc_secret( mbedtls_dhm_context *ctx,
  *
  * \param ctx      The DHM context to free and clear.
  */
-void mbedtls_dhm_free( mbedtls_dhm_context *ctx );
+void jhd_tls_dhm_free( jhd_tls_dhm_context *ctx );
 
-#if defined(MBEDTLS_ASN1_PARSE_C)
+#if defined(JHD_TLS_ASN1_PARSE_C)
 /** \ingroup x509_module */
 /**
  * \brief             This function parses DHM parameters in PEM or DER format.
@@ -273,13 +273,13 @@ void mbedtls_dhm_free( mbedtls_dhm_context *ctx );
  *                    Byte for PEM data.
  *
  * \return            \c 0 on success.
- * \return            An \c MBEDTLS_ERR_DHM_XXX or \c MBEDTLS_ERR_PEM_XXX error code
+ * \return            An \c JHD_TLS_ERR_DHM_XXX or \c JHD_TLS_ERR_PEM_XXX error code
  *                    error code on failure.
  */
-int mbedtls_dhm_parse_dhm( mbedtls_dhm_context *dhm, const unsigned char *dhmin,
+int jhd_tls_dhm_parse_dhm( jhd_tls_dhm_context *dhm, const unsigned char *dhmin,
                    size_t dhminlen );
 
-#if defined(MBEDTLS_FS_IO)
+#if defined(JHD_TLS_FS_IO)
 /** \ingroup x509_module */
 /**
  * \brief          This function loads and parses DHM parameters from a file.
@@ -288,12 +288,12 @@ int mbedtls_dhm_parse_dhm( mbedtls_dhm_context *dhm, const unsigned char *dhmin,
  * \param path     The filename to read the DHM parameters from.
  *
  * \return         \c 0 on success.
- * \return            An \c MBEDTLS_ERR_DHM_XXX or \c MBEDTLS_ERR_PEM_XXX error code
+ * \return            An \c JHD_TLS_ERR_DHM_XXX or \c JHD_TLS_ERR_PEM_XXX error code
  *                    error code on failure.
  */
-int mbedtls_dhm_parse_dhmfile( mbedtls_dhm_context *dhm, const char *path );
-#endif /* MBEDTLS_FS_IO */
-#endif /* MBEDTLS_ASN1_PARSE_C */
+int jhd_tls_dhm_parse_dhmfile( jhd_tls_dhm_context *dhm, const char *path );
+#endif /* JHD_TLS_FS_IO */
+#endif /* JHD_TLS_ASN1_PARSE_C */
 
 /**
  * \brief          The DMH checkup routine.
@@ -301,7 +301,7 @@ int mbedtls_dhm_parse_dhmfile( mbedtls_dhm_context *dhm, const char *path );
  * \return         \c 0 on success.
  * \return         \c 1 on failure.
  */
-int mbedtls_dhm_self_test( int verbose );
+int jhd_tls_dhm_self_test( int verbose );
 
 #ifdef __cplusplus
 }
@@ -312,7 +312,7 @@ int mbedtls_dhm_self_test( int verbose );
  * Diffie-Hellman groups, some of which are included here
  * for use within the SSL/TLS module and the user's convenience
  * when configuring the Diffie-Hellman parameters by hand
- * through \c mbedtls_ssl_conf_dh_param.
+ * through \c jhd_tls_ssl_conf_dh_param.
  *
  * The following lists the source of the above groups in the standards:
  * - RFC 5114 section 2.2:  2048-bit MODP Group with 224-bit Prime Order Subgroup
@@ -348,16 +348,16 @@ int mbedtls_dhm_self_test( int verbose );
  *
  */
 
-#if !defined(MBEDTLS_DEPRECATED_REMOVED)
+#if !defined(JHD_TLS_DEPRECATED_REMOVED)
 
-#if defined(MBEDTLS_DEPRECATED_WARNING)
-#define MBEDTLS_DEPRECATED __attribute__((deprecated))
-MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
-#define MBEDTLS_DEPRECATED_STRING_CONSTANT( VAL )       \
-    ( (mbedtls_deprecated_constant_t) ( VAL ) )
+#if defined(JHD_TLS_DEPRECATED_WARNING)
+#define JHD_TLS_DEPRECATED __attribute__((deprecated))
+JHD_TLS_DEPRECATED typedef char const * jhd_tls_deprecated_constant_t;
+#define JHD_TLS_DEPRECATED_STRING_CONSTANT( VAL )       \
+    ( (jhd_tls_deprecated_constant_t) ( VAL ) )
 #else
-#define MBEDTLS_DEPRECATED_STRING_CONSTANT( VAL ) VAL
-#endif /* ! MBEDTLS_DEPRECATED_WARNING */
+#define JHD_TLS_DEPRECATED_STRING_CONSTANT( VAL ) VAL
+#endif /* ! JHD_TLS_DEPRECATED_WARNING */
 
 /**
  * \warning The origin of the primes in RFC 5114 is not documented and
@@ -374,8 +374,8 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
  * in <em>RFC-5114: Additional Diffie-Hellman Groups for Use with
  * IETF Standards</em>.
  */
-#define MBEDTLS_DHM_RFC5114_MODP_2048_P                         \
-    MBEDTLS_DEPRECATED_STRING_CONSTANT(                         \
+#define JHD_TLS_DHM_RFC5114_MODP_2048_P                         \
+    JHD_TLS_DEPRECATED_STRING_CONSTANT(                         \
         "AD107E1E9123A9D0D660FAA79559C51FA20D64E5683B9FD1"      \
         "B54B1597B61D0A75E6FA141DF95A56DBAF9A3C407BA1DF15"      \
         "EB3D688A309C180E1DE6B85A1274A0A66D3F8152AD6AC212"      \
@@ -393,8 +393,8 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
  * Group with 224-bit Prime Order Subgroup, as defined in <em>RFC-5114:
  * Additional Diffie-Hellman Groups for Use with IETF Standards</em>.
  */
-#define MBEDTLS_DHM_RFC5114_MODP_2048_G                         \
-    MBEDTLS_DEPRECATED_STRING_CONSTANT(                         \
+#define JHD_TLS_DHM_RFC5114_MODP_2048_G                         \
+    JHD_TLS_DEPRECATED_STRING_CONSTANT(                         \
         "AC4032EF4F2D9AE39DF30B5C8FFDAC506CDEBE7B89998CAF"      \
         "74866A08CFE4FFE3A6824A4E10B9A6F0DD921F01A70C4AFA"      \
         "AB739D7700C29F52C57DB17C620A8652BE5E9001A8D66AD7"      \
@@ -418,8 +418,8 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
  *             to be removed in a future version of the library.
  *
  */
-#define MBEDTLS_DHM_RFC3526_MODP_2048_P                         \
-    MBEDTLS_DEPRECATED_STRING_CONSTANT(                         \
+#define JHD_TLS_DHM_RFC3526_MODP_2048_P                         \
+    JHD_TLS_DEPRECATED_STRING_CONSTANT(                         \
         "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1"      \
         "29024E088A67CC74020BBEA63B139B22514A08798E3404DD"      \
         "EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245"      \
@@ -437,16 +437,16 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
  * Group, as defined in <em>RFC-3526: More Modular Exponential (MODP)
  * Diffie-Hellman groups for Internet Key Exchange (IKE)</em>.
  */
-#define MBEDTLS_DHM_RFC3526_MODP_2048_G                         \
-    MBEDTLS_DEPRECATED_STRING_CONSTANT( "02" )
+#define JHD_TLS_DHM_RFC3526_MODP_2048_G                         \
+    JHD_TLS_DEPRECATED_STRING_CONSTANT( "02" )
 
 /**
  * The hexadecimal presentation of the prime underlying the 3072-bit MODP
  * Group, as defined in <em>RFC-3072: More Modular Exponential (MODP)
  * Diffie-Hellman groups for Internet Key Exchange (IKE)</em>.
  */
-#define MBEDTLS_DHM_RFC3526_MODP_3072_P                         \
-    MBEDTLS_DEPRECATED_STRING_CONSTANT(                         \
+#define JHD_TLS_DHM_RFC3526_MODP_3072_P                         \
+    JHD_TLS_DEPRECATED_STRING_CONSTANT(                         \
         "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1"      \
         "29024E088A67CC74020BBEA63B139B22514A08798E3404DD"      \
         "EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245"      \
@@ -469,16 +469,16 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
  * Group, as defined in <em>RFC-3526: More Modular Exponential (MODP)
  * Diffie-Hellman groups for Internet Key Exchange (IKE)</em>.
  */
-#define MBEDTLS_DHM_RFC3526_MODP_3072_G                      \
-    MBEDTLS_DEPRECATED_STRING_CONSTANT( "02" )
+#define JHD_TLS_DHM_RFC3526_MODP_3072_G                      \
+    JHD_TLS_DEPRECATED_STRING_CONSTANT( "02" )
 
 /**
  * The hexadecimal presentation of the prime underlying the 4096-bit MODP
  * Group, as defined in <em>RFC-3526: More Modular Exponential (MODP)
  * Diffie-Hellman groups for Internet Key Exchange (IKE)</em>.
  */
-#define MBEDTLS_DHM_RFC3526_MODP_4096_P                      \
-    MBEDTLS_DEPRECATED_STRING_CONSTANT(                      \
+#define JHD_TLS_DHM_RFC3526_MODP_4096_P                      \
+    JHD_TLS_DEPRECATED_STRING_CONSTANT(                      \
         "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1"   \
         "29024E088A67CC74020BBEA63B139B22514A08798E3404DD"   \
         "EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245"   \
@@ -507,16 +507,16 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
  * Group, as defined in <em>RFC-3526: More Modular Exponential (MODP)
  * Diffie-Hellman groups for Internet Key Exchange (IKE)</em>.
  */
-#define MBEDTLS_DHM_RFC3526_MODP_4096_G                      \
-    MBEDTLS_DEPRECATED_STRING_CONSTANT( "02" )
+#define JHD_TLS_DHM_RFC3526_MODP_4096_G                      \
+    JHD_TLS_DEPRECATED_STRING_CONSTANT( "02" )
 
-#endif /* MBEDTLS_DEPRECATED_REMOVED */
+#endif /* JHD_TLS_DEPRECATED_REMOVED */
 
 /*
  * Trustworthy DHM parameters in binary form
  */
 
-#define MBEDTLS_DHM_RFC3526_MODP_2048_P_BIN {        \
+#define JHD_TLS_DHM_RFC3526_MODP_2048_P_BIN {        \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, \
      0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, \
      0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, \
@@ -550,9 +550,9 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
      0x15, 0x72, 0x8E, 0x5A, 0x8A, 0xAC, 0xAA, 0x68, \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
 
-#define MBEDTLS_DHM_RFC3526_MODP_2048_G_BIN { 0x02 }
+#define JHD_TLS_DHM_RFC3526_MODP_2048_G_BIN { 0x02 }
 
-#define MBEDTLS_DHM_RFC3526_MODP_3072_P_BIN {       \
+#define JHD_TLS_DHM_RFC3526_MODP_3072_P_BIN {       \
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, \
     0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34, \
     0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, \
@@ -602,9 +602,9 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
     0x4B, 0x82, 0xD1, 0x20, 0xA9, 0x3A, 0xD2, 0xCA, \
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
 
-#define MBEDTLS_DHM_RFC3526_MODP_3072_G_BIN { 0x02 }
+#define JHD_TLS_DHM_RFC3526_MODP_3072_G_BIN { 0x02 }
 
-#define MBEDTLS_DHM_RFC3526_MODP_4096_P_BIN  {       \
+#define JHD_TLS_DHM_RFC3526_MODP_4096_P_BIN  {       \
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,  \
     0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34,  \
     0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1,  \
@@ -670,9 +670,9 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
     0x4D, 0xF4, 0x35, 0xC9, 0x34, 0x06, 0x31, 0x99,  \
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
 
-#define MBEDTLS_DHM_RFC3526_MODP_4096_G_BIN { 0x02 }
+#define JHD_TLS_DHM_RFC3526_MODP_4096_G_BIN { 0x02 }
 
-#define MBEDTLS_DHM_RFC7919_FFDHE2048_P_BIN {        \
+#define JHD_TLS_DHM_RFC7919_FFDHE2048_P_BIN {        \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, \
      0xAD, 0xF8, 0x54, 0x58, 0xA2, 0xBB, 0x4A, 0x9A, \
      0xAF, 0xDC, 0x56, 0x20, 0x27, 0x3D, 0x3C, 0xF1, \
@@ -706,9 +706,9 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
      0x88, 0x6B, 0x42, 0x38, 0x61, 0x28, 0x5C, 0x97, \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, }
 
-#define MBEDTLS_DHM_RFC7919_FFDHE2048_G_BIN { 0x02 }
+#define JHD_TLS_DHM_RFC7919_FFDHE2048_G_BIN { 0x02 }
 
-#define MBEDTLS_DHM_RFC7919_FFDHE3072_P_BIN { \
+#define JHD_TLS_DHM_RFC7919_FFDHE3072_P_BIN { \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, \
      0xAD, 0xF8, 0x54, 0x58, 0xA2, 0xBB, 0x4A, 0x9A, \
      0xAF, 0xDC, 0x56, 0x20, 0x27, 0x3D, 0x3C, 0xF1, \
@@ -758,9 +758,9 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
      0x25, 0xE4, 0x1D, 0x2B, 0x66, 0xC6, 0x2E, 0x37, \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
 
-#define MBEDTLS_DHM_RFC7919_FFDHE3072_G_BIN { 0x02 }
+#define JHD_TLS_DHM_RFC7919_FFDHE3072_G_BIN { 0x02 }
 
-#define MBEDTLS_DHM_RFC7919_FFDHE4096_P_BIN {        \
+#define JHD_TLS_DHM_RFC7919_FFDHE4096_P_BIN {        \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, \
      0xAD, 0xF8, 0x54, 0x58, 0xA2, 0xBB, 0x4A, 0x9A, \
      0xAF, 0xDC, 0x56, 0x20, 0x27, 0x3D, 0x3C, 0xF1, \
@@ -826,9 +826,9 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
      0xC6, 0x8A, 0x00, 0x7E, 0x5E, 0x65, 0x5F, 0x6A, \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
 
-#define MBEDTLS_DHM_RFC7919_FFDHE4096_G_BIN { 0x02 }
+#define JHD_TLS_DHM_RFC7919_FFDHE4096_G_BIN { 0x02 }
 
-#define MBEDTLS_DHM_RFC7919_FFDHE6144_P_BIN {        \
+#define JHD_TLS_DHM_RFC7919_FFDHE6144_P_BIN {        \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, \
      0xAD, 0xF8, 0x54, 0x58, 0xA2, 0xBB, 0x4A, 0x9A, \
      0xAF, 0xDC, 0x56, 0x20, 0x27, 0x3D, 0x3C, 0xF1, \
@@ -926,9 +926,9 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
      0xA4, 0x0E, 0x32, 0x9C, 0xD0, 0xE4, 0x0E, 0x65, \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
 
-#define MBEDTLS_DHM_RFC7919_FFDHE6144_G_BIN { 0x02 }
+#define JHD_TLS_DHM_RFC7919_FFDHE6144_G_BIN { 0x02 }
 
-#define MBEDTLS_DHM_RFC7919_FFDHE8192_P_BIN {        \
+#define JHD_TLS_DHM_RFC7919_FFDHE8192_P_BIN {        \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, \
      0xAD, 0xF8, 0x54, 0x58, 0xA2, 0xBB, 0x4A, 0x9A, \
      0xAF, 0xDC, 0x56, 0x20, 0x27, 0x3D, 0x3C, 0xF1, \
@@ -1058,6 +1058,6 @@ MBEDTLS_DEPRECATED typedef char const * mbedtls_deprecated_constant_t;
      0xD6, 0x8C, 0x8B, 0xB7, 0xC5, 0xC6, 0x42, 0x4C, \
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
 
-#define MBEDTLS_DHM_RFC7919_FFDHE8192_G_BIN { 0x02 }
+#define JHD_TLS_DHM_RFC7919_FFDHE8192_G_BIN { 0x02 }
 
 #endif /* dhm.h */

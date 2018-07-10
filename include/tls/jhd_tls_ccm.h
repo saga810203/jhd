@@ -46,21 +46,19 @@
  *  This file is part of Mbed TLS (https://tls.mbed.org)
  */
 
-#ifndef MBEDTLS_CCM_H
-#define MBEDTLS_CCM_H
+#ifndef JHD_TLS_CCM_H
+#define JHD_TLS_CCM_H
 
-#include "cipher.h"
+#include <tls/jhd_tls_cipher.h>
 
-#define MBEDTLS_ERR_CCM_BAD_INPUT       -0x000D /**< Bad input parameters to the function. */
-#define MBEDTLS_ERR_CCM_AUTH_FAILED     -0x000F /**< Authenticated decryption failed. */
-#define MBEDTLS_ERR_CCM_HW_ACCEL_FAILED -0x0011 /**< CCM hardware accelerator failed. */
+#define JHD_TLS_ERR_CCM_BAD_INPUT       -0x000D /**< Bad input parameters to the function. */
+#define JHD_TLS_ERR_CCM_AUTH_FAILED     -0x000F /**< Authenticated decryption failed. */
+#define JHD_TLS_ERR_CCM_HW_ACCEL_FAILED -0x0011 /**< CCM hardware accelerator failed. */
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-#if !defined(MBEDTLS_CCM_ALT)
+
+#if !defined(JHD_TLS_CCM_ALT)
 // Regular implementation
 //
 
@@ -69,22 +67,22 @@ extern "C" {
  *           to the APIs called.
  */
 typedef struct {
-    mbedtls_cipher_context_t cipher_ctx;    /*!< The cipher context used. */
+    jhd_tls_cipher_context_t cipher_ctx;    /*!< The cipher context used. */
 }
-mbedtls_ccm_context;
+jhd_tls_ccm_context;
 
-#else  /* MBEDTLS_CCM_ALT */
+#else  /* JHD_TLS_CCM_ALT */
 #include "ccm_alt.h"
-#endif /* MBEDTLS_CCM_ALT */
+#endif /* JHD_TLS_CCM_ALT */
 
 /**
  * \brief           This function initializes the specified CCM context,
  *                  to make references valid, and prepare the context
- *                  for mbedtls_ccm_setkey() or mbedtls_ccm_free().
+ *                  for jhd_tls_ccm_setkey() or jhd_tls_ccm_free().
  *
  * \param ctx       The CCM context to initialize.
  */
-void mbedtls_ccm_init( mbedtls_ccm_context *ctx );
+void jhd_tls_ccm_init( jhd_tls_ccm_context *ctx );
 
 /**
  * \brief           This function initializes the CCM context set in the
@@ -98,8 +96,8 @@ void mbedtls_ccm_init( mbedtls_ccm_context *ctx );
  * \return          \c 0 on success.
  * \return          A CCM or cipher-specific error code on failure.
  */
-int mbedtls_ccm_setkey( mbedtls_ccm_context *ctx,
-                        mbedtls_cipher_id_t cipher,
+int jhd_tls_ccm_setkey( jhd_tls_ccm_context *ctx,
+                        jhd_tls_cipher_id_t cipher,
                         const unsigned char *key,
                         unsigned int keybits );
 
@@ -109,7 +107,7 @@ int mbedtls_ccm_setkey( mbedtls_ccm_context *ctx,
  *
  * \param ctx       The CCM context to clear.
  */
-void mbedtls_ccm_free( mbedtls_ccm_context *ctx );
+void jhd_tls_ccm_free( jhd_tls_ccm_context *ctx );
 
 /**
  * \brief           This function encrypts a buffer using CCM.
@@ -139,7 +137,7 @@ void mbedtls_ccm_free( mbedtls_ccm_context *ctx );
  * \return          \c 0 on success.
  * \return          A CCM or cipher-specific error code on failure.
  */
-int mbedtls_ccm_encrypt_and_tag( mbedtls_ccm_context *ctx, size_t length,
+int jhd_tls_ccm_encrypt_and_tag( jhd_tls_ccm_context *ctx, size_t length,
                          const unsigned char *iv, size_t iv_len,
                          const unsigned char *add, size_t add_len,
                          const unsigned char *input, unsigned char *output,
@@ -180,7 +178,7 @@ int mbedtls_ccm_encrypt_and_tag( mbedtls_ccm_context *ctx, size_t length,
  * \return          \c 0 on success.
  * \return          A CCM or cipher-specific error code on failure.
  */
-int mbedtls_ccm_star_encrypt_and_tag( mbedtls_ccm_context *ctx, size_t length,
+int jhd_tls_ccm_star_encrypt_and_tag( jhd_tls_ccm_context *ctx, size_t length,
                          const unsigned char *iv, size_t iv_len,
                          const unsigned char *add, size_t add_len,
                          const unsigned char *input, unsigned char *output,
@@ -207,10 +205,10 @@ int mbedtls_ccm_star_encrypt_and_tag( mbedtls_ccm_context *ctx, size_t length,
  *                  4, 6, 8, 10, 12, 14 or 16.
  *
  * \return          \c 0 on success. This indicates that the message is authentic.
- * \return          #MBEDTLS_ERR_CCM_AUTH_FAILED if the tag does not match.
+ * \return          #JHD_TLS_ERR_CCM_AUTH_FAILED if the tag does not match.
  * \return          A cipher-specific error code on calculation failure.
  */
-int mbedtls_ccm_auth_decrypt( mbedtls_ccm_context *ctx, size_t length,
+int jhd_tls_ccm_auth_decrypt( jhd_tls_ccm_context *ctx, size_t length,
                       const unsigned char *iv, size_t iv_len,
                       const unsigned char *add, size_t add_len,
                       const unsigned char *input, unsigned char *output,
@@ -245,27 +243,25 @@ int mbedtls_ccm_auth_decrypt( mbedtls_ccm_context *ctx, size_t length,
  *                  longer authenticated.
  *
  * \return          \c 0 on success.
- * \return          #MBEDTLS_ERR_CCM_AUTH_FAILED if the tag does not match.
+ * \return          #JHD_TLS_ERR_CCM_AUTH_FAILED if the tag does not match.
  * \return          A cipher-specific error code on calculation failure.
  */
-int mbedtls_ccm_star_auth_decrypt( mbedtls_ccm_context *ctx, size_t length,
+int jhd_tls_ccm_star_auth_decrypt( jhd_tls_ccm_context *ctx, size_t length,
                       const unsigned char *iv, size_t iv_len,
                       const unsigned char *add, size_t add_len,
                       const unsigned char *input, unsigned char *output,
                       const unsigned char *tag, size_t tag_len );
 
-#if defined(MBEDTLS_SELF_TEST) && defined(MBEDTLS_AES_C)
+#if defined(JHD_TLS_SELF_TEST) && defined(JHD_TLS_AES_C)
 /**
  * \brief          The CCM checkup routine.
  *
  * \return         \c 0 on success.
  * \return         \c 1 on failure.
  */
-int mbedtls_ccm_self_test( int verbose );
-#endif /* MBEDTLS_SELF_TEST && MBEDTLS_AES_C */
+int jhd_tls_ccm_self_test( int verbose );
+#endif /* JHD_TLS_SELF_TEST && JHD_TLS_AES_C */
 
-#ifdef __cplusplus
-}
-#endif
 
-#endif /* MBEDTLS_CCM_H */
+
+#endif /* JHD_TLS_CCM_H */

@@ -23,48 +23,46 @@
  *
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
-#ifndef MBEDTLS_CIPHER_WRAP_H
-#define MBEDTLS_CIPHER_WRAP_H
+#ifndef JHD_TLS_CIPHER_WRAP_H
+#define JHD_TLS_CIPHER_WRAP_H
 
-#if !defined(MBEDTLS_CONFIG_FILE)
-#include "config.h"
+#if !defined(JHD_TLS_CONFIG_FILE)
+#include <tls/jhd_tls_config.h>
 #else
-#include MBEDTLS_CONFIG_FILE
+#include JHD_TLS_CONFIG_FILE
 #endif
 
-#include "cipher.h"
+#include <tls/jhd_tls_cipher.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 
 /**
  * Base cipher information. The non-mode specific functions and values.
  */
-struct mbedtls_cipher_base_t
+struct jhd_tls_cipher_base_t
 {
-    /** Base Cipher type (e.g. MBEDTLS_CIPHER_ID_AES) */
-    mbedtls_cipher_id_t cipher;
+    /** Base Cipher type (e.g. JHD_TLS_CIPHER_ID_AES) */
+    jhd_tls_cipher_id_t cipher;
 
     /** Encrypt using ECB */
-    int (*ecb_func)( void *ctx, mbedtls_operation_t mode,
+    int (*ecb_func)( void *ctx, jhd_tls_operation_t mode,
                      const unsigned char *input, unsigned char *output );
 
-#if defined(MBEDTLS_CIPHER_MODE_CBC)
+#if defined(JHD_TLS_CIPHER_MODE_CBC)
     /** Encrypt using CBC */
-    int (*cbc_func)( void *ctx, mbedtls_operation_t mode, size_t length,
+    int (*cbc_func)( void *ctx, jhd_tls_operation_t mode, size_t length,
                      unsigned char *iv, const unsigned char *input,
                      unsigned char *output );
 #endif
 
-#if defined(MBEDTLS_CIPHER_MODE_CFB)
+#if defined(JHD_TLS_CIPHER_MODE_CFB)
     /** Encrypt using CFB (Full length) */
-    int (*cfb_func)( void *ctx, mbedtls_operation_t mode, size_t length, size_t *iv_off,
+    int (*cfb_func)( void *ctx, jhd_tls_operation_t mode, size_t length, size_t *iv_off,
                      unsigned char *iv, const unsigned char *input,
                      unsigned char *output );
 #endif
 
-#if defined(MBEDTLS_CIPHER_MODE_OFB)
+#if defined(JHD_TLS_CIPHER_MODE_OFB)
     /** Encrypt using OFB (Full length) */
     int (*ofb_func)( void *ctx, size_t length, size_t *iv_off,
                      unsigned char *iv,
@@ -72,21 +70,21 @@ struct mbedtls_cipher_base_t
                      unsigned char *output );
 #endif
 
-#if defined(MBEDTLS_CIPHER_MODE_CTR)
+#if defined(JHD_TLS_CIPHER_MODE_CTR)
     /** Encrypt using CTR */
     int (*ctr_func)( void *ctx, size_t length, size_t *nc_off,
                      unsigned char *nonce_counter, unsigned char *stream_block,
                      const unsigned char *input, unsigned char *output );
 #endif
 
-#if defined(MBEDTLS_CIPHER_MODE_XTS)
+#if defined(JHD_TLS_CIPHER_MODE_XTS)
     /** Encrypt or decrypt using XTS. */
-    int (*xts_func)( void *ctx, mbedtls_operation_t mode, size_t length,
+    int (*xts_func)( void *ctx, jhd_tls_operation_t mode, size_t length,
                      const unsigned char data_unit[16],
                      const unsigned char *input, unsigned char *output );
 #endif
 
-#if defined(MBEDTLS_CIPHER_MODE_STREAM)
+#if defined(JHD_TLS_CIPHER_MODE_STREAM)
     /** Encrypt using STREAM */
     int (*stream_func)( void *ctx, size_t length,
                         const unsigned char *input, unsigned char *output );
@@ -110,16 +108,14 @@ struct mbedtls_cipher_base_t
 
 typedef struct
 {
-    mbedtls_cipher_type_t type;
-    const mbedtls_cipher_info_t *info;
-} mbedtls_cipher_definition_t;
+    jhd_tls_cipher_type_t type;
+    const jhd_tls_cipher_info_t *info;
+} jhd_tls_cipher_definition_t;
 
-extern const mbedtls_cipher_definition_t mbedtls_cipher_definitions[];
+extern const jhd_tls_cipher_definition_t jhd_tls_cipher_definitions[];
 
-extern int mbedtls_cipher_supported[];
+extern int jhd_tls_cipher_supported[];
 
-#ifdef __cplusplus
-}
-#endif
 
-#endif /* MBEDTLS_CIPHER_WRAP_H */
+
+#endif /* JHD_TLS_CIPHER_WRAP_H */
