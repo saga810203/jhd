@@ -30,10 +30,10 @@
 #include MBEDTLS_CONFIG_FILE
 #endif
 
-#include "ssl.h"
+#include <tls/jhd_tls_ssl.h>
 
 #if defined(MBEDTLS_ECP_C)
-#include "ecp.h"
+#include <tls/jhd_tls_ecp.h>
 #endif
 
 #if defined(MBEDTLS_DEBUG_C)

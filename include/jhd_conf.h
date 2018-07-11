@@ -25,7 +25,7 @@ typedef int (*jhd_config_handler_pt)(u_char* file_name,u_char* line,size_t line_
 
 
 typedef jhd_config_item_t* (*jhd_config_start_child_handler_pt)(jhd_config_item_t* parent,u_char *str_start,size_t len);
-typedef int (*jhd_config_set_value_handler_pt)(jhd_config_item_t *config,u_char *name_start,size_t name_len,u_char *value_start,size_t name_len);
+typedef int (*jhd_config_set_value_handler_pt)(jhd_config_item_t *config,u_char *name_start,size_t name_len,u_char *value_start,size_t value_len);
 typedef int (*jhd_config_over_handler_pt)(jhd_config_item_t *config);
 
 

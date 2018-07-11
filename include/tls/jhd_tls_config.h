@@ -1618,7 +1618,7 @@
  *
  * Uncomment to enable use of ZLIB
  */
-//#define JHD_TLS_ZLIB_SUPPORT
+#define JHD_TLS_ZLIB_SUPPORT
 /* \} name SECTION: mbed TLS feature support */
 
 /**
@@ -2993,5 +2993,7 @@
 #endif
 
 #include "jhd_tls_check_config.h"
+
+#define jhd_tls_platform_zeroize( buf, buf_len ) memset(buf,0,buf_len)
 
 #endif /* JHD_TLS_CONFIG_H */
