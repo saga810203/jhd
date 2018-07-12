@@ -26,23 +26,22 @@
  */
 
 #if !defined(JHD_TLS_CONFIG_FILE)
-#include <tls/jhd_tls_config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include JHD_TLS_CONFIG_FILE
 #endif
 
 #if defined(JHD_TLS_X509_CRT_WRITE_C)
 
-#include <tls/jhd_tls_x509_crt.h"
-#include <tls/jhd_tls_oid.h"
-#include <tls/jhd_tls_asn1write.h"
-#include <tls/jhd_tls_sha1.h"
-#include <tls/jhd_tls_platform_util.h"
+#include <tls/jhd_tls_x509_crt.h>
+#include <tls/jhd_tls_oid.h>
+#include <tls/jhd_tls_asn1write.h>
+#include <tls/jhd_tls_sha1.h>
 
 #include <string.h>
 
 #if defined(JHD_TLS_PEM_WRITE_C)
-#include <tls/jhd_tls_pem.h"
+#include <tls/jhd_tls_pem.h>
 #endif /* JHD_TLS_PEM_WRITE_C */
 
 void jhd_tls_x509write_crt_init( jhd_tls_x509write_cert *ctx )

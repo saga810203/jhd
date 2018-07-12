@@ -20,16 +20,16 @@
  */
 
 #if !defined(JHD_TLS_CONFIG_FILE)
-#include <tls/jhd_tls_config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include JHD_TLS_CONFIG_FILE
 #endif
 
 #if defined(JHD_TLS_X509_CREATE_C)
 
-#include <tls/jhd_tls_x509.h"
-#include <tls/jhd_tls_asn1write.h"
-#include <tls/jhd_tls_oid.h"
+#include <tls/jhd_tls_x509.h>
+#include <tls/jhd_tls_asn1write.h>
+#include <tls/jhd_tls_oid.h>
 
 #include <string.h>
 

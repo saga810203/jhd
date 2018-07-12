@@ -26,7 +26,7 @@
 #endif
 
 #if defined(JHD_TLS_PLATFORM_C)
-#include "tls/platform.h"
+#include <tls/jhd_tls_platform.h>
 #else
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,17 +60,17 @@ int main( void )
 #include <windows.h>
 #endif
 
-#include "tls/entropy.h"
-#include "tls/ctr_drbg.h"
-#include "tls/certs.h"
-#include "tls/x509.h"
-#include "tls/ssl.h"
-#include "tls/net_sockets.h"
-#include "tls/error.h"
-#include "tls/debug.h"
+#include <tls/jhd_tls_entropy.h>
+#include <tls/jhd_tls_ctr_drbg.h>
+#include <tls/jhd_tls_certs.h>
+#include <tls/jhd_tls_x509.h>
+#include <tls/jhd_tls_ssl.h>
+#include <tls/jhd_tls_net_sockets.h>
+#include <tls/jhd_tls_error.h>
+#include <tls/debug.h>
 
 #if defined(JHD_TLS_SSL_CACHE_C)
-#include "tls/ssl_cache.h"
+#include <tls/jhd_tls_ssl_cache.h>
 #endif
 
 #define HTTP_RESPONSE \

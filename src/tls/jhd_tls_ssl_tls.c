@@ -36,22 +36,20 @@
 #if defined(JHD_TLS_SSL_TLS_C)
 
 #if defined(JHD_TLS_PLATFORM_C)
-#include "tls/platform.h"
+#include <tls/jhd_tls_platform.h>
 #else
 #include <stdlib.h>
 #define jhd_tls_calloc    calloc
 #define jhd_tls_free      free
 #endif
 
-#include "tls/debug.h"
-#include "tls/ssl.h"
-#include "tls/ssl_internal.h"
-#include "tls/platform_util.h"
+#include <tls/jhd_tls_ssl.h>
+#include <tls/jhd_tls_ssl_internal.h>
 
 #include <string.h>
 
 #if defined(JHD_TLS_X509_CRT_PARSE_C)
-#include "tls/oid.h"
+#include <tls/jhd_tls_oid.h>
 #endif
 
 /* Length of the "epoch" field in the record header */

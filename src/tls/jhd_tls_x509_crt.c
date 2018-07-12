@@ -32,26 +32,25 @@
  */
 
 #if !defined(JHD_TLS_CONFIG_FILE)
-#include <tls/jhd_tls_config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include JHD_TLS_CONFIG_FILE
 #endif
 
 #if defined(JHD_TLS_X509_CRT_PARSE_C)
 
-#include <tls/jhd_tls_x509_crt.h"
-#include <tls/jhd_tls_oid.h"
-#include <tls/jhd_tls_platform_util.h"
+#include <tls/jhd_tls_x509_crt.h>
+#include <tls/jhd_tls_oid.h>
 
 #include <stdio.h>
 #include <string.h>
 
 #if defined(JHD_TLS_PEM_PARSE_C)
-#include <tls/jhd_tls_pem.h"
+#include <tls/jhd_tls_pem.h>
 #endif
 
 #if defined(JHD_TLS_PLATFORM_C)
-#include <tls/jhd_tls_platform.h"
+#include <tls/jhd_tls_platform.h>
 #else
 #include <stdlib.h>
 #define jhd_tls_free       free
@@ -59,15 +58,9 @@
 #define jhd_tls_snprintf   snprintf
 #endif
 
-#if defined(JHD_TLS_THREADING_C)
-#include <tls/jhd_tls_threading.h"
-#endif
 
-#if defined(_WIN32) && !defined(EFIX64) && !defined(EFI32)
-#include <windows.h>
-#else
+
 #include <time.h>
-#endif
 
 #if defined(JHD_TLS_FS_IO)
 #include <stdio.h>

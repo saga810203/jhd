@@ -25,23 +25,22 @@
  */
 
 #if !defined(JHD_TLS_CONFIG_FILE)
-#include <tls/jhd_tls_config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include JHD_TLS_CONFIG_FILE
 #endif
 
 #if defined(JHD_TLS_X509_CSR_WRITE_C)
 
-#include <tls/jhd_tls_x509_csr.h"
-#include <tls/jhd_tls_oid.h"
-#include <tls/jhd_tls_asn1write.h"
-#include <tls/jhd_tls_platform_util.h"
+#include <tls/jhd_tls_x509_csr.h>
+#include <tls/jhd_tls_oid.h>
+#include <tls/jhd_tls_asn1write.h>
 
 #include <string.h>
 #include <stdlib.h>
 
 #if defined(JHD_TLS_PEM_WRITE_C)
-#include <tls/jhd_tls_pem.h"
+#include <tls/jhd_tls_pem.h>
 #endif
 
 void jhd_tls_x509write_csr_init( jhd_tls_x509write_csr *ctx )

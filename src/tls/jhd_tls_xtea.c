@@ -20,21 +20,20 @@
  */
 
 #if !defined(JHD_TLS_CONFIG_FILE)
-#include <tls/jhd_tls_config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include JHD_TLS_CONFIG_FILE
 #endif
 
 #if defined(JHD_TLS_XTEA_C)
 
-#include <tls/jhd_tls_xtea.h"
-#include <tls/jhd_tls_platform_util.h"
+#include <tls/jhd_tls_xtea.h>
 
 #include <string.h>
 
 #if defined(JHD_TLS_SELF_TEST)
 #if defined(JHD_TLS_PLATFORM_C)
-#include <tls/jhd_tls_platform.h"
+#include <tls/jhd_tls_platform.h>
 #else
 #include <stdio.h>
 #define jhd_tls_printf printf

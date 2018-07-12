@@ -20,7 +20,7 @@
  */
 
 #if !defined(JHD_TLS_CONFIG_FILE)
-#include <tls/jhd_tls_config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include JHD_TLS_CONFIG_FILE
 #endif
@@ -28,15 +28,14 @@
 #if defined(JHD_TLS_SSL_TICKET_C)
 
 #if defined(JHD_TLS_PLATFORM_C)
-#include <tls/jhd_tls_platform.h"
+#include <tls/jhd_tls_platform.h>
 #else
 #include <stdlib.h>
 #define jhd_tls_calloc    calloc
 #define jhd_tls_free      free
 #endif
 
-#include <tls/jhd_tls_ssl_ticket.h"
-#include <tls/jhd_tls_platform_util.h"
+#include <tls/jhd_tls_ssl_ticket.h>
 
 #include <string.h>
 

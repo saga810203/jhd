@@ -20,13 +20,13 @@
  */
 
 #if !defined(JHD_TLS_CONFIG_FILE)
-#include <tls/jhd_tls_config.h"
+#include <tls/jhd_tls_config.h>
 #else
 #include JHD_TLS_CONFIG_FILE
 #endif
 
 #if defined(JHD_TLS_SELF_TEST) && defined(JHD_TLS_PLATFORM_C)
-#include <tls/jhd_tls_platform.h"
+#include <tls/jhd_tls_platform.h>
 #else
 #include <stdio.h>
 #define jhd_tls_printf     printf
@@ -34,7 +34,7 @@
 
 #if defined(JHD_TLS_TIMING_C)
 
-#include <tls/jhd_tls_timing.h"
+#include <tls/jhd_tls_timing.h>
 
 #if !defined(JHD_TLS_TIMING_ALT)
 
