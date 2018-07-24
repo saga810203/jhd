@@ -23,6 +23,7 @@ void jhd_update_time();
 extern u_char* 			jhd_cache_log_time;
 extern u_char* 			jhd_cache_http_date;
 extern uint64_t      	jhd_current_msec;
+extern time_t			jhd_cache_time;
 
 
 
