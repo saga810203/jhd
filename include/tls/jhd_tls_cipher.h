@@ -186,9 +186,9 @@ typedef enum {
 /** Supported cipher padding types. */
 typedef enum {
     JHD_TLS_PADDING_PKCS7 = 0,     /**< PKCS7 padding (default).        */
-    JHD_TLS_PADDING_ONE_AND_ZEROS, /**< ISO/IEC 7816-4 padding.         */
-    JHD_TLS_PADDING_ZEROS_AND_LEN, /**< ANSI X.923 padding.             */
-    JHD_TLS_PADDING_ZEROS,         /**< Zero padding (not reversible). */
+/*    JHD_TLS_PADDING_ONE_AND_ZEROS, *< ISO/IEC 7816-4 padding.
+    JHD_TLS_PADDING_ZEROS_AND_LEN, *< ANSI X.923 padding.
+    JHD_TLS_PADDING_ZEROS,         *< Zero padding (not reversible). */
     JHD_TLS_PADDING_NONE,          /**< Never pad (full blocks only).   */
 } jhd_tls_cipher_padding_t;
 
