@@ -67,7 +67,7 @@ void jhd_log_swtich_file();
 
 
 
-
+void _jhd_assert(u_char* file_name,u_char *func_name,int line,int assert_value,const u_char* msg);
 
 
 
@@ -81,6 +81,7 @@ void jhd_log_swtich_file();
 #define  log_alert(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_ALERT,fmt,__VA_ARGS__)
 #define  log_emerg(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_EMERG,fmt,__VA_ARGS__)
 #define  log_stderr(fmt,...)	_log_out(__FILE__,__FUNCTION__,__LINE__,JHD_LOG_STDERR,fmt,__VA_ARGS__)
+#define  log_assert(assert_value, msg) _jhd_assert(__FILE__,__FUNCTION__,__LINE__,assert_value,msg)
 
 
 

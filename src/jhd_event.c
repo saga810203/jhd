@@ -82,6 +82,18 @@ void jhd_process_events_and_timers() {
 	}
 	if (accepted) {
 		jhd_event_process_posted(&jhd_posted_accept_events);
+		//TODO: delete accept socket
+		for (i = 0; i < listening_count; ++i) {
+						c = &g_connections[i];
+						ee.events = 0;
+						ee.data.ptr = NULL;
+						if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, c->fd, &ee) == -1) {
+							//TODO LOG
+							//log_err("");
+						}
+		}
+
+
 		accepted = jhd_false;
 		__sync_fetch_and_set(g_event_lock.addr, (uint64_t) 0);
 	}
