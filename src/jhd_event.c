@@ -224,7 +224,7 @@ static int jhd_event_master_startup_listening(jhd_listener_t* listener) {
 		//TODO:LOG
 		return JHD_ERROR;
 	}
-	__sync_fetch_and_or(g_event_lock.addr, (uint64_t) 0);
+	__sync_fetch_and_and(g_event_lock.addr, (uint64_t) 0);
 	return JHD_OK;
 }
 
