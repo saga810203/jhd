@@ -1,10 +1,3 @@
-/*
- * jhd_config.h
- *
- *  Created on: May 11, 2018
- *      Author: root
- */
-
 #ifndef JHD_CONFIG_H_
 #define JHD_CONFIG_H_
 
@@ -53,27 +46,16 @@
 #include <sys/ioctl.h>
 #include <crypt.h>
 #include <sys/utsname.h>        /* uname() */
-
 #include <dlfcn.h>
-
 #include <semaphore.h>
-
 #include <sys/prctl.h>
-
 #include <sys/epoll.h>
-
 #include <sys/eventfd.h>
-
 #include <sys/syscall.h>
-
 #include <sys/sendfile.h>
-
 #include <linux/capability.h>
-#include <openssl/ssl.h>
 #include <inttypes.h>
 
-
-#include <jhd_error.h>
 
 
 #define JHD_HAVE_INET6 1
@@ -94,17 +76,26 @@
 
 #define jhd_abort       abort
 
-/* TODO: auto_conf: ngx_inline   inline __inline __inline__ */
+
+
+#ifndef JHD_INLINE
 #ifndef jhd_inline
-#define jhd_inline      inline
+#define jhd_inline inline
+#endif
 #endif
 
 #ifdef MAXHOSTNAMELEN
 #define JHD_MAXHOSTNAMELEN  MAXHOSTNAMELEN
 #else
 #define JHD_MAXHOSTNAMELEN  256
+#endif
 
+#ifndef NULL
 #define NULL ((void*)0)
+#endif
+
+
+
 
 #define JHD_OK			0
 #define JHD_ERROR		(-1)

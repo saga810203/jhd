@@ -30,7 +30,7 @@
 								<option id="gnu.c.compiler.option.include.paths.1564025747" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>
 								</option>
-								<option id="gnu.c.compiler.option.misc.other.2127275098" name="Other flags" superClass="gnu.c.compiler.option.misc.other" useByScannerDiscovery="false" value="-c -pipe  -O -W -Wall -Wpointer-arith -Wno-unused-parameter -Werror -g" valueType="string"/>
+								<option id="gnu.c.compiler.option.misc.other.2127275098" name="Other flags" superClass="gnu.c.compiler.option.misc.other" useByScannerDiscovery="false" value="-march=x86-64  -c -pipe  -O -W -Wall -Wpointer-arith -Wno-unused-parameter -Werror -g" valueType="string"/>
 								<option id="gnu.c.compiler.option.warnings.allwarn.116984551" name="All warnings (-Wall)" superClass="gnu.c.compiler.option.warnings.allwarn" useByScannerDiscovery="false" value="false" valueType="boolean"/>
 								<option id="gnu.c.compiler.option.dialect.std.144083789" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.default" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1512322005" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
@@ -91,7 +91,7 @@
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.exe.release.option.optimization.level.201526309" name="Optimization Level" superClass="gnu.c.compiler.exe.release.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.606895989" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.dialect.std.1193156223" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.default" valueType="enumerated"/>
-								<option id="gnu.c.compiler.option.misc.other.1298152757" name="Other flags" superClass="gnu.c.compiler.option.misc.other" useByScannerDiscovery="false" value="-c -pipe  -O -W -Wall -Wpointer-arith -Wno-unused-parameter -Werror -g" valueType="string"/>
+								<option id="gnu.c.compiler.option.misc.other.1298152757" name="Other flags" superClass="gnu.c.compiler.option.misc.other" useByScannerDiscovery="false" value="-march=x86-64 -c -pipe  -O -W -Wall -Wpointer-arith -Wno-unused-parameter -Werror -g" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1234596855" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.release.119015269" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.release">

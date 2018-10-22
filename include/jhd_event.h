@@ -1,16 +1,9 @@
-/*
- * jhd_event.h
- *
- *  Created on: 2018年5月19日
- *      Author: root
- */
-
 #ifndef JHD_EVENT_H_
 #define JHD_EVENT_H_
-
+#include <jhd_config.h>
 #include <jhd_queue.h>
 #include <jhd_rbtree.h>
-#include <jhd_connection.h>
+#include <jhd_time.h>
 
 #define jhd_event_timer_set(ev)  ((ev)->timer.key)
 
@@ -22,7 +15,7 @@ typedef void (*jhd_event_handler_pt)(jhd_event_t *ev);
 /**
  * return JHD_OK ,JHD_ERROR, JHD_AGAIN
  */
-typedef int (*jhd_listener_handler_pt)(jhd_listener_t *ev);
+typedef int (*jhd_listener_handler_pt)(jhd_listener_t *lis);
 
 struct jhd_event_s {
 	void *data;
@@ -46,7 +39,7 @@ struct jhd_listener_s {
 
 extern jhd_queue_t jhd_posted_accept_events;
 extern jhd_queue_t jhd_posted_events;
-extern int event_count;
+extern uint32_t event_count;
 extern struct epoll_event *event_list;
 
 extern jhd_rbtree_t jhd_event_timer_rbtree;
@@ -63,15 +56,14 @@ void jhd_event_expire_timers(void);
 
 void jhd_event_expire_all(void);
 
-jhd_bool  jhd_event_add_connection(jhd_connection_t  *c);
-jhd_bool  jhd_event_del_connection(jhd_connection_t *c);
+jhd_bool  jhd_event_add_connection(void  *c);
+jhd_bool  jhd_event_del_connection(void  *c);
 
 
 
-static jhd_inline void jhd_event_del_timer(jhd_event_t *ev) {
-	ngx_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
-	ev->timer.key = 0;
-}
+#define jhd_event_del_timer(EVENT) ngx_rbtree_delete(&jhd_event_timer_rbtree, &(EVENT)->timer); (EVENT)->timer.key = 0
+
+
 
 static jhd_inline void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 	uint64_t key;
@@ -83,7 +75,7 @@ static jhd_inline void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 		diff = (int64_t) (key - ev->timer.key);
 
 		if (diff > 999 || diff > (-999)) {
-			ngx_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
+			jhd_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
 		} else {
 			return;
 		}
@@ -92,19 +84,19 @@ static jhd_inline void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 	jhd_rbtree_insert(&jhd_event_timer_rbtree, &ev->timer);
 }
 
-#define jhd_post_event(ev, queue)  if (!(ev)->queue.next) { jhd_queue_insert_tail((queue), &(ev)->queue);}
+#define jhd_post_event(EVENT, QUEUE)  if (!((EVENT)->queue.next)) { jhd_queue_insert_tail(QUEUE, &(EVENT)->queue);}
 
-#define jhd_delete_posted_event(ev)   jhd_queue_remove(&(ev)->queue)
+#define jhd_delete_posted_event(EVENT)   jhd_queue_remove(&(EVENT)->queue)
 
-#define jhd_event_from_queue(q)    jhd_queue_data(q,jhd_event_t,queue);
+#define jhd_event_from_queue(QUEUE)    jhd_queue_data(QUEUE,jhd_event_t,queue);
 
-#define jhd_post_listener(lis,queue) ngx_queue_insert_tail(queue,&(lis)->queue);
+#define jhd_post_listener(LIS,QUEUE) ngx_queue_insert_tail(QUEUE,&(LIS)->queue);
 
-#define jhd_delete_listener(lis)  jhd_queue_only_remove(lis)
+#define jhd_delete_listener(LIS)  jhd_queue_only_remove(LIS)
 
-#define jhd_listener_from_queue(q)   jhd_queue_data(q,jhd_listener_t,queue);
+#define jhd_listener_from_queue(QUEUE)   jhd_queue_data(QUEUE,jhd_listener_t,queue);
 
-void jhd_inline jhd_event_process_posted(jhd_queue_t *posted) {
+jhd_inline void  jhd_event_process_posted(jhd_queue_t *posted) {
 	jhd_queue_t *q;
 	jhd_event_t *ev;
 

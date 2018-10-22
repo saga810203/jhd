@@ -101,7 +101,6 @@ static void jhd_signal_handler(int signo, siginfo_t *siginfo, void *ucontext) {
 			break;
 		}
 	}
-
 	switch (jhd_process) {
 
 		case JHD_PROCESS_MASTER:
@@ -154,16 +153,13 @@ jhd_bool jhd_init_signals() {
 	struct sigaction sa;
 
 	for (sig = signals; sig->signo != 0; sig++) {
-		ngx_memzero(&sa, sizeof(struct sigaction));
-
+		memset(&sa,0,sizeof(struct sigaction));
 		if (sig->handler) {
 			sa.sa_sigaction = sig->handler;
 			sa.sa_flags = SA_SIGINFO;
-
 		} else {
 			sa.sa_handler = SIG_IGN;
 		}
-
 		sigemptyset(&sa.sa_mask);
 		if (sigaction(sig->signo, &sa, NULL) == -1) {
 			return jhd_false;
@@ -220,54 +216,39 @@ int jhd_signal_process(char *sig_name) {
 
 jhd_bool jhd_daemon() {
 	int fd;
-
 	switch (fork()) {
 		case -1:
-			printf("fork() failed");
+			log_stderr("systemcall fork() ==  -1");
 			return jhd_false;
 		case 0:
 			break;
-
 		default:
 			exit(0);
 	}
-
 	jhd_pid = getpid();
-
 	if (setsid() == -1) {
-		//TODO:log
+		log_stderr("systemcall setsid() ==-1");
 		return jhd_false;
 	}
-
 	umask(0);
-
 	fd = open("/dev/null", O_RDWR);
 	if (fd == -1) {
-		//TODO:log
+		log_stderr("systemcall open(\"/dev/null\",...)  error");
 		return jhd_false;
 	}
-
 	if (dup2(fd, STDIN_FILENO) == -1) {
-
-		//  ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "dup2(STDIN) failed");
-
-		//TODO:log
+		log_stderr("systemcall  dup2(,STDIN_FILENO) == -1");
 		return jhd_false;;
 	}
 
 	if (dup2(fd, STDOUT_FILENO) == -1) {
-
-		//ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "dup2(STDOUT) failed");
-		//TODO:log
-		return jhd_false;
+		log_stderr("systemcall  dup2(,STDOUT_FILENO) == -1");
+		return jhd_false;;
 	}
 	if (dup2(fd, STDERR_FILENO) == -1) {
-
-		//ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "dup2(STDOUT) failed");
-		//TODO:log
-		return jhd_false;
+		log_stderr("systemcall  dup2(,STDERR_FILENO) == -1");
+		return jhd_false;;
 	}
-
 	return jhd_true;
 }
 
@@ -304,19 +285,14 @@ void jhd_delete_pidfile() {
 	unlink((const char *) jhd_pid_file);
 }
 void jhd_single_process() {
-	jhd_process = JHD_PROCESS_SINGLE;
 	if (jhd_run_worker_startup_listener() != JHD_OK) {
 		jhd_err = 1;
 		return;
 	}
-
 	while (!jhd_quit) {
 		jhd_process_events_and_timers();
-
 	}
-
 	jhd_run_worker_shutdown_listener();
-
 }
 
 jhd_bool jhd_worker_init(){

@@ -9,69 +9,65 @@
 #include <jhd_log.h>
 #include <jhd_conf.h>
 #include <jhd_connection.h>
-#include <jhd_ssl.h>
 #include <jhd_shm.h>
+
+jhd_bool jhd_signal_init(){
+
+
+
+}
 
 
 int main(int argc, char * const *argv) {
-
 	jhd_process = JHD_PROCESS_HELPER;
-
+	jhd_daemonized = 0;
 	jhd_log_init();
 	jhd_update_time();
-	if (!jhd_ssl_init()) {
-		return JHD_ERROR;
-	}
-	jhd_http_init();
 	jhd_core_init();
+	if (argc == 3 && strcmp(argv[1], "-s") == 0) {
+		return jhd_signal_process(argv[2]);
+	}
+
+	if(argc == 2 && strcmp(argv[1],"-daemon") == 0){
+		jhd_daemonized = 1;
+	}
+	//parse config file;
 	if (JHD_OK != jhd_conf_parse_default()) {
+		log_stderr("jhttpd server parse config file[%s] error!!!!!!",jhd_config_file);
 		jhd_err = 1;
 		goto finish;
 	}
-
-	if (argc == 2 && strcmp(argv[0], "-s")) {
-		return jhd_signal_process(argv[1]);
-	}
-
-
+    log_assert(jhd_process == JHD_PROCESS_SINGLE || jhd_process == JHD_PROCESS_MASTER);
 
 	if (jhd_run_master_startup_listener() != JHD_OK) {
 		jhd_err = 1;
-		//TODO:LOG
+		log_stderr("jhd start error");
 		goto finish;
 	}
-
 	jhd_err = 0;
-	if (!jhd_signal_init()) {
+	if (!jhd_init_signals()) {
+		jhd_err =1;
+		log_stderr("jhd_init_signals() error");
 		return 1;
 	}
 
 	if (jhd_daemonized) {
 		if (!jhd_daemon()) {
-			return 1;
+			jhd_err =1;
+		    goto finish;
 		}
 		jhd_log_swtich_file();
 	}
-	jhd_process = jhd_single ? JHD_PROCESS_SINGLE : JHD_PROCESS_MASTER;
 	if (!jhd_create_pidfile()) {
 		return 1;
 	}
-
-	jhd_quit = 0;
+	log_assert(jhd_process == JHD_PROCESS_SINGLE || jhd_process == JHD_PROCESS_MASTER);
 	if (jhd_process == JHD_PROCESS_SINGLE) {
 		jhd_single_process();
-
 	} else {
 		jhd_master_process();
 	}
-
 	finish: jhd_run_master_shutdown_listener();
-	jhd_http_free();
-	jhd_ssl_free();
-	jhd_free_shm();
-	jhd_delete_pidfile();
 	jhd_log_close();
-
 	return jhd_err;
-
 }

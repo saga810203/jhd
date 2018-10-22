@@ -1,15 +1,7 @@
-
-/*
- * jhd_queue.h
- *
- *  Created on: 2018年5月17日
- *      Author: root
- */
-
 #ifndef JHD_QUEUE_H_
 #define JHD_QUEUE_H_
 
-#include <jhd_config.h>
+//#include <jhd_config.h>
 
 typedef struct jhd_queue_s  jhd_queue_t;
 typedef struct jhd_queue_ptr_s jhd_queue_ptr_t;
@@ -25,50 +17,43 @@ struct jhd_queue_ptr_s{
 };
 
 
-#define jhd_queue_init(queue)                                                     \
-    (queue)->prev = queue;                                                            \
-    (queue)->next = queue
+#define jhd_queue_init(QUEUE)    (QUEUE)->prev = QUEUE; (QUEUE)->next = QUEUE
 
 
-#define jhd_queue_empty(queue)                                                    \
-    (queue == (queue)->prev)
+#define jhd_queue_empty(QUEUE)   (QUEUE == (QUEUE)->prev)
 
 
-#define jhd_queue_insert_head(queue, ele)                                           \
-    (ele)->next = (queue)->next;                                                    \
-    (ele)->next->prev = ele;                                                      \
-    (ele)->prev = queue;                                                            \
-    (queue)->next = ele
+#define jhd_queue_insert_head(QUEUE, ELE) (ELE)->next = (QUEUE)->next;(ELE)->next->prev = (ELE);(ELE)->prev = (QUEUE);(QUEUE)->next = (ELE)
 
 
 #define jhd_queue_insert_after   jhd_queue_insert_head
 
 
-#define jhd_queue_insert_tail(queue, ele)                                           \
-    (ele)->prev = (queue)->prev;                                                    \
-    (ele)->prev->next = (ele);                                                      \
-    (ele)->next = (queue);                                                            \
-    (queue)->prev = (ele)
+#define jhd_queue_insert_tail(QUEUE,ELE)                                           \
+    (ELE)->prev = (QUEUE)->prev;                                                    \
+    (ELE)->prev->next = (ELE);                                                      \
+    (ELE)->next = (QUEUE);                                                            \
+    (QUEUE)->prev = (ELE)
 
 
-#define jhd_queue_head(queue)                                                     \
-    (queue)->next
+#define jhd_queue_head(QUEUE)                                                     \
+    (QUEUE)->next
 
 
-#define jhd_queue_last(queue)                                                     \
-    (queue)->prev
+#define jhd_queue_last(QUEUE)                                                     \
+    (QUEUE)->prev
 
 
-#define jhd_queue_sentinel(queue)                                                 \
-    (queue)
+#define jhd_queue_sentinel(QUEUE)                                                 \
+    (QUEUE)
 
 
-#define jhd_queue_next(queue)                                                     \
-    (queue)->next
+#define jhd_queue_next(QUEUE)                                                     \
+    (QUEUE)->next
 
 
-#define jhd_queue_prev(queue)                                                     \
-    (queue)->prev
+#define jhd_queue_prev(QUEUE)                                                     \
+    (QUEUE)->prev
 
 
 

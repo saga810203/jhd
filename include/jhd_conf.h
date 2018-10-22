@@ -11,8 +11,7 @@
 
 #define  JHD_CONFIG_MAX_LINE_SIZE 8192
 
-#define  JHD_CONF_DEFAULT_CONFIG_FILE "/etc/jhttpd/jhttpd.conf"
-#define  JHD_CONF_CONFIG_FILE_ENV_NAME "JHTTPD_CONFIG_FILE"
+
 
 
 
@@ -49,7 +48,7 @@ int jhd_conf_parse(jhd_config_handler_pt handler);
 int jhd_conf_parse_default();
 
 
-
+extern u_char *jhd_config_file;
 
 
 #endif /* JHD_CONF_H_ */

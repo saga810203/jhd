@@ -4,7 +4,7 @@
  *  Created on: May 30, 2018
  *      Author: root
  */
-
+#include <jhd_log.h>
 #include <jhd_event.h>
 #include <jhd_shm.h>
 #include <jhd_connection.h>
@@ -20,6 +20,7 @@ jhd_rbtree_node_t jhd_event_timer_sentinel;
 static jhd_listener_t w_event_listener;
 
 static jhd_bool accepted;
+uint32_t event_count;
 
 void jhd_event_noop(jhd_event_t *ev){
 	log_notice("%s","exec function");
@@ -33,7 +34,7 @@ void jhd_process_events_and_timers() {
 	jhd_connection_t *c;
 	int events;
 
-	timer = ngx_event_find_timer();
+	timer = jhd_event_find_timer();
 	if (free_connection_count) {
 		if ((__sync_fetch_and_or(g_event_lock.addr, (uint64_t) 1)) == 0) {
 			accepted = jhd_true;
@@ -106,28 +107,25 @@ void jhd_process_events_and_timers() {
 	}
 }
 
-jhd_bool jhd_event_add_connection(jhd_connection_t *c) {
-
+jhd_bool jhd_event_add_connection(void *c) {
 	struct epoll_event ee;
-
+    log_assert(((jhd_connection_t*)c)->fd > 0);
 	ee.events = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLRDHUP;
-	ee.data.u32 = c->idx;
+	ee.data.u32 = ((jhd_connection_t*)c)->idx;
 
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, c->fd, &ee) == -1) {
-		//TODO:LOG
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, ((jhd_connection_t*)c)->fd, &ee) == -1) {
+		log_err("systemcall epoll_ctl(,EPOLL_CTL_ADD,,)== -1");
 		return jhd_false;
 	}
 	return jhd_true;
-
 }
-jhd_bool jhd_event_del_connection(jhd_connection_t *c) {
-	int op;
+jhd_bool jhd_event_del_connection(void *c) {
 	struct epoll_event ee;
 	ee.events = 0;
 	ee.data.ptr = NULL;
-
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, c->fd, &ee) == -1) {
-		//TODO:LOG
+	   log_assert(((jhd_connection_t*)c)->fd > 0);
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, ((jhd_connection_t*)c)->fd, &ee) == -1) {
+		log_err("systemcall epoll_ctl(,EPOLL_CTL_DEL,,)== -1");
 		return jhd_false;
 	}
 	return jhd_true;
@@ -174,7 +172,7 @@ void jhd_event_expire_timers(void) {
 
 		ev = (jhd_event_t *) ((char *) node - offsetof(jhd_event_t, timer));
 
-		ngx_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
+		jhd_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
 
 		ev->timer.key = 0;
 
@@ -190,23 +188,15 @@ void jhd_event_expire_timers(void) {
 void jhd_event_expire_all() {
 	jhd_event_t *ev;
 	jhd_rbtree_node_t *node, *root, *sentinel;
-	int64_t timer;
-
 	sentinel = jhd_event_timer_rbtree.sentinel;
-
 	for (;;) {
 		root = jhd_event_timer_rbtree.root;
-
 		if (root == sentinel) {
 			return;
 		}
-
 		node = jhd_rbtree_min(root, sentinel);
-
 		ev = (jhd_event_t *) ((char *) node - offsetof(jhd_event_t, timer));
-
-		ngx_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
-
+		jhd_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
 		ev->timer.key = 0;
 		ev->timedout = 1;
 		if (ev->queue.next) {
@@ -233,7 +223,7 @@ void jhd_event_init() {
 	w_event_listener.data = NULL;
 	w_event_listener.handler = jhd_event_master_startup_listening;
 
-	jhd_add_master_start_listener(&w_event_listener);
+	jhd_add_master_startup_listener(&w_event_listener);
 
 	jhd_queue_init(&jhd_posted_accept_events);
 	jhd_queue_init(&jhd_posted_events);

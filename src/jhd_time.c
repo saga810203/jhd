@@ -138,7 +138,7 @@ void jhd_update_time() {
 
 	jhd_current_msec = ts.tv_sec * 1000 + (ts.tv_nsec / 1000000);
 
-	log_debug("cpu time:%"PRIu64,jhd_current_msec);
+	log_debug("cpu time:%lu",jhd_current_msec);
 
 	if (jhd_cache_time == tv.tv_sec) {
 		return;
@@ -147,16 +147,10 @@ void jhd_update_time() {
 	jhd_gmtime(jhd_cache_time, &gmt);
 	sprintf(jhd_cache_http_date, "%s, %02d %s %4d %02d:%02d:%02d GMT", week[gmt.tm_wday], gmt.tm_mday, months[gmt.tm_mon - 1], gmt.tm_year, gmt.tm_hour, gmt.tm_min,
 	        gmt.tm_sec);
-
 	//TODO:  impl    cache_time + timezone_value :   +  8*60*60     beijing
 	localtime_r(&tv.tv_sec, &tm);
-
 	tm->tm_mon++;
 	tm->tm_year += 1900;
-
 	sprintf(jhd_cache_log_time, "%4d/%02d/%02d %02d:%02d:%02d", tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-
 	log_debug("log time:%s",jhd_cache_log_time);
-
-
 }

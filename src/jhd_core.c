@@ -10,16 +10,16 @@
 #include <jhd_event.h>
 #include <jhd_queue.h>
 #include <jhd_time.h>
+#include <jhd_connection.h>
 
-int jhd_core_master_startup_time;
-int jhd_core_worker_startup_time;
+uint32_t jhd_core_master_startup_time;
 
-volatile int jhd_process;
-int jhd_single;
-volatile sig_atomic_t jhd_quit;
-volatile sig_atomic_t jhd_reap;
-volatile sig_atomic_t jhd_restart;
-volatile sig_atomic_t jhd_daemonized;
+
+ sig_atomic_t jhd_process;
+ sig_atomic_t jhd_quit;
+ sig_atomic_t jhd_reap;
+ sig_atomic_t jhd_restart;
+ sig_atomic_t jhd_daemonized;
 
 u_char jhd_pid_file[1024];
 
@@ -30,20 +30,17 @@ u_char jhd_pid_file[1024];
  jhd_queue_t jhd_worker_shutdown_queue;
 
 void jhd_core_init() {
-	jhd_single = 0;
 	jhd_quit = 0;
 	jhd_restart = 0;
 	jhd_reap = 0;
-	jhd_daemonized = 1;
+	jhd_daemonized = 0;
 	jhd_queue_init(&jhd_master_startup_queue);
 	jhd_queue_init(&jhd_master_shutdown_queue);
 
 	jhd_queue_init(&jhd_worker_startup_queue);
 	jhd_queue_init(&jhd_worker_shutdown_queue);
 	jhd_core_master_startup_time = 1000 * 60;
-	jhd_core_worker_startup_time = 1000 * 60;
-	strcpy(jhd_pid_file , "/run/jhttpd.pid");
-
+	strcpy((char*)jhd_pid_file , "/run/jhttpd.pid");
 }
 
 
@@ -72,8 +69,7 @@ int jhd_run_master_startup_listener() {
 		}
 		if ((jhd_core_master_startup_time > 0)) {
 			jhd_update_time();
-			if ((jhd_current_msec - begin_time)
-					> jhd_core_master_startup_time) {
+			if ((jhd_current_msec - begin_time) > jhd_core_master_startup_time) {
 				return JHD_ERROR;
 			}
 		}
@@ -111,8 +107,6 @@ void jhd_run_master_shutdown_listener() {
 			jhd_queue_insert_tail(&jhd_master_startup_queue, q);
 		}
 	}
-
-	jhd_ssl_free();
 }
 void jhd_run_worker_shutdown_listener() {
 	jhd_listener_t *lis;
