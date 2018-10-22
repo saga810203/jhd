@@ -7,6 +7,7 @@
 
 
 #include <jhd_config.h>
+#include <jhd_log.h>
 #include <jhd_event.h>
 #include <jhd_core.h>
 #include <jhd_shm.h>
@@ -25,12 +26,10 @@ void jhd_request_shm(jhd_shm_t* shm){
 		jhd_queue_init(queue);
 	}
 
-    shm->addr = (u_char *) mmap(NULL, shm->size,PROT_READ|PROT_WRITE,
-	                                MAP_ANON|MAP_SHARED, -1, 0);
-
+    shm->addr = (u_char *) mmap(NULL, shm->size,PROT_READ|PROT_WRITE,MAP_ANON|MAP_SHARED, -1, 0);
 	    if (shm->addr == MAP_FAILED) {
-	       //TODO:LOG;
-	    	shm->addr = NULL;
+	       log_err("systemcall mmap(NULL,%lu,PROT_READ|PROT_WRITE,MAP_ANON|MAP_SHARED, -1, 0)== -1",shm->size);
+	       shm->addr = NULL;
 	    }else{
 	    	jhd_queue_insert_tail(queue,&shm->queue);
 	    }

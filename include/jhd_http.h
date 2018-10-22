@@ -31,7 +31,6 @@ struct jhd_http_service_s{
 		jhd_http_service_match_pt		match;
 		jhd_http_service_handler_pt		handler;
 		jhd_queue_t						in_server;
-
 };
 
 

@@ -7,8 +7,6 @@ jhd_bool jhd_http_server_add(jhd_http_server_t * srv) {
 	if(srv->listening_count == 0){
 		//TODO
 	}
-
-
 }
 
 jhd_bool jhd_http_server_listening_add(jhd_http_server_t *srv, u_char *addr_text, size_t len) {

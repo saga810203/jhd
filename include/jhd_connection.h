@@ -33,18 +33,18 @@ struct jhd_listening_s {
 	jhd_sockaddr_t sockaddr;
 	socklen_t socklen;
 	char* addr_text;
-	size_t addr_text_len;
-	int backlog;
-	int rcvbuf;
-	int sndbuf;
+	uint8_t addr_text_len;
+	uint16_t backlog;
+	uint16_t rcvbuf;
+	uint16_t sndbuf;
 	jhd_connection_t *connection;
 	void *ssl;
-	jhd_bool ipv6only;
-	jhd_bool bind;
+	unsigned ipv6only:1;
+	unsigned bind:1;
 	jhd_queue_t queue;
-	uint32_t http_server_count;
+	uint8_t http_server_count;
 	void **http_servers;
-	uint64_t accept_timeout;
+	size_t accept_timeout;
 	jhd_connection_start_pt connection_start;
 };
 
@@ -66,6 +66,9 @@ struct jhd_connection_s {
 
 void jhd_connection_init();
 
+
+
+
 void jhd_connection_empty_read(jhd_event_t *rv);
 void jhd_connection_empty_write(jhd_event_t *wv);
 void jhd_connection_empty_ssl_write(jhd_event_t *wv);
@@ -75,8 +78,7 @@ ssize_t jhd_connection_error_send(jhd_connection_t *c,u_char *buf,size_t size);
 
 
 
-jhd_connection_t* getconnection();
-void free_connection(jhd_connection_t *c);
+
 
 //jhd_bool  jhd_open_listening_sockets();
 

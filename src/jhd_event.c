@@ -10,7 +10,7 @@
 #include <jhd_connection.h>
 
 static jhd_shm_t g_event_lock;
-
+static volatile jhd_atomic_flag*  _accept_flag;
 jhd_queue_t jhd_posted_accept_events;
 jhd_queue_t jhd_posted_events;
 int epoll_fd;
@@ -19,7 +19,6 @@ jhd_rbtree_node_t jhd_event_timer_sentinel;
 
 static jhd_listener_t w_event_listener;
 
-static jhd_bool accepted;
 uint32_t event_count;
 
 void jhd_event_noop(jhd_event_t *ev){
@@ -33,10 +32,12 @@ void jhd_process_events_and_timers() {
 	struct epoll_event ee;
 	jhd_connection_t *c;
 	int events;
+	jhd_bool accepted;
 
+	accepted = jhd_false;
 	timer = jhd_event_find_timer();
 	if (free_connection_count) {
-		if ((__sync_fetch_and_or(g_event_lock.addr, (uint64_t) 1)) == 0) {
+		if (jhd_atomic_test_set_flag(_accept_flag)) {
 			accepted = jhd_true;
 			for (i = 0; i < listening_count; ++i) {
 				c = &g_connections[i];
@@ -96,7 +97,7 @@ void jhd_process_events_and_timers() {
 
 
 		accepted = jhd_false;
-		__sync_fetch_and_set(g_event_lock.addr, (uint64_t) 0);
+		jhd_atomic_clear_flag(_accept_flag);
 	}
 	jhd_event_process_posted(&jhd_posted_events);
 
@@ -211,10 +212,10 @@ static int jhd_event_master_startup_listening(jhd_listener_t* listener) {
 	g_event_lock.size = sizeof(uint64_t);
 	jhd_request_shm(&g_event_lock);
 	if (!g_event_lock.addr) {
-		//TODO:LOG
 		return JHD_ERROR;
 	}
-	__sync_fetch_and_and(g_event_lock.addr, (uint64_t) 0);
+	_accept_flag = (jhd_atomic_flag*)g_event_lock.addr;
+	jhd_atomic_clear_flag(_accept_flag);
 	return JHD_OK;
 }
 
@@ -228,6 +229,5 @@ void jhd_event_init() {
 	jhd_queue_init(&jhd_posted_accept_events);
 	jhd_queue_init(&jhd_posted_events);
 	jhd_rbtree_init(&jhd_event_timer_rbtree, &jhd_event_timer_sentinel, jhd_rbtree_insert_timer_value);
-	accepted = jhd_false;
 }
 

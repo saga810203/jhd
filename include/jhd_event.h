@@ -35,6 +35,31 @@ struct jhd_listener_s {
 	jhd_listener_handler_pt handler;
 };
 
+typedef struct {
+	volatile char value;
+} jhd_atomic_flag;
+
+
+jhd_inline char jhd_atomic_test_set_flag(volatile jhd_atomic_flag *ptr)
+{
+	register char _res = 1;
+	__asm__ __volatile__(
+		"	lock			\n"
+		"	xchgb	%0,%1	\n"
+:		"+q"(_res), "+m"(ptr->value)
+:
+:		"memory");
+	return _res == 0;
+}
+jhd_inline void jhd_atomic_clear_flag(volatile jhd_atomic_flag *ptr)
+{
+	__asm__ __volatile__("" ::: "memory");
+	ptr->value = 0;
+}
+
+
+
+
 /* =========================begin extern var======================== */
 
 extern jhd_queue_t jhd_posted_accept_events;

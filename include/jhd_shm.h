@@ -21,7 +21,6 @@ struct jhd_shm_s {
     u_char      *addr;
     size_t       size;
     jhd_queue_t queue;
-
 } ;
 
 
