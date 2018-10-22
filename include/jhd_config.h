@@ -109,12 +109,13 @@
 #define JHD_OK			0
 #define JHD_ERROR		(-1)
 #define JHD_AGAIN		(-2)
+#define JHD_UNSUPPORTED    (-3)
+#define JHD_UNEXPECTED	(-4)
+
+#define JHD_RETURN_STR(X) ((X)==JHD_OK?"JHD_OK":((X)==JHD_AGAIN?"JHD_AGAIN":((X)==JHD_ERROR?"JHD_ERROR":"OTHER_RETURN_VALUE")))
 
 
 
-//#define  JHD_DONE       -4
-//#define  NGX_DECLINED   -5
-//#define  NGX_ABORT      -6
 
 #define jhd_bool int
 #define jhd_true 1

@@ -1,4 +1,4 @@
-
+#include <jhd_config.h>
 #include <jhd_base64.h>
 
 #include <stdint.h>
@@ -34,14 +34,14 @@ int jhd_base64_encode(unsigned char *dst, size_t dlen, size_t *olen, const unsig
 
 	if (n > ( BASE64_SIZE_T_MAX - 1) / 4) {
 		*olen = BASE64_SIZE_T_MAX;
-		return ( JHD_ERR_BASE64_BUFFER_TOO_SMALL);
+		return JHD_ERROR;
 	}
 
 	n *= 4;
 
 	if ((dlen < n + 1) || ( NULL == dst)) {
 		*olen = n + 1;
-		return ( JHD_ERR_BASE64_BUFFER_TOO_SMALL);
+		return JHD_ERROR;
 	}
 
 	n = (slen / 3) * 3;
@@ -107,23 +107,23 @@ int jhd_base64_decode(unsigned char *dst, size_t dlen, size_t *olen, const unsig
 
 		/* Space inside a line is an error */
 		if (x != 0)
-			return ( JHD_ERR_BASE64_INVALID_CHARACTER);
+			return JHD_UNEXPECTED;
 
 		if (src[i] == '=' && ++j > 2)
-			return ( JHD_ERR_BASE64_INVALID_CHARACTER);
+			return JHD_UNEXPECTED;
 
 		if (src[i] > 127 || base64_dec_map[src[i]] == 127)
-			return ( JHD_ERR_BASE64_INVALID_CHARACTER);
+			return JHD_UNEXPECTED;
 
 		if (base64_dec_map[src[i]] < 64 && j != 0)
-			return ( JHD_ERR_BASE64_INVALID_CHARACTER);
+			return JHD_UNEXPECTED;
 
 		n++;
 	}
 
 	if (n == 0) {
 		*olen = 0;
-		return (0);
+		return JHD_OK;
 	}
 
 	/* The following expression is to calculate the following formula without
@@ -135,7 +135,7 @@ int jhd_base64_decode(unsigned char *dst, size_t dlen, size_t *olen, const unsig
 
 	if (dst == NULL || dlen < n) {
 		*olen = n;
-		return ( JHD_ERR_BASE64_BUFFER_TOO_SMALL);
+		return JHD_ERROR;
 	}
 
 	for (j = 3, n = x = 0, p = dst; i > 0; i--, src++) {
@@ -157,7 +157,6 @@ int jhd_base64_decode(unsigned char *dst, size_t dlen, size_t *olen, const unsig
 	}
 
 	*olen = p - dst;
-
-	return (0);
+	return JHD_OK;
 }
 
