@@ -134,25 +134,7 @@ extern const jhd_tls_x509_crt_profile jhd_tls_x509_crt_profile_suiteb;
  */
 int jhd_tls_x509_crt_parse_der(jhd_tls_x509_crt *chain, const unsigned char *buf, size_t buflen,void *event);
 
-
-
-/**
- * \brief          Parse one or more certificates and add them
- *                 to the chained list. Parses permissively. If some
- *                 certificates can be parsed, the result is the number
- *                 of failed certificates it encountered. If none complete
- *                 correctly, the first error is returned.
- *
- * \param cert    points to the cert
- * \param buf      buffer holding the certificate data in PEM or DER format
- * \param buflen   size of the buffer
- *                 (including the terminating null byte for PEM data)
- *
- * \return         0 if all certificates parsed successfully, a positive number
- *                 if partly successful or a specific X509 or PEM error code
- */
-int jhd_tls_x509_crt_parse(jhd_tls_x509_crt *cert, const unsigned char *buf, size_t buflen);
-jhd_tls_x509_crt * jhd_tls_x509_crt_parse_by_malloc(const unsigned char *buf, size_t buflen);
+jhd_tls_x509_crt * jhd_tls_x509_crt_parse(const unsigned char *buf, size_t buflen);
 
 
 

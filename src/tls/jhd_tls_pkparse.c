@@ -403,19 +403,12 @@ int jhd_tls_pk_parse_subpubkey_by_malloc(unsigned char **p, const unsigned char 
 
 	if (*p + len != end)
 		return JHD_ERROR;
-
-	if((pk->pk_ctx != NULL) &&(pk->pk_info->ctx_size != pk_info->ctx_size)){
-			free(pk->pk_ctx);
-			pk->pk_ctx = NULL;
+	pk->pk_ctx = malloc(pk_info->ctx_size);
+	if(pk->pk_ctx == NULL ){
+		log_stderr("systemcall malloc error");
+		return JHD_ERROR;
 	}
-	if(pk->pk_ctx == NULL){
-		pk->pk_ctx = malloc(pk_info->ctx_size);
-		if(pk->pk_ctx == NULL ){
-			log_stderr("systemcall malloc error");
-			return JHD_ERROR;
-		}
-		pk->pk_info = pk_info;
-	}
+	pk->pk_info = pk_info;
 	pk_info->pk_ctx_init_func(pk->pk_ctx);
 	if (pk_info == (&jhd_tls_rsa_info)) {
 		rsa_ctx = pk->pk_ctx;
@@ -424,10 +417,9 @@ int jhd_tls_pk_parse_subpubkey_by_malloc(unsigned char **p, const unsigned char 
 		ecdsa_ctx = pk->pk_ctx;
 		ret = pk_use_ecparams( &alg_params, &ecdsa_ctx->grp );
 		if( ret == 0 )
-			ret = pk_get_ecdsapubkey( p, end, ecdsa_ctx );
+		ret = pk_get_ecdsapubkey( p, end, ecdsa_ctx );
 	}
-	if (ret == 0 && *p != end)
-		ret = JHD_ERROR;
+	if (ret == 0 && *p != end)	ret = JHD_ERROR;
 	if (ret != JHD_OK){
 		free(pk->pk_ctx);
 		pk->pk_ctx = NULL;
@@ -512,23 +504,6 @@ static int pk_parse_key_pkcs1_der(jhd_tls_pk_context *pk, const unsigned char *k
 	jhd_tls_rsa_context rsa;
 	p = (unsigned char *) key;
 	end = p + keylen;
-
-	/*
-	 * This function parses the RSAPrivateKey (PKCS#1)
-	 *
-	 *  RSAPrivateKey ::= SEQUENCE {
-	 *      version           Version,
-	 *      modulus           INTEGER,  -- n
-	 *      publicExponent    INTEGER,  -- e
-	 *      privateExponent   INTEGER,  -- d
-	 *      prime1            INTEGER,  -- p
-	 *      prime2            INTEGER,  -- q
-	 *      exponent1         INTEGER,  -- d mod (p-1)
-	 *      exponent2         INTEGER,  -- d mod (q-1)
-	 *      coefficient       INTEGER,  -- (inverse of q) mod p
-	 *      otherPrimeInfos   OtherPrimeInfos OPTIONAL
-	 *  }
-	 */
 	if (JHD_OK != jhd_tls_asn1_get_tag(&p, end, &len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SEQUENCE)) {
 		return JHD_ERROR;
 	}
@@ -536,7 +511,6 @@ static int pk_parse_key_pkcs1_der(jhd_tls_pk_context *pk, const unsigned char *k
 	if (JHD_OK != jhd_tls_asn1_get_int(&p, end, &version)){
 		return JHD_ERROR;
 	}
-
 	if (version != 0) {
 		return JHD_ERROR;
 	}
@@ -591,14 +565,14 @@ static int pk_parse_key_pkcs1_der(jhd_tls_pk_context *pk, const unsigned char *k
 		ret = JHD_ERROR;
 	}
 	rsa.md_info= NULL;
-	pk->pk_ctx = jhd_tls_alloc(jhd_tls_rsa_info.ctx_size);
+	pk->pk_ctx = malloc(jhd_tls_rsa_info.ctx_size);
 	if(pk->pk_ctx == NULL){
 		ret = JHD_ERROR;
 	}else{
 		jhd_tls_rsa_info.pk_ctx_init_func(pk->pk_ctx);
 		ret = jhd_tls_rsa_serialize(&rsa,(jhd_tls_serializa_rsa_context*)pk->pk_ctx);
 		if(ret != JHD_OK){
-			jhd_tls_free_with_size(pk->pk_ctx,jhd_tls_rsa_info.ctx_size);
+			free(pk->pk_ctx);
 			pk->pk_ctx = NULL;
 		}
 	}
@@ -734,23 +708,6 @@ static int pk_parse_key_pkcs8_unencrypted_der(jhd_tls_pk_context *pk, const unsi
 	unsigned char *end = p + keylen;
 	const jhd_tls_pk_info_t *pk_info;
 	jhd_tls_ecdsa_context *ecdsa_ctx;
-
-	/*
-	 * This function parses the PrivateKeyInfo object (PKCS#8 v1.2 = RFC 5208)
-	 *
-	 *    PrivateKeyInfo ::= SEQUENCE {
-	 *      version                   Version,
-	 *      privateKeyAlgorithm       PrivateKeyAlgorithmIdentifier,
-	 *      privateKey                PrivateKey,
-	 *      attributes           [0]  IMPLICIT Attributes OPTIONAL }
-	 *
-	 *    Version ::= INTEGER
-	 *    PrivateKeyAlgorithmIdentifier ::= AlgorithmIdentifier
-	 *    PrivateKey ::= OCTET STRING
-	 *
-	 *  The PrivateKey OCTET STRING is a SEC1 ECPrivateKey
-	 */
-
 	if (JHD_OK !=(ret = jhd_tls_asn1_get_tag(&p, end, &len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SEQUENCE))) {
 		return ret;
 	}
@@ -775,7 +732,7 @@ static int pk_parse_key_pkcs8_unencrypted_der(jhd_tls_pk_context *pk, const unsi
 		}
 	} else{
         pk_info = &jhd_tls_ecdsa_info;
-        ecdsa_ctx = jhd_tls_alloc(sizeof(jhd_tls_ecdsa_context));
+        ecdsa_ctx = malloc(sizeof(jhd_tls_ecdsa_context));
         if(ecdsa_ctx == NULL){
         	return JHD_ERROR;
         }
@@ -787,9 +744,8 @@ static int pk_parse_key_pkcs8_unencrypted_der(jhd_tls_pk_context *pk, const unsi
 				return JHD_OK;
 			}
 		 }
-		 jhd_tls_free_with_size(ecdsa_ctx,sizeof(jhd_tls_ecdsa_context));
+		 free(ecdsa_ctx);
 		 return JHD_ERROR;
-
 	}
 	return JHD_OK;
 }
@@ -797,28 +753,26 @@ static int pk_parse_key_pkcs8_unencrypted_der(jhd_tls_pk_context *pk, const unsi
 /*
  * Parse a private key
  */
-int jhd_tls_pk_parse_key(jhd_tls_pk_context *pk, const unsigned char *key, size_t keylen, const unsigned char *pwd, size_t pwdlen) {
+int jhd_tls_pk_parse_key(jhd_tls_pk_context *pk, const unsigned char *key, size_t keylen) {
 	int ret;
 	size_t len,tmp_buf_len = 8192;
 	unsigned char tmp_buf[8192];
 	jhd_tls_platform_zeroize(tmp_buf,8192);
-	/* Avoid calling jhd_tls_pem_read_buffer() on non-null-terminated string */
 	if (keylen == 0 || key[keylen - 1] != '\0'){
 		return JHD_ERROR;
 	}
 	else{
 		tmp_buf_len = 8192;
-		ret = jhd_tls_pem_read_buffer_2(tmp_buf,&tmp_buf_len, "-----BEGIN RSA PRIVATE KEY-----","-----END RSA PRIVATE KEY-----", key, pwd, pwdlen, &len);
+		ret = jhd_tls_pem_read_buffer(tmp_buf,&tmp_buf_len, "-----BEGIN RSA PRIVATE KEY-----","-----END RSA PRIVATE KEY-----", key,&len);
 	}
 	if (ret == 0) {
 		return  pk_parse_key_pkcs1_der(pk, tmp_buf, len);
 	}
-
 	tmp_buf_len = 8192;
-	ret = jhd_tls_pem_read_buffer_2(tmp_buf,&tmp_buf_len, "-----BEGIN EC PRIVATE KEY-----","-----END EC PRIVATE KEY-----",key, pwd, pwdlen, &len );
+	ret = jhd_tls_pem_read_buffer(tmp_buf,&tmp_buf_len, "-----BEGIN EC PRIVATE KEY-----","-----END EC PRIVATE KEY-----",key,&len );
 	if(ret == JHD_OK){
 		jhd_tls_ecdsa_context *ecdsa_ctx;
-		ecdsa_ctx = jhd_tls_alloc(sizeof(jhd_tls_ecdsa_context));
+		ecdsa_ctx = malloc(sizeof(jhd_tls_ecdsa_context));
 		if(ecdsa_ctx == NULL){
 			return JHD_ERROR;
 		}
@@ -829,25 +783,14 @@ int jhd_tls_pk_parse_key(jhd_tls_pk_context *pk, const unsigned char *key, size_
 			pk->pk_info = &jhd_tls_ecdsa_info;
 			return JHD_OK;
 		}
-		jhd_tls_free_with_size(ecdsa_ctx,sizeof(jhd_tls_ecdsa_context));
+		free(ecdsa_ctx);
 		return JHD_ERROR;
 	}
 	tmp_buf_len = 8192;
-	ret = jhd_tls_pem_read_buffer_2(tmp_buf,&tmp_buf_len,"-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", key, NULL, 0, &len);
+	ret = jhd_tls_pem_read_buffer(tmp_buf,&tmp_buf_len,"-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", key,&len);
 	if (ret == JHD_OK) {
 		return pk_parse_key_pkcs8_unencrypted_der(pk, tmp_buf, tmp_buf_len);
 	}
-//	tmp_buf_len = 8192;
-//	ret = jhd_tls_pem_read_buffer_2(tmp_buf,&tmp_buf_len,"-----BEGIN ENCRYPTED PRIVATE KEY-----", "-----END ENCRYPTED PRIVATE KEY-----", key, NULL, 0, &len);
-//    if (ret == JHD_OK) {
-//		return pk_parse_key_pkcs8_encrypted_der(pk, tmp_buf,tmp_buf_len, pwd, pwdlen);
-//	}
-//    ret = pk_parse_key_pkcs8_encrypted_der(pk, key, keylen, pwd, pwdlen);
-//    if(ret == JHD_OK){
-//    	return JHD_OK;
-//    }else if(ret == JHD_ERROR){
-//    	return JHD_ERROR;
-//    }
 	if( pk_parse_key_pkcs8_unencrypted_der(pk, key, keylen) == JHD_OK){
 		return JHD_OK;
 	}

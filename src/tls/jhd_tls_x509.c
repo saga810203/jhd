@@ -149,44 +149,30 @@ int jhd_tls_x509_get_name( unsigned char **p,const unsigned char *end,jhd_tls_x5
     	next->val.p = NULL;
     	next = next->next;
     }while(next != NULL);
-
-
-    /* don't use recursion, we'd risk stack overflow if not optimized */
     while( 1 )
     {
-        /*
-         * parse SET
-         */
-        if( ( ret = jhd_tls_asn1_get_tag( p, end, &set_len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SET ) ) != 0 )
+       if( ( ret = jhd_tls_asn1_get_tag( p, end, &set_len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SET ) ) != 0 )
             return JHD_ERROR;
         end_set  = *p + set_len;
-
         while( 1 )
         {
             if( ( ret = x509_get_attr_type_value( p, end_set, cur ) ) != 0 )
                 return( ret );
-
             if( *p == end_set )
                 break;
-
             /* Mark this item as being no the only one in a set */
             cur->next_merged = 1;
             if(cur->next == NULL){
             	cur->next = jhd_tls_alloc(sizeof( jhd_tls_x509_name ) );
             	 if( cur->next == NULL ){
-            	         return JHD_AGAIN;
+            	     return JHD_AGAIN;
             	 }
             	 jhd_tls_platform_zeroize(cur->next,sizeof( jhd_tls_x509_name));
             }
             cur = cur->next;
         }
-
-        /*
-         * continue until end of SEQUENCE is reached
-         */
 		if (*p == end)
 			return (0);
-
 		if (cur->next == NULL) {
 			cur->next = jhd_tls_alloc(sizeof(jhd_tls_x509_name));
 			if (cur->next == NULL) {
@@ -195,9 +181,7 @@ int jhd_tls_x509_get_name( unsigned char **p,const unsigned char *end,jhd_tls_x5
 			jhd_tls_platform_zeroize(cur->next, sizeof(jhd_tls_x509_name));
 		}
 		cur = cur->next;
-
     }
-
 }
 
 
@@ -205,47 +189,55 @@ int jhd_tls_x509_get_name_by_malloc( unsigned char **p, const unsigned char *end
 	 int ret;
 	    size_t set_len;
 	    const unsigned char *end_set;
-	    jhd_tls_x509_name *next=cur;
-	    do{
-	    	next->next_merged = 0;
-	    	next->oid.p= NULL;
-	    	next->val.p = NULL;
-	    	next = next->next;
-	    }while(next != NULL);
-	    while( 1 )
-	    {
-	        if( ( ret = jhd_tls_asn1_get_tag( p, end, &set_len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SET ) ) != 0 )
-	            return JHD_ERROR;
+	    jhd_tls_x509_name *prev,*next=cur;
+	    memset(next,0,sizeof(jhd_tls_x509_name));
+	    for(;;){
+	        if( ( ret = jhd_tls_asn1_get_tag( p, end, &set_len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SET ) ) != 0 ){
+	            goto func_err;
+	        }
 	        end_set  = *p + set_len;
-	        while( 1 )
-	        {
-	            if( ( ret = x509_get_attr_type_value( p, end_set, cur ) ) != 0 )
-	                return( ret );
-	            if( *p == end_set )
+	        for(;;){
+	            if( x509_get_attr_type_value( p, end_set, next)!= 0 ){
+	               goto func_err;
+	            }
+	            if( *p == end_set ){
 	                break;
-	            cur->next_merged = 1;
-	            if(cur->next == NULL){
-	            	cur->next = malloc(sizeof( jhd_tls_x509_name ) );
-	            	if(cur->next == NULL){
+	            }
+	            next->next_merged = 1;
+	            next->next = malloc(sizeof( jhd_tls_x509_name ) );
+	            if(next->next == NULL){
 	            	log_stderr("systemcall malloc error");
 	            	return JHD_ERROR;
-	            	}
-	            	jhd_tls_platform_zeroize(cur->next,sizeof( jhd_tls_x509_name));
 	            }
-	            cur = cur->next;
+	            jhd_tls_platform_zeroize(next->next,sizeof( jhd_tls_x509_name));
+	            next = next->next;
 	        }
 			if (*p == end)
 				return (0);
-			if (cur->next == NULL) {
-				cur->next = malloc(sizeof(jhd_tls_x509_name));
-			 	if(cur->next == NULL){
-				     log_stderr("systemcall malloc error");
-				     return JHD_ERROR;
-				}
-				jhd_tls_platform_zeroize(cur->next, sizeof(jhd_tls_x509_name));
+			next->next = malloc(sizeof(jhd_tls_x509_name));
+			if(cur->next == NULL){
+				 log_stderr("systemcall malloc error");
+				 return JHD_ERROR;
 			}
-			cur = cur->next;
+			jhd_tls_platform_zeroize(next->next, sizeof(jhd_tls_x509_name));
+			next = next->next;
 	    }
+	    return JHD_OK;
+	func_err:
+		prev = cur->next;
+		if(prev){
+			cur->next = NULL;
+			for(;;){
+				next = prev->next;
+				free(prev);
+				if(next){
+					prev = next;
+				}else{
+					break;
+				}
+			}
+		}
+		return JHD_ERROR;
 }
 
 

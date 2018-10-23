@@ -69,9 +69,7 @@ void jhd_tls_pem_init( jhd_tls_pem_context *ctx );
 
 
 
-int jhd_tls_pem_read_buffer_2(unsigned char *buf, size_t *buf_len, const char *header, const char *footer,const unsigned char *data,
-                     const unsigned char *pwd,
-                     size_t pwdlen, size_t *use_len);
+int jhd_tls_pem_read_buffer(unsigned char *buf, size_t *buf_len, const char *header, const char *footer,const unsigned char *data,size_t *use_len);
 
 
 /**

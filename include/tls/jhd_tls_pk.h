@@ -313,7 +313,7 @@ const char * jhd_tls_pk_get_name(const jhd_tls_pk_context *ctx);
  *
  * \return          0 if successful, or a specific PK or PEM error code
  */
-int jhd_tls_pk_parse_key(jhd_tls_pk_context *ctx, const unsigned char *key, size_t keylen, const unsigned char *pwd, size_t pwdlen);
+int jhd_tls_pk_parse_key(jhd_tls_pk_context *ctx, const unsigned char *key, size_t keylen);
 
 /** \ingroup pk_module */
 /**

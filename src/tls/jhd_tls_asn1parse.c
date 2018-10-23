@@ -68,7 +68,7 @@ int jhd_tls_asn1_get_len( unsigned char **p,const unsigned char *end,size_t *len
 
 int jhd_tls_asn1_get_tag( unsigned char **p,const unsigned char *end,size_t *len, int tag )
 {
-    if( ( end - *p ) < 1 ){
+    if( end <= *p ){
        return JHD_ERROR;
     }
     if( **p != tag )
@@ -246,8 +246,7 @@ int jhd_tls_asn1_get_sequence_of_by_malloc( unsigned char **p,const unsigned cha
 			buf->p = *p;
 			*p += buf->len;
 			/* Allocate and assign next pointer */
-			if( *p < end )
-			{
+			if( *p < end ){
 				next->next = (jhd_tls_asn1_sequence*)malloc(sizeof( jhd_tls_asn1_sequence ) );
 				if( next->next == NULL ){
 					log_stderr("systemcall malloc error");
@@ -262,12 +261,6 @@ int jhd_tls_asn1_get_sequence_of_by_malloc( unsigned char **p,const unsigned cha
     }
     if( *p != end )
             return JHD_ERROR;
-    next = next->next;
-    while(next != NULL){
-    	prev = next;
-    	next = next->next;
-    	jhd_tls_free_with_size(prev,sizeof(jhd_tls_asn1_sequence));
-    }
     return JHD_OK;
 }
 
