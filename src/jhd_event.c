@@ -19,7 +19,8 @@ jhd_rbtree_node_t jhd_event_timer_sentinel;
 
 static jhd_listener_t w_event_listener;
 
-uint32_t event_count;
+int event_count;
+int *event_accept_fds;
 
 void jhd_event_noop(jhd_event_t *ev){
 	log_notice("%s","exec function");
@@ -28,36 +29,32 @@ void jhd_event_noop(jhd_event_t *ev){
 void jhd_process_events_and_timers() {
 	uint64_t timer, delta;
 	uint32_t revents;
-	int i;
+	int i,accept_len;
 	struct epoll_event ee;
 	jhd_connection_t *c;
 	int events;
 	jhd_bool accepted;
 
 	accepted = jhd_false;
+	//jhd_update_time();
 	timer = jhd_event_find_timer();
 	if (free_connection_count) {
 		if (jhd_atomic_test_set_flag(_accept_flag)) {
 			accepted = jhd_true;
+			accept_len = 0;
 			for (i = 0; i < listening_count; ++i) {
 				c = &g_connections[i];
 				ee.events = EPOLLIN | EPOLLRDHUP;
 				ee.data.u32 = c->idx;
-				if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, c->fd, &ee) == -1) {
-
-					while (i > 0) {
-						c = &g_connections[--i];
-						ee.events = 0;
-						ee.data.ptr = NULL;
-						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, c->fd, &ee);
-					}
-					accepted = jhd_false;
+				if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, c->fd, &ee) ==0) {
+					event_accept_fds[accept_len++]  =c->fd;
+				}else{
+					log_err("systemcall epoll_ctl  add listening connection error,fd = %d errno=%d",c->fd,errno);
 				}
 			}
 		}
 	}
 	delta = jhd_current_msec;
-
 	events = epoll_wait(epoll_fd, event_list, (int) event_count, timer);
 	if (events > 0) {
 		for (i = 0; i < events; ++i) {
@@ -84,19 +81,13 @@ void jhd_process_events_and_timers() {
 	}
 	if (accepted) {
 		jhd_event_process_posted(&jhd_posted_accept_events);
-		//TODO: delete accept socket
-		for (i = 0; i < listening_count; ++i) {
-						c = &g_connections[i];
-						ee.events = 0;
-						ee.data.ptr = NULL;
-						if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, c->fd, &ee) == -1) {
-							//TODO LOG
-							//log_err("");
-						}
+		for(i = 0; i < accept_len;++i){
+			ee.events = 0;
+			ee.data.ptr = NULL;
+			if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL,event_accept_fds[i], &ee)!= 0) {
+				log_err("systemcall epoll_ctl del listening connection error");
+			}
 		}
-
-
-		accepted = jhd_false;
 		jhd_atomic_clear_flag(_accept_flag);
 	}
 	jhd_event_process_posted(&jhd_posted_events);
@@ -106,6 +97,7 @@ void jhd_process_events_and_timers() {
 	if (delta > timer) {
 		jhd_event_expire_timers();
 	}
+
 }
 
 jhd_bool jhd_event_add_connection(void *c) {

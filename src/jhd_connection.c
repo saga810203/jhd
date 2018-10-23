@@ -11,6 +11,7 @@
 #include <jhd_connection.h>
 #include <jhd_http.h>
 #include <jhd_log.h>
+#include <jhd_string.h>
 
 jhd_connection_t *g_connections;
 
@@ -27,6 +28,341 @@ int listening_count;
 int connection_count;
 int free_connection_count;
 
+in_addr_t jhd_inet_addr(u_char *text, size_t len)
+{
+    u_char      *p, c;
+    in_addr_t    addr;
+    uint64_t   octet, n;
+
+    addr = 0;
+    octet = 0;
+    n = 0;
+    for (p = text; p < text + len; +p) {
+        c = *p;
+        if (c >= '0' && c <= '9') {
+            octet = octet * 10 + (c - '0');
+            if (octet > 255) {
+                return INADDR_NONE;
+            }
+            continue;
+        }
+        if (c == '.') {
+            addr = (addr << 8) + octet;
+            octet = 0;
+            n++;
+            continue;
+        }
+        return INADDR_NONE;
+    }
+    if (n == 3) {
+        addr = (addr << 8) + octet;
+        return htonl(addr);
+    }
+    return INADDR_NONE;
+}
+int jhd_inet6_addr(u_char *text, size_t len, u_char *addr)
+{
+    u_char      c, *zero, *digit, *s, *d;
+    size_t      len4;
+    uint64_t  	n, nibbles, word;
+    if (len == 0) {
+        return JHD_ERROR;
+    }
+    zero = NULL;
+    digit = NULL;
+    len4 = 0;
+    nibbles = 0;
+    word = 0;
+    n = 8;
+
+    if (text[0] == ':') {
+        text++;
+        len--;
+    }
+
+    for (/* void */; len; len--) {
+        c = *text++;
+        if (c == ':') {
+            if (nibbles) {
+                digit = text;
+                len4 = len;
+                *addr++ = (u_char) (word >> 8);
+                *addr++ = (u_char) (word & 0xff);
+                if (--n) {
+                    nibbles = 0;
+                    word = 0;
+                    continue;
+                }
+            } else {
+                if (zero == NULL) {
+                    digit = text;
+                    len4 = len;
+                    zero = addr;
+                    continue;
+                }
+            }
+            return JHD_ERROR;
+        }
+        if (c == '.' && nibbles) {
+            if (n < 2 || digit == NULL) {
+                return JHD_ERROR;
+            }
+
+            word = ngx_inet_addr(digit, len4 - 1);
+            if (word == INADDR_NONE) {
+                return JHD_ERROR;
+            }
+            word = ntohl(word);
+            *addr++ = (u_char) ((word >> 24) & 0xff);
+            *addr++ = (u_char) ((word >> 16) & 0xff);
+            n--;
+            break;
+        }
+        if (++nibbles > 4) {
+            return JHD_ERROR;
+        }
+        if (c >= '0' && c <= '9') {
+            word = word * 16 + (c - '0');
+            continue;
+        }
+        c |= 0x20;
+        if (c >= 'a' && c <= 'f') {
+            word = word * 16 + (c - 'a') + 10;
+            continue;
+        }
+        return JHD_ERROR;
+    }
+
+    if (nibbles == 0 && zero == NULL) {
+        return JHD_ERROR;
+    }
+    *addr++ = (u_char) (word >> 8);
+    *addr++ = (u_char) (word & 0xff);
+    if (--n) {
+        if (zero) {
+            n *= 2;
+            s = addr - 1;
+            d = s + n;
+            while (s >= zero) {
+                *d-- = *s--;
+            }
+            memset(zero,0, n);
+            return JHD_OK;
+        }
+
+    } else {
+        if (zero == NULL) {
+            return JHD_OK;
+        }
+    }
+    return JHD_ERROR;
+}
+
+int jhd_connection_parse_sockaddr(jhd_sockaddr_t* addr,socklen_t *socklen,u_char *addr_text,size_t addr_text_len,uint16_t default_port){
+    in_addr_t             inaddr;
+    struct in6_addr       inaddr6;
+    struct sockaddr_in6  *sin6;
+    u_char *p,*last;
+    size_t plen ;
+    last = addr_text  + addr_text_len;
+    p = NULL;
+    plen = 0;
+	if (addr_text_len && addr_text[0] == '[') {
+		p = jhd_strlchr(addr_text, last, ']');
+		if(p == NULL ){
+			return JHD_ERROR;
+		}
+		++p;
+		if(*p != ':'){
+			return JHD_ERROR;
+		}
+		++p;
+		plen = last - p;
+		if(plen == 0){
+			return JHD_ERROR;
+		}
+		++addr_text;
+		addr_text_len -= plen;
+		addr_text_len -=3;
+	} else {
+		p = ngx_strlchr(addr_text, last, ':');
+		if (p != NULL) {
+			++p;
+			plen  = last - p;
+			if(plen == 0){
+				return JHD_ERROR;
+			}
+			--addr_text_len;
+			addr_text -= plen;
+		}
+	}
+    if(plen){
+        if(JHD_OK != jhd_chars_to_u16(p,plen,&default_port)){
+        	return JHD_ERROR;
+        }
+    }
+    memset(&inaddr6,0, sizeof(struct in6_addr));
+    inaddr = jhd_inet_addr(addr_text, addr_text_len);
+    if (inaddr != INADDR_NONE) {
+    	addr->sockaddr.sa_family = AF_INET;
+        *socklen = sizeof(struct sockaddr_in);
+        addr->sockaddr_in.sin_addr.s_addr = inaddr;
+        addr->sockaddr_in.sin_port = htons(default_port);
+    } else if (ngx_inet6_addr(addr_text, addr_text_len, inaddr6.s6_addr) == JHD_OK) {
+    	addr->sockaddr.sa_family = AF_INET6;
+        *socklen = sizeof(struct sockaddr_in6);
+        sin6 =&addr->sockaddr_in6;
+        memcpy(sin6->sin6_addr.s6_addr, inaddr6.s6_addr, 16);
+        sin6->sin6_port = htons(default_port);
+    } else {
+        return JHD_ERROR;
+    }
+    return JHD_OK;
+}
+
+
+int jhd_connection_resolve_host(jhd_sockaddr_t* addr,socklen_t *socklen,u_char *addr_text,size_t addr_text_len,uint16_t default_port)
+{
+    u_char *p,*last;
+    size_t plen,i ;
+    char host[256];
+    struct addrinfo       hints, *res, *rp;
+    log_assert(addr_text_len >255);
+    plen = 0;
+    last = addr_text + addr_text_len;
+    p = ngx_strlchr(addr_text, last, ':');
+	if (p != NULL) {
+		++p;
+		plen  = last - p;
+		if(plen == 0){
+			return JHD_ERROR;
+		}
+		--addr_text_len;
+		addr_text -= plen;
+
+
+	}
+	memcpy(host,addr_text,addr_text_len);
+	host[addr_text_len] = 0 ;
+	if(plen){
+		if(JHD_OK != jhd_chars_to_u16(p,plen,&default_port)){
+			return JHD_ERROR;
+		}
+	}
+    memset(&hints,0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+#ifdef AI_ADDRCONFIG
+    hints.ai_flags = AI_ADDRCONFIG;
+#endif
+
+    if (getaddrinfo(host,NULL, &hints, &res) != 0) {
+       return JHD_ERROR;
+    }
+    /* AF_INET addresses first */
+    for (rp = res; rp != NULL; rp = rp->ai_next) {
+        if (rp->ai_family != AF_INET) {
+            continue;
+        }
+        memcpy(&addr->sockaddr_in,rp->ai_addr, rp->ai_addrlen);
+        addr->sockaddr_in.sin_port = htons(default_port);
+        *socklen = rp->ai_addrlen;
+        freeaddrinfo(res);
+        return JHD_OK;
+    }
+    for (rp = res; rp != NULL; rp = rp->ai_next) {
+
+        if (rp->ai_family != AF_INET6) {
+            continue;
+        }
+        memcpy(&addr->sockaddr_in6, rp->ai_addr, rp->ai_addrlen);
+        addr->sockaddr_in6.sin6_port =  htons(default_port);
+        *socklen = rp->ai_addrlen;
+        freeaddrinfo(res);
+        return JHD_OK;
+    }
+    freeaddrinfo(res);
+    return JHD_ERROR;
+}
+
+
+size_t jhd_connection_to_ip_str(jhd_sockaddr_t* addr,socklen_t socklen,, u_char *text, size_t len)
+{
+    u_char               *p,c;
+
+    size_t                n;
+    struct sockaddr_in   *sin;
+    struct sockaddr_in6  *sin6;
+
+    log_assert(AF_INET ==addr->sockaddr.sa_family || AF_INET6 == addr->sockaddr.sa_family);
+    log_assert(len >=45);
+
+    if(AF_INET ==addr->sockaddr.sa_family) {
+        sin = &addr->sockaddr_in;
+        p = (u_char *) &sin->sin_addr;
+        return snprintf(text, len, "%d.%d.%d.%d:%u",(int)(p[0]),(int)(p[1]),(int)(p[2]), (int)(p[3]), ntohs(sin->sin_port));
+    }
+    sin6 =&addr->sockaddr_in6;
+    n = 0;
+    c = sin6->sin6_addr.s6_addr[0];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] =jhd_g_hex_char[c & 0xF];
+    c = sin6->sin6_addr.s6_addr[1];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] = jhd_g_hex_char[c & 0xF];
+    text[n++] =':';
+    c = sin6->sin6_addr.s6_addr[2];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] =jhd_g_hex_char[c & 0xF];
+    c = sin6->sin6_addr.s6_addr[3];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] = jhd_g_hex_char[c & 0xF];
+    text[n++] =':';
+    c = sin6->sin6_addr.s6_addr[4];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] =jhd_g_hex_char[c & 0xF];
+    c = sin6->sin6_addr.s6_addr[5];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] = jhd_g_hex_char[c & 0xF];
+    text[n++] =':';
+    c = sin6->sin6_addr.s6_addr[6];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] =jhd_g_hex_char[c & 0xF];
+    c = sin6->sin6_addr.s6_addr[7];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] = jhd_g_hex_char[c & 0xF];
+    text[n++] =':';
+    c = sin6->sin6_addr.s6_addr[8];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] =jhd_g_hex_char[c & 0xF];
+    c = sin6->sin6_addr.s6_addr[9];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] = jhd_g_hex_char[c & 0xF];
+    text[n++] =':';
+    c = sin6->sin6_addr.s6_addr[10];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] =jhd_g_hex_char[c & 0xF];
+    c = sin6->sin6_addr.s6_addr[11];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] = jhd_g_hex_char[c & 0xF];
+    text[n++] =':';
+    c = sin6->sin6_addr.s6_addr[12];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] =jhd_g_hex_char[c & 0xF];
+    c = sin6->sin6_addr.s6_addr[13];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] = jhd_g_hex_char[c & 0xF];
+    text[n++] =':';
+    c = sin6->sin6_addr.s6_addr[14];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] =jhd_g_hex_char[c & 0xF];
+    c = sin6->sin6_addr.s6_addr[15];
+    text[n++] = jhd_g_hex_char[c >> 4];
+    text[n++] = jhd_g_hex_char[c & 0xF];
+    text[n++] =':';
+    return 45+ snprintf(&text[n],len -45,"%d",(int)ntohs(sin6->sin6_port));
+}
+
 jhd_listening_t* jhd_listening_get(char *addr_text, size_t len) {
 	jhd_queue_t *head, *q;
 	jhd_listening_t *lis;
@@ -40,6 +376,33 @@ jhd_listening_t* jhd_listening_get(char *addr_text, size_t len) {
 	}
 	return NULL;
 }
+
+int jhd_listening_set_addr_text(jhd_listening_t *lis,u_char *addr_text,size_t addr_text_len,uint16_t default_port){
+	if(lis->addr_text !=NULL){
+		free(lis->addr_text);
+		lis->addr_text = NULL;
+	}
+	if(jhd_connection_parse_sockaddr(&lis->sockaddr,&lis->socklen,default_port)!=JHD_OK){
+		log_stderr("parse listening addr[%s] error",addr_text);
+		return JHD_ERROR;
+	}
+	lis->addr_text = malloc(addr_text_len+1);
+	if(lis->addr_text == NULL){
+		log_stderr("systemcall malloc error");
+		return JHD_ERROR;
+	}
+	memcpy(lis->addr_text,addr_text,addr_text_len);
+	lis->addr_text[addr_text_len] = 0;
+	return JHD_OK;
+}
+
+int jhd_listening_set_tls_cert_and_key(jhd_listening_t *lis,u_char *cert_text,size_t cert_text_len,u_char *key_text,size_t key_text_len){
+
+
+}
+
+
+
 
 jhd_bool jhd_listening_add_server(jhd_listening_t *lis, void *http_server) {
 	void **old_http_servers;
@@ -66,6 +429,7 @@ void jhd_listening_free(jhd_listening_t* lis, jhd_bool close_socket) {
 	}
 	if (lis->addr_text) {
 		free(lis->addr_text);
+		lis->addr_text = NULL;
 	}
 	if (lis->http_servers) {
 		free(lis->http_servers);
@@ -212,7 +576,10 @@ static int jhd_connection_master_close_listening(jhd_listener_t* listener) {
 static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 	jhd_queue_t *head, *q;
 	jhd_listening_t *lis;
+	event_accept_fds =NULL;
 	head = &g_listening_queue;
+	listening_count= 0 ;
+	event_accept_fds = NULL;
 	for (q = jhd_queue_head(head); q != jhd_queue_sentinel(head); q = jhd_queue_next(q)) {
 		++listening_count;
 		lis = jhd_queue_data(q, jhd_listening_t, queue);
@@ -223,8 +590,14 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 
 	if (listening_count == 0) {
 		log_stderr("listening count is %d", (int )0);
-		return JHD_ERROR;
+		goto failed;
 	}
+	event_accept_fds = malloc(sizeof(int)*listening_count);
+	if(event_accept_fds== NULL){
+		log_stderr("malloc   event_accept_fds error");
+
+	}
+
 	if (jhd_bind_listening_sockets() != JHD_OK) {
 		goto failed;
 	}
@@ -244,6 +617,9 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 		lis = jhd_queue_data(q, jhd_listening_t, queue);
 		jhd_queue_only_remove(q);
 		jhd_listening_free(lis, jhd_true);
+	}
+	if(event_accept_fds != NULL){
+		free(event_accept_fds);
 	}
 	return JHD_ERROR;
 
@@ -306,16 +682,14 @@ static int jhd_connection_worker_startup_listening(jhd_listener_t* listener) {
 	jhd_queue_t *head, *q;
 	jhd_listening_t *lis;
 	jhd_connection_t *connection;
-	if (connection_count == 0) {
-		connection_count = 1024;
+	if (connection_count < 100) {
+		connection_count = 100;
 	}
-	connection_count &= 0x7FFFFFFF;
 
 
-	if (event_count == 0) {
-		event_count = connection_count;
+	if (event_count < 100) {
+		event_count = 100;
 	}
-	event_count &= 0x7FFFFFFF;;
 
 	epoll_fd = epoll_create(event_count);
 	if (epoll_fd == -1) {
@@ -490,6 +864,11 @@ ssize_t jhd_connection_send(jhd_connection_t *c, u_char *buf, size_t size) {
 	log_notice("<==jhd_connection_send(...) = %ld",ret);
 	return ret;
 }
+
+
+
+
+
 
 void jhd_connection_accept_use_accept(jhd_event_t *ev) {
 	jhd_listening_t* lis;

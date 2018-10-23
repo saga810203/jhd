@@ -11,6 +11,7 @@
 #include <jhd_queue.h>
 #include <jhd_time.h>
 #include <jhd_connection.h>
+#include <jhd_tls_config.h>
 
 uint32_t jhd_core_master_startup_time;
 
@@ -40,6 +41,7 @@ void jhd_core_init() {
 	jhd_queue_init(&jhd_worker_startup_queue);
 	jhd_queue_init(&jhd_worker_shutdown_queue);
 	jhd_core_master_startup_time = 1000 * 60;
+	jhd_tls_config_init();
 	strcpy((char*)jhd_pid_file , "/run/jhttpd.pid");
 }
 

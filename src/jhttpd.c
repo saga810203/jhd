@@ -11,12 +11,6 @@
 #include <jhd_connection.h>
 #include <jhd_shm.h>
 
-jhd_bool jhd_signal_init(){
-
-
-
-}
-
 
 int main(int argc, char * const *argv) {
 	jhd_process = JHD_PROCESS_HELPER;

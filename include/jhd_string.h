@@ -33,10 +33,13 @@ jhd_string* jhd_string_dup(jhd_string* str);
 
 jhd_bool  jhd_string_equals(jhd_string* str1,jhd_string* str2);
 
-int64_t jhd_chars_to_uint64(u_char *chars, size_t n);
-int64_t jhd_hex_to_uint64(u_char *chars,size_t n);
+int jhd_chars_to_u64(u_char *chars, size_t n,uint64_t *result);
+int jhd_hex_to_u64(u_char *chars,size_t n,uint64_t *result);
+int jhd_chars_to_u16(u_char *chars, size_t n,uint16_t *result);
+int jhd_hex_to_u16(u_char *chars,size_t n,uint16_t *result);
 
-u_char* jhd_uint16_to_hex(u_char* last,u_int16_t val);
+
+u_char* jhd_u64_to_hex(u_char* last,uint64_t val);
 
 
 jhd_bool jhd_static_string_equals(u_char* str1,size_t str1_len,u_char* str2,size_t str2_len);

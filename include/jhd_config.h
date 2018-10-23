@@ -63,8 +63,7 @@
 
 #define JHD_LISTEN_BACKLOG  511
 
-#define jhd_random               random
-
+#define JHD_TLS_CONFIG_MAX  64
 
 
 #ifndef JHD_ALIGNMENT
@@ -113,8 +112,25 @@
 #define jhd_false 0
 
 extern  int jhd_err;
+extern  u_char jhd_g_hex_char[];
 
 typedef void (*jhd_obj_free_pt)(void*);
+
+
+
+static jhd_inline u_char * jhd_strlchr(u_char *p, u_char *last, u_char c)
+{
+    while (p < last) {
+        if (*p == c) {
+            return p;
+        }
+        p++;
+    }
+    return NULL;
+}
+
+
+
 
 
 #endif

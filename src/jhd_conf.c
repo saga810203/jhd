@@ -182,7 +182,34 @@ int jhd_conf_default_config_handler(u_char* file_name,u_char* line,size_t line_l
 	return JHD_OK;
 }
 
+static void gen_test_config(){
+	jhd_listening_t *lis;
+	lis = malloc(sizeof(jhd_listening_t));
+	memset(lis,0,sizeof(jhd_listening_t));
+	lis->accept_timeout = 1000*60;
+	jhd_listening_set_addr_text(lis,"127.0.0.1",443);
+
+	lis->backlog = 511;
+	lis->rcvbuf = 8192;
+	lis->sndbuf = 8192;
+
+
+
+}
+
 int jhd_conf_parse_default(){
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	return JHD_OK;

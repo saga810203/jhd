@@ -6,6 +6,7 @@
  */
 #include<jhd_string.h>
 #include<jhd_pool.h>
+#include <jhd_log.h>
 
 u_char JHD_STRING_HEX[] = "0123456789ABCDEF";
 
@@ -97,62 +98,118 @@ jhd_bool jhd_string_equals(jhd_string* str1, jhd_string* str2) {
 		return jhd_true;
 	}
 }
-int64_t jhd_chars_to_uint64(u_char *chars, size_t n) {
-	int64_t value, cutoff, cutlim;
 
-	if (n == 0) {
-		return JHD_ERROR;
-	}
 
-	cutoff = JHD_MAX_INT64_T_VALUE / 10;
-	cutlim = JHD_MAX_INT64_T_VALUE % 10;
+int jhd_chars_to_u64(u_char *chars, size_t n,uint64_t *result){
+	uint64_t value, cutoff, cutlim;
+	log_assert(n>0);
+	log_assert(chars  != NULL);
+	log_assert(result != NULL);
+
+	cutoff = 0xFFFFFFFFFFFFFFFFULL / 10;
+	cutlim = 0xFFFFFFFFFFFFFFFFULL % 10;
 
 	for (value = 0; n--; ++chars) {
 		if (*chars < '0' || *chars > '9') {
 			return JHD_ERROR;
 		}
 
-		if (value >= cutoff && (value > cutoff || *chars - '0' > cutlim)) {
+		if (value > cutoff || ((value == cutoff) && (*chars - '0' > cutlim))) {
 			return JHD_ERROR;
 		}
-
 		value = value * 10 + (*chars - '0');
 	}
-	return value;
+	*result = value;
+	return JHD_OK;
 }
-int64_t jhd_hex_to_uint64(u_char *chars,size_t n){
-	u_char c, ch;
-	int64_t value, cutoff;
-
-	if (n == 0) {
+int jhd_hex_to_u64(u_char *chars,size_t n,uint64_t *result){
+	u_char ch;
+	int i;
+	uint64_t value, cutoff;
+	log_assert(n>0);
+	log_assert(chars  != NULL);
+	log_assert(result != NULL);
+	if(n>16){
 		return JHD_ERROR;
 	}
+	value = 0;
+	i = n;
+	while(i >0){
+		ch = *chars;
+		--i;
+		if (ch >= '0' && ch <= '9') {
+			value <<=4;
+			value += (ch - '0');
+			continue;
+		}
+		ch |= 0x20;
+		if (ch >= 'a' && ch <= 'f') {
+			value <<=4;
+			value += (ch - 'a' + 10);
+			continue;
+		}
+		return JHD_ERROR;
+	}
+	*result = value;
+	return JHD_OK;
+}
 
-	cutoff = JHD_MAX_INT64_T_VALUE / 16;
+int jhd_chars_to_u16(u_char *chars, size_t n,uint16_t *result){
+	uint16_t value, cutoff, cutlim;
+	log_assert(n>0);
+	log_assert(chars  != NULL);
+	log_assert(result != NULL);
+
+	cutoff = 0xFFFF / 10;
+	cutlim = 0xFFFF % 10;
 
 	for (value = 0; n--; ++chars) {
-		if (value > cutoff) {
+		if (*chars < '0' || *chars > '9') {
 			return JHD_ERROR;
 		}
 
+		if (value > cutoff || ((value == cutoff) && (*chars - '0' > cutlim))) {
+			return JHD_ERROR;
+		}
+		value = value * 10 + (*chars - '0');
+	}
+	*result = value;
+	return JHD_OK;
+}
+int jhd_hex_to_u16(u_char *chars,size_t n,uint16_t *result){
+	u_char ch;
+	int i;
+	uint16_t value;
+	log_assert(n>0);
+	log_assert(chars  != NULL);
+	log_assert(result != NULL);
+	if(n>4){
+		return JHD_ERROR;
+	}
+	value = 0;
+	i = n;
+	while(i >0){
 		ch = *chars;
-
+		--i;
 		if (ch >= '0' && ch <= '9') {
-			value = value * 16 + (ch - '0');
+			value <<=4;
+			value += (ch - '0');
 			continue;
 		}
-
-		c = (u_char) (ch | 0x20);
-
-		if (c >= 'a' && c <= 'f') {
-			value = value * 16 + (c - 'a' + 10);
+		ch |= 0x20;
+		if (ch >= 'a' && ch <= 'f') {
+			value <<=4;
+			value += (ch - 'a' + 10);
 			continue;
 		}
 		return JHD_ERROR;
 	}
-	return value;
+	*result = value;
+	return JHD_OK;
 }
-u_char* jhd_uint16_to_hex(u_char* last,uint32_t val){
+
+
+u_char* jhd_u64_to_hex(u_char* last,uint64_t val){
 	do {
 		--last;
 		*last = JHD_STRING_HEX[(uint32_t)(val & 0xf)];

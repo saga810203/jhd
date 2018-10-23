@@ -15,6 +15,7 @@
 #include <jhd_string.h>
 
 
+
 #define JHD_PROCESS_MASTER     0
 #define JHD_PROCESS_SINGLE     1
 #define JHD_PROCESS_WORKER     2

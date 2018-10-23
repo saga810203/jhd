@@ -64,7 +64,8 @@ jhd_inline void jhd_atomic_clear_flag(volatile jhd_atomic_flag *ptr)
 
 extern jhd_queue_t jhd_posted_accept_events;
 extern jhd_queue_t jhd_posted_events;
-extern uint32_t event_count;
+extern int event_count;
+extern int *event_accept_fds;
 extern struct epoll_event *event_list;
 
 extern jhd_rbtree_t jhd_event_timer_rbtree;
