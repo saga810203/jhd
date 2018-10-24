@@ -446,7 +446,7 @@ int jhd_tls_pk_write_key_pem(jhd_tls_pk_context *ctx, unsigned char *buf, size_t
  */
 int jhd_tls_pk_parse_subpubkey(unsigned char **p, const unsigned char *end, jhd_tls_pk_context *pk,void *event);
 
-int jhd_tls_pk_parse_subpubkey_by_malloc(unsigned char **p, const unsigned char *end, jhd_tls_pk_context *pk);
+int jhd_tls_pk_parse_subpubkey_by_master(unsigned char **p, const unsigned char *end, jhd_tls_pk_context *pk);
 
 
 

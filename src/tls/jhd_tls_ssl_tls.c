@@ -1892,7 +1892,10 @@ int jhd_tls_ssl_config_defaults(jhd_tls_ssl_config *conf, jhd_tls_bool server_si
  * Free jhd_tls_ssl_config
  */
 void jhd_tls_ssl_config_free(jhd_tls_ssl_config *conf) {
+	if(conf->key_cert)
+
 	ssl_key_cert_free(conf->key_cert);
+
 	conf->key_cert = NULL;
 }
 

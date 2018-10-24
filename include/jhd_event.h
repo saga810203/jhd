@@ -86,15 +86,9 @@ jhd_bool  jhd_event_add_connection(void  *c);
 jhd_bool  jhd_event_del_connection(void  *c);
 
 
-
-#define jhd_event_del_timer(EVENT) ngx_rbtree_delete(&jhd_event_timer_rbtree, &(EVENT)->timer); (EVENT)->timer.key = 0
-
-
-
-static jhd_inline void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
+jhd_inline static  void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 	uint64_t key;
 	int64_t diff;
-
 	key = jhd_current_msec + timer;
 
 	if (ev->timer.key) {
@@ -110,6 +104,13 @@ static jhd_inline void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 	jhd_rbtree_insert(&jhd_event_timer_rbtree, &ev->timer);
 }
 
+
+#ifdef JHD_INLINE
+#define jhd_event_del_timer(EVENT) ngx_rbtree_delete(&jhd_event_timer_rbtree, &(EVENT)->timer); (EVENT)->timer.key = 0
+
+
+
+
 #define jhd_post_event(EVENT, QUEUE)  if (!((EVENT)->queue.next)) { jhd_queue_insert_tail(QUEUE, &(EVENT)->queue);}
 
 #define jhd_delete_posted_event(EVENT)   jhd_queue_remove(&(EVENT)->queue)
@@ -118,10 +119,43 @@ static jhd_inline void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 
 #define jhd_post_listener(LIS,QUEUE) ngx_queue_insert_tail(QUEUE,&(LIS)->queue);
 
-#define jhd_delete_listener(LIS)  jhd_queue_only_remove(LIS)
+#define jhd_delete_listener(LIS)  jhd_queue_only_remove(&(LIS)->queue)
 
 #define jhd_listener_from_queue(QUEUE)   jhd_queue_data(QUEUE,jhd_listener_t,queue);
+#else
+jhd_inline void jhd_event_del_timer(jhd_event_t event) {
+	jhd_rbtree_delete(&jhd_event_timer_rbtree, &event->timer);
+	event->timer.key = 0;
+}
 
+jhd_inline void jhd_post_event(jhd_event_t *EVENT,jhd_queue_t *QUEUE){
+	if (!(EVENT->queue.next)){
+		jhd_queue_insert_tail(QUEUE, &(EVENT)->queue);
+	}
+}
+
+jhd_inline void jhd_delete_posted_event(jhd_event_t * EVENT){
+	jhd_queue_remove(&EVENT->queue);
+}
+
+jhd_inline jhd_event_t* jhd_event_from_queue(QUEUE){
+	return jhd_queue_data(QUEUE,jhd_event_t,queue);
+}
+
+jhd_inline void jhd_post_listener(jhd_listener_t *LIS,jhd_queue_t *QUEUE){
+	jhd_queue_insert_tail(QUEUE,&LIS->queue);
+}
+
+jhd_inline void jhd_delete_listener(jhd_listener_t *LIS)  {
+	jhd_queue_only_remove(&LIS->queue);
+}
+
+jhd_inline jhd_listener_t* jhd_listener_from_queue(jhd_queue_t *QUEUE) {
+	return jhd_queue_data(QUEUE,jhd_listener_t,queue);
+}
+
+
+#endif
 jhd_inline void  jhd_event_process_posted(jhd_queue_t *posted) {
 	jhd_queue_t *q;
 	jhd_event_t *ev;

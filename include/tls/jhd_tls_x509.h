@@ -280,7 +280,7 @@ int jhd_tls_x509_self_test( int verbose );
  * know you do.
  */
 int jhd_tls_x509_get_name( unsigned char **p, const unsigned char *end,jhd_tls_x509_name *cur );
-int jhd_tls_x509_get_name_by_malloc( unsigned char **p, const unsigned char *end,jhd_tls_x509_name *cur );
+int jhd_tls_x509_get_name_by_master( unsigned char **p, const unsigned char *end,jhd_tls_x509_name *cur );
 
 
 #if !defined(JHD_TLS_INLINE)

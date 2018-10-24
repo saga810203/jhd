@@ -42,8 +42,8 @@ struct jhd_listening_s {
 	unsigned ipv6only:1;
 	unsigned bind:1;
 	jhd_queue_t queue;
-	uint8_t http_server_count;
-	void **http_servers;
+	void *lis_ctx;
+	void (*lis_ctx_close)(void *lis_ctx);
 	size_t accept_timeout;
 	jhd_connection_start_pt connection_start;
 };
@@ -95,7 +95,7 @@ int jhd_listening_set_tls_cert_and_key(jhd_listening_t *lis,u_char *cert_text,si
 
 
 
-jhd_bool jhd_listening_add_server(jhd_listening_t *lis, void *http_server);
+int jhd_listening_config(jhd_listening_t *lis,void *lis_ctx,void (*lis_ctx_close)(void*),const char **alpn_list,jhd_connection_start_pt start_func);
 
 void jhd_connection_accept(jhd_event_t *ev);
 

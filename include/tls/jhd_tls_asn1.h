@@ -247,7 +247,7 @@ int jhd_tls_asn1_get_sequence_of( unsigned char **p,
                           int tag,void *event);
 
 
-int jhd_tls_asn1_get_sequence_of_by_malloc( unsigned char **p,
+int jhd_tls_asn1_get_sequence_of_by_master( unsigned char **p,
                           const unsigned char *end,
                           jhd_tls_asn1_sequence *cur,
                           int tag);

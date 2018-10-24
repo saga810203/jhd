@@ -315,7 +315,7 @@ void jhd_tls_x509_crt_init(jhd_tls_x509_crt *crt);
  * \param crt      Certificate chain to free
  */
 void jhd_tls_x509_crt_free(jhd_tls_x509_crt *crt);
-void jhd_tls_x509_crt_free_by_malloc(jhd_tls_x509_crt *crt);
+void jhd_tls_x509_crt_free_by_master(jhd_tls_x509_crt *crt);
 
 /* \} name */
 /* \} addtogroup x509_module */

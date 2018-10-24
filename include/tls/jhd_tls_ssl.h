@@ -337,7 +337,6 @@ struct jhd_tls_ssl_config {
 	const char **alpn_list; /*!< ordered list of protocols          */
 	unsigned int server_side :1; /*!< 0: client, 1: server               */
 	unsigned int mfl_code :3; /*!< desired fragment length            */
-	jhd_queue_t queue;
 };
 
 struct jhd_tls_ssl_context {

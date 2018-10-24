@@ -384,13 +384,14 @@ static int pk_get_pk_alg(unsigned char **p, const unsigned char *end, const jhd_
 
 
 
-int jhd_tls_pk_parse_subpubkey_by_malloc(unsigned char **p, const unsigned char *end, jhd_tls_pk_context *pk){
+int jhd_tls_pk_parse_subpubkey_by_master(unsigned char **p, const unsigned char *end, jhd_tls_pk_context *pk){
 	int ret;
 	size_t len;
 	jhd_tls_asn1_buf alg_params;
 	jhd_tls_ecdsa_context *ecdsa_ctx;
 	jhd_tls_serializa_rsa_context *rsa_ctx;
 	const jhd_tls_pk_info_t *pk_info = NULL;
+	log_assert_master();
 	if ((ret = jhd_tls_asn1_get_tag(p, end, &len, JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SEQUENCE)) != 0) {
 		return JHD_ERROR;
 	}
@@ -442,6 +443,7 @@ int jhd_tls_pk_parse_subpubkey(unsigned char **p, const unsigned char *end, jhd_
 	jhd_tls_serializa_rsa_context *rsa_ctx;
 	const jhd_tls_pk_info_t *pk_info = NULL;
 
+	log_assert_worker();
 	if ((ret = jhd_tls_asn1_get_tag(p, end, &len, JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SEQUENCE)) != 0) {
 		return JHD_ERROR;
 	}
@@ -757,6 +759,8 @@ int jhd_tls_pk_parse_key(jhd_tls_pk_context *pk, const unsigned char *key, size_
 	int ret;
 	size_t len,tmp_buf_len = 8192;
 	unsigned char tmp_buf[8192];
+
+	log_assert_master();
 	jhd_tls_platform_zeroize(tmp_buf,8192);
 	if (keylen == 0 || key[keylen - 1] != '\0'){
 		return JHD_ERROR;

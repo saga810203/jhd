@@ -263,6 +263,7 @@ static int x509_get_key_usage(unsigned char **p, const unsigned char *end, unsig
 static int x509_get_ext_key_usage(unsigned char **p, const unsigned char *end, jhd_tls_x509_sequence *ext_key_usage,void *event) {
 	int ret;
 	ext_key_usage->buf.p = NULL;
+	log_assert_worker();
 	if ((ret = jhd_tls_asn1_get_sequence_of(p, end, ext_key_usage, JHD_TLS_ASN1_OID,event)) != 0)
 		return ret;
 	/* Sequence length must be >= 1 */
@@ -271,10 +272,11 @@ static int x509_get_ext_key_usage(unsigned char **p, const unsigned char *end, j
 	return (0);
 }
 
-static int x509_get_ext_key_usage_by_malloc(unsigned char **p, const unsigned char *end, jhd_tls_x509_sequence *ext_key_usage) {
+static int x509_get_ext_key_usage_by_master(unsigned char **p, const unsigned char *end, jhd_tls_x509_sequence *ext_key_usage) {
 	int ret;
 	ext_key_usage->buf.p = NULL;
-	if ((ret = jhd_tls_asn1_get_sequence_of_by_malloc(p, end, ext_key_usage, JHD_TLS_ASN1_OID)) != 0)
+	log_assert_master();
+	if ((ret = jhd_tls_asn1_get_sequence_of_by_master(p, end, ext_key_usage, JHD_TLS_ASN1_OID)) != 0)
 		return ret;
 	if (ext_key_usage->buf.p == NULL)
 		return JHD_ERROR;
@@ -314,6 +316,8 @@ static int x509_get_subject_alt_name(unsigned char **p, const unsigned char *end
 	unsigned char tag;
 	jhd_tls_asn1_sequence *prev;
 	jhd_tls_asn1_sequence *cur = subject_alt_name;
+
+	log_assert_worker();
 
 	/* Get main sequence tag */
 	if ((ret = jhd_tls_asn1_get_tag(p, end, &len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SEQUENCE)) != 0)
@@ -375,13 +379,15 @@ static int x509_get_subject_alt_name(unsigned char **p, const unsigned char *end
 	}
 	return (0);
 }
-static int x509_get_subject_alt_name_by_malloc(unsigned char **p, const unsigned char *end, jhd_tls_x509_sequence *subject_alt_name) {
+static int x509_get_subject_alt_name_by_master(unsigned char **p, const unsigned char *end, jhd_tls_x509_sequence *subject_alt_name) {
 	int ret;
 	size_t len, tag_len;
 	jhd_tls_asn1_buf *buf;
 	unsigned char tag;
 	jhd_tls_asn1_sequence *prev;
 	jhd_tls_asn1_sequence *cur = subject_alt_name;
+
+	log_assert_master();
 	if ((ret = jhd_tls_asn1_get_tag(p, end, &len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SEQUENCE)) != 0)
 		return JHD_ERROR;
 	if (*p + len != end)
@@ -433,6 +439,8 @@ static int x509_get_crt_ext(unsigned char **p, const unsigned char *end, jhd_tls
 	size_t len;
 	unsigned char *end_ext_data, *end_ext_octet;
 	jhd_tls_x509_sequence *next,*prev;
+
+	log_assert_worker();
 
 	if ((ret = jhd_tls_x509_get_ext(p, end, &crt->v3_ext, 3)) != 0) {
 		if (ret == JHD_UNEXPECTED)
@@ -574,12 +582,13 @@ static int x509_get_crt_ext(unsigned char **p, const unsigned char *end, jhd_tls
  * X.509 v3 extensions
  *
  */
-static int x509_get_crt_ext_by_malloc(unsigned char **p, const unsigned char *end, jhd_tls_x509_crt *crt) {
+static int x509_get_crt_ext_by_master(unsigned char **p, const unsigned char *end, jhd_tls_x509_crt *crt) {
 	int ret;
 	size_t len;
 	unsigned char *end_ext_data, *end_ext_octet;
 	jhd_tls_x509_sequence *next,*prev;
 
+	log_assert_master();
 	if ((ret = jhd_tls_x509_get_ext(p, end, &crt->v3_ext, 3)) != 0) {
 		if (ret == JHD_UNEXPECTED)
 			return JHD_OK;
@@ -631,7 +640,7 @@ static int x509_get_crt_ext_by_malloc(unsigned char **p, const unsigned char *en
 				break;
 			case JHD_TLS_X509_EXT_EXTENDED_KEY_USAGE:
 				/* Parse extended key usage */
-				if ((ret = x509_get_ext_key_usage_by_malloc(p, end_ext_octet, &crt->ext_key_usage)) != 0){
+				if ((ret = x509_get_ext_key_usage_by_master(p, end_ext_octet, &crt->ext_key_usage)) != 0){
 						next = crt->ext_key_usage.next;
 						crt->ext_key_usage.next = NULL;
 						while(next != NULL){
@@ -645,7 +654,7 @@ static int x509_get_crt_ext_by_malloc(unsigned char **p, const unsigned char *en
 
 			case JHD_TLS_X509_EXT_SUBJECT_ALT_NAME:
 				/* Parse subject alt name */
-				if ((ret = x509_get_subject_alt_name_by_malloc(p, end_ext_octet, &crt->subject_alt_names)) != 0){
+				if ((ret = x509_get_subject_alt_name_by_master(p, end_ext_octet, &crt->subject_alt_names)) != 0){
 					next = crt->subject_alt_names.next;
 					crt->subject_alt_names.next = NULL;
 					while(next != NULL){
@@ -672,11 +681,13 @@ static int x509_get_crt_ext_by_malloc(unsigned char **p, const unsigned char *en
 
 	return JHD_OK;
 }
-int jhd_tls_x509_crt_parse_der_by_malloc(jhd_tls_x509_crt *crt, const unsigned char *buf, size_t buflen){
+int jhd_tls_x509_crt_parse_der_by_master(jhd_tls_x509_crt *crt, const unsigned char *buf, size_t buflen){
 		int ret;
 		size_t len,raw_len;
 		unsigned char *p, *end, *crt_end;
 		jhd_tls_x509_buf sig_params1, sig_params2, sig_oid2;
+
+		log_assert_master();
 		memset(&sig_params1, 0, sizeof(jhd_tls_x509_buf));
 		memset(&sig_params2, 0, sizeof(jhd_tls_x509_buf));
 		memset(&sig_oid2, 0, sizeof(jhd_tls_x509_buf));
@@ -730,7 +741,7 @@ int jhd_tls_x509_crt_parse_der_by_malloc(jhd_tls_x509_crt *crt, const unsigned c
 		if (jhd_tls_asn1_get_tag(&p, end, &len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SEQUENCE)!= JHD_OK) {
 			return JHD_ERROR;
 		}
-		if ((ret = jhd_tls_x509_get_name_by_malloc(&p, p + len, &crt->issuer)) != 0) {
+		if ((ret = jhd_tls_x509_get_name_by_master(&p, p + len, &crt->issuer)) != 0) {
 			return JHD_ERROR;
 		}
 		crt->issuer_raw.len = p - crt->issuer_raw.p;
@@ -741,11 +752,11 @@ int jhd_tls_x509_crt_parse_der_by_malloc(jhd_tls_x509_crt *crt, const unsigned c
 		if (jhd_tls_asn1_get_tag(&p, end, &len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SEQUENCE) != JHD_OK) {
 			return JHD_ERROR;
 		}
-		if (len && (ret = jhd_tls_x509_get_name_by_malloc(&p, p + len, &crt->subject)) != JHD_OK) {
+		if (len && (ret = jhd_tls_x509_get_name_by_master(&p, p + len, &crt->subject)) != JHD_OK) {
 			return JHD_ERROR;
 		}
 		crt->subject_raw.len = p - crt->subject_raw.p;
-		if ((ret = jhd_tls_pk_parse_subpubkey_by_malloc(&p, end, &crt->pk)) != 0) {
+		if ((ret = jhd_tls_pk_parse_subpubkey_by_master(&p, end, &crt->pk)) != 0) {
 			return (ret);
 		}
 		if (crt->version == 2 || crt->version == 3) {
@@ -761,7 +772,7 @@ int jhd_tls_x509_crt_parse_der_by_malloc(jhd_tls_x509_crt *crt, const unsigned c
 
 
 		if (crt->version == 3)  {
-			ret = x509_get_crt_ext_by_malloc(&p, end, crt);
+			ret = x509_get_crt_ext_by_master(&p, end, crt);
 			if (ret != 0) {
 				return ret;
 			}
@@ -796,6 +807,8 @@ int jhd_tls_x509_crt_parse_der(jhd_tls_x509_crt *crt, const unsigned char *buf, 
 	size_t len,raw_len;
 	unsigned char *p, *end, *crt_end;
 	jhd_tls_x509_buf sig_params1, sig_params2, sig_oid2;
+
+	log_assert_worker();
 	memset(&sig_params1, 0, sizeof(jhd_tls_x509_buf));
 	memset(&sig_params2, 0, sizeof(jhd_tls_x509_buf));
 	memset(&sig_oid2, 0, sizeof(jhd_tls_x509_buf));
@@ -993,6 +1006,9 @@ jhd_tls_x509_crt* jhd_tls_x509_crt_parse(const unsigned char *buf, size_t buflen
 	    jhd_tls_x509_crt *cert;
 		size_t tmp_buf_len;
 		jhd_tls_x509_crt *tmp_cert,*curr_cert;
+
+		log_assert_master();
+
 		cert = malloc(sizeof(jhd_tls_x509_crt));
 		if(cert == NULL){
 			log_stderr("systemcall malloc error");
@@ -1011,7 +1027,7 @@ jhd_tls_x509_crt* jhd_tls_x509_crt_parse(const unsigned char *buf, size_t buflen
 				} else {
 					goto func_err;
 				}
-				if(JHD_OK != jhd_tls_x509_crt_parse_der_by_malloc(curr_cert,tmp_buf,tmp_buf_len)){
+				if(JHD_OK != jhd_tls_x509_crt_parse_der_by_master(curr_cert,tmp_buf,tmp_buf_len)){
 					goto func_err;
 				}
 				if(buflen >1){
@@ -1027,13 +1043,13 @@ jhd_tls_x509_crt* jhd_tls_x509_crt_parse(const unsigned char *buf, size_t buflen
 			}
 			return cert;
 		}
-		if(JHD_OK != jhd_tls_x509_crt_parse_der_by_malloc(cert, buf, buflen,NULL)){
+		if(JHD_OK != jhd_tls_x509_crt_parse_der_by_master(cert, buf, buflen,NULL)){
 			goto func_err;
 		}
 		return cert;
 func_err:
 	if(cert != NULL){
-		jhd_tls_x509_crt_free_by_malloc(cert);
+		jhd_tls_x509_crt_free_by_master(cert);
 		free(cert);
 	}
 	return NULL;
@@ -1902,6 +1918,8 @@ void jhd_tls_x509_crt_free(jhd_tls_x509_crt *crt) {
 	jhd_tls_x509_sequence *seq_cur;
 	jhd_tls_x509_sequence *seq_prv;
 
+	log_assert_worker();
+
 	do {
 		if(cert_cur->pk.pk_ctx){
 			jhd_tls_free_with_size(cert_cur->pk.pk_ctx,cert_cur->pk.pk_info->ctx_size);
@@ -1958,13 +1976,16 @@ void jhd_tls_x509_crt_free(jhd_tls_x509_crt *crt) {
 }
 
 
-void jhd_tls_x509_crt_free_by_malloc(jhd_tls_x509_crt *crt) {
+void jhd_tls_x509_crt_free_by_master(jhd_tls_x509_crt *crt) {
 	jhd_tls_x509_crt *cert_cur = crt;
 	jhd_tls_x509_crt *cert_prv;
 	jhd_tls_x509_name *name_cur;
 	jhd_tls_x509_name *name_prv;
 	jhd_tls_x509_sequence *seq_cur;
 	jhd_tls_x509_sequence *seq_prv;
+
+
+	log_assert_master();
 	do {
 		if(cert_cur->pk.pk_ctx){
 			free(cert_cur->pk.pk_ctx);

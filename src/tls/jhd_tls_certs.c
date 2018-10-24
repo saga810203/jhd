@@ -2,7 +2,7 @@
 
 #include <tls/jhd_tls_certs.h>
 
-
+#ifdef JHD_CONFIG_INCLUDE_TEST_CERTS
 
 #define TEST_CA_CRT_EC                                                  \
 "-----BEGIN CERTIFICATE-----\r\n"                                       \
@@ -356,4 +356,4 @@ const size_t jhd_tls_test_srv_crt_len = sizeof( jhd_tls_test_srv_crt_rsa );
 const size_t jhd_tls_test_srv_key_len = sizeof( jhd_tls_test_srv_key_rsa );
 const size_t jhd_tls_test_cli_crt_len = sizeof( jhd_tls_test_cli_crt_rsa );
 const size_t jhd_tls_test_cli_key_len = sizeof( jhd_tls_test_cli_key_rsa );
-
+#endif

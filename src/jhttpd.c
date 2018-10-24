@@ -25,14 +25,12 @@ int main(int argc, char * const *argv) {
 	if(argc == 2 && strcmp(argv[1],"-daemon") == 0){
 		jhd_daemonized = 1;
 	}
-	//parse config file;
+	jhd_process = JHD_PROCESS_MASTER;
 	if (JHD_OK != jhd_conf_parse_default()) {
 		log_stderr("jhttpd server parse config file[%s] error!!!!!!",jhd_config_file);
 		jhd_err = 1;
 		goto finish;
 	}
-    log_assert(jhd_process == JHD_PROCESS_SINGLE || jhd_process == JHD_PROCESS_MASTER);
-
 	if (jhd_run_master_startup_listener() != JHD_OK) {
 		jhd_err = 1;
 		log_stderr("jhd start error");
@@ -55,13 +53,16 @@ int main(int argc, char * const *argv) {
 	if (!jhd_create_pidfile()) {
 		return 1;
 	}
-	log_assert(jhd_process == JHD_PROCESS_SINGLE || jhd_process == JHD_PROCESS_MASTER);
-	if (jhd_process == JHD_PROCESS_SINGLE) {
+	if (jhd_signal_process) {
 		jhd_single_process();
 	} else {
 		jhd_master_process();
 	}
-	finish: jhd_run_master_shutdown_listener();
+
+	finish:
+	if(jhd_process == JHD_PROCESS_MASTER){
+		jhd_run_master_shutdown_listener();
+	}
 	jhd_log_close();
 	return jhd_err;
 }

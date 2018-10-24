@@ -2,7 +2,9 @@
 #define JHD_TLS_CERTS_H
 
 #include <stddef.h>
+#include <jhd_config.h>
 
+#ifdef JHD_CONFIG_INCLUDE_TEST_CERTS
 extern const char   jhd_tls_test_cas_pem[];
 extern const size_t jhd_tls_test_cas_pem_len;
 
@@ -62,7 +64,7 @@ extern const char   jhd_tls_test_cli_crt_rsa[];
 extern const size_t jhd_tls_test_cli_crt_rsa_len;
 extern const char   jhd_tls_test_cli_key_rsa[];
 extern const size_t jhd_tls_test_cli_key_rsa_len;
-
+#endif
 
 
 

@@ -186,6 +186,9 @@ static void gen_test_config(){
 	jhd_listening_t *lis;
 	lis = malloc(sizeof(jhd_listening_t));
 	memset(lis,0,sizeof(jhd_listening_t));
+
+
+
 	lis->accept_timeout = 1000*60;
 	jhd_listening_set_addr_text(lis,"127.0.0.1",443);
 

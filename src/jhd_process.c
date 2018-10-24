@@ -176,6 +176,8 @@ int jhd_signal_process(char *sig_name) {
 	int64_t ret;
 	jhd_signal_t *sig;
 
+	log_assert_helper();
+
 	pid_file_fd = open(jhd_pid_file, O_RDONLY, 0);
 
 	if (pid_file_fd < 0) {

@@ -10,64 +10,34 @@
 
 #include <jhd_config.h>
 
+#ifdef JHD_CONFIG_DEV_MODE
 #define JHD_LOG_LEVEL_DEBUG
 #define JHD_LOG_ASSERT_ENABLE
-
 #define JHD_LOG_TEST_ENABLE
+#endif
 
-
-
-#ifdef JHD_LOG_LEVEL_EMERG
-#define JHD_LOG_LEVEL_STDERR
+#ifdef JHD_LOG_LEVEL_DEBUG
+#define JHD_LOG_LEVEL_INFO
+#endif
+#ifdef JHD_LOG_LEVEL_INFO
+#define JHD_LOG_LEVEL_NOTICE
+#endif
+#ifdef JHD_LOG_LEVEL_NOTICE
+#define JHD_LOG_LEVEL_WARN
+#endif
+#ifdef JHD_LOG_LEVEL_WARN
+#define JHD_LOG_LEVEL_ERR
+#endif
+#ifdef JHD_LOG_LEVEL_ERR
+#define JHD_LOG_LEVEL_CRIT
+#endif
+#ifdef JHD_LOG_LEVEL_CRIT
+#define JHD_LOG_LEVEL_ALERT
 #endif
 
 #ifdef JHD_LOG_LEVEL_ALERT
 #define JHD_LOG_LEVEL_EMERG
 #endif
-
-
-#ifdef JHD_LOG_LEVEL_CRIT
-#define JHD_LOG_LEVEL_ALERT
-#define JHD_LOG_LEVEL_EMERG
-#define JHD_LOG_LEVEL_STDERR
-#endif
-
-
-#ifdef JHD_LOG_LEVEL_ERR
-#define JHD_LOG_LEVEL_CRIT
-#define JHD_LOG_LEVEL_ALERT
-#define JHD_LOG_LEVEL_EMERG
-#define JHD_LOG_LEVEL_STDERR
-#endif
-
-
-#ifdef JHD_LOG_LEVEL_WARN
-#define JHD_LOG_LEVEL_ERR
-#define JHD_LOG_LEVEL_CRIT
-#define JHD_LOG_LEVEL_ALERT
-#define JHD_LOG_LEVEL_EMERG
-#define JHD_LOG_LEVEL_STDERR
-#endif
-
-#ifdef JHD_LOG_LEVEL_NOTICE
-#define JHD_LOG_LEVEL_WARN
-#define JHD_LOG_LEVEL_ERR
-#define JHD_LOG_LEVEL_CRIT
-#define JHD_LOG_LEVEL_ALERT
-#define JHD_LOG_LEVEL_EMERG
-#define JHD_LOG_LEVEL_STDERR
-#endif
-
-#ifdef JHD_LOG_LEVEL_INFO
-#define JHD_LOG_LEVEL_NOTICE
-#define JHD_LOG_LEVEL_WARN
-#define JHD_LOG_LEVEL_ERR
-#define JHD_LOG_LEVEL_CRIT
-#define JHD_LOG_LEVEL_ALERT
-#define JHD_LOG_LEVEL_EMERG
-#define JHD_LOG_LEVEL_STDERR
-#endif
-
 
 #ifdef JHD_LOG_LEVEL_DEBUG
 #define JHD_LOG_LEVEL_INFO
@@ -102,21 +72,9 @@ void log_buf(void* buf,size_t len);
 
 #define JHD_MAX_ERROR_STR 10240
 
-
-
-
-
-
-
 void _log_out(const char* file_name,const char *func_name,const int line,const uint16_t level,const char* fmt,...);
 
-
-
-
-
 void _log_assert(const char* file_name,const char *func_name,const int line);
-
-
 
 #define  log_write(level,fmt,...)	_log_out((const char*)__FILE__,(const char*)__FUNCTION__ ,(const int) __LINE__,(const uint16_t)level,(const char*)fmt,##__VA_ARGS__)
 
@@ -160,17 +118,23 @@ void _log_assert(const char* file_name,const char *func_name,const int line);
 #else
 #define  log_emerg(fmt,...)
 #endif
-#ifdef JHD_LOG_LEVEL_STDERR
+
 #define  log_stderr(fmt,...)	_log_out((const char*)__FILE__,(const char*)__FUNCTION__ ,(const int)__LINE__,(const uint16_t)JHD_LOG_STDERR,(const char*)fmt,##__VA_ARGS__)
-#else
-#define  log_stderr(fmt,...)
-#endif
+
 #ifdef JHD_LOG_ASSERT_ENABLE
 #define  log_assert(ASSERT_VAL) if(!(ASSERT_VAL)) _log_assert((const char*)__FILE__,(const char*)__FUNCTION__ ,(const int)__LINE__)
+#define  log_assert_master()  if( JHD_PROCESS_MASTER != jhd_process) _log_assert((const char*)__FILE__,(const char*)__FUNCTION__ ,(const int)__LINE__)
+#define  log_assert_worker()  if( JHD_PROCESS_WORKER != jhd_process) _log_assert((const char*)__FILE__,(const char*)__FUNCTION__ ,(const int)__LINE__)
+#define  log_assert_helper()  if( JHD_PROCESS_HELPER != jhd_process) _log_assert((const char*)__FILE__,(const char*)__FUNCTION__ ,(const int)__LINE__)
 void log_assert_msg(const  char *fmt,...);
 void log_assert_buf(const unsigned char *buffer,size_t len,const char *fmt,...);
 #else
 #define  log_assert(assert_value)
+#define  log_assert_msg(fmt,...)
+#define  log_assert_buf(B,L,F,...)
+#define  log_assert_master()
+#define  log_assert_worker()
+#define  log_assert_helper()
 #endif
 
 

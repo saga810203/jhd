@@ -58,6 +58,14 @@
 
 
 
+#define JHD_PROCESS_MASTER     0
+#define JHD_PROCESS_WORKER     1
+#define JHD_PROCESS_HELPER     2
+
+
+#define JHD_CONFIG_INCLUDE_TEST_CERTS
+#define JHD_CONFIG_DEV_MODE
+
 #define JHD_HAVE_INET6 1
 
 
@@ -113,6 +121,7 @@
 
 extern  int jhd_err;
 extern  u_char jhd_g_hex_char[];
+extern sig_atomic_t jhd_process;
 
 typedef void (*jhd_obj_free_pt)(void*);
 

@@ -143,6 +143,8 @@ int jhd_tls_x509_get_name( unsigned char **p,const unsigned char *end,jhd_tls_x5
     size_t set_len;
     const unsigned char *end_set;
     jhd_tls_x509_name *next=cur;
+
+    log_assert_worker();
     do{
     	next->next_merged = 0;
     	next->oid.p= NULL;
@@ -185,12 +187,13 @@ int jhd_tls_x509_get_name( unsigned char **p,const unsigned char *end,jhd_tls_x5
 }
 
 
-int jhd_tls_x509_get_name_by_malloc( unsigned char **p, const unsigned char *end,jhd_tls_x509_name *cur ){
+int jhd_tls_x509_get_name_by_master( unsigned char **p, const unsigned char *end,jhd_tls_x509_name *cur ){
 	 int ret;
 	    size_t set_len;
 	    const unsigned char *end_set;
 	    jhd_tls_x509_name *prev,*next=cur;
 	    memset(next,0,sizeof(jhd_tls_x509_name));
+	    log_assert_master();
 	    for(;;){
 	        if( ( ret = jhd_tls_asn1_get_tag( p, end, &set_len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SET ) ) != 0 ){
 	            goto func_err;

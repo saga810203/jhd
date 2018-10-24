@@ -16,10 +16,7 @@
 
 
 
-#define JHD_PROCESS_MASTER     0
-#define JHD_PROCESS_SINGLE     1
-#define JHD_PROCESS_WORKER     2
-#define JHD_PROCESS_HELPER     3
+
 
 struct jhd_core_s {
 	size_t max_connections;
@@ -35,7 +32,7 @@ extern jhd_queue_t jhd_master_shutdown_queue;
 extern jhd_queue_t jhd_worker_startup_queue;
 extern jhd_queue_t jhd_worker_shutdown_queue;
 
-extern sig_atomic_t jhd_process;
+extern sig_atomic_t jhd_single;
 extern sig_atomic_t jhd_quit;
 extern sig_atomic_t jhd_restart;
 extern sig_atomic_t jhd_daemonized;

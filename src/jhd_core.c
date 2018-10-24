@@ -15,7 +15,7 @@
 
 uint32_t jhd_core_master_startup_time;
 
-
+ sig_atomic_t jhd_single;
  sig_atomic_t jhd_process;
  sig_atomic_t jhd_quit;
  sig_atomic_t jhd_reap;
