@@ -126,6 +126,8 @@ void _log_assert(const char* file_name,const char *func_name,const int line);
 #define  log_assert_master()  if( JHD_PROCESS_MASTER != jhd_process) _log_assert((const char*)__FILE__,(const char*)__FUNCTION__ ,(const int)__LINE__)
 #define  log_assert_worker()  if( JHD_PROCESS_WORKER != jhd_process) _log_assert((const char*)__FILE__,(const char*)__FUNCTION__ ,(const int)__LINE__)
 #define  log_assert_helper()  if( JHD_PROCESS_HELPER != jhd_process) _log_assert((const char*)__FILE__,(const char*)__FUNCTION__ ,(const int)__LINE__)
+#define  log_assert_code(X) X
+
 void log_assert_msg(const  char *fmt,...);
 void log_assert_buf(const unsigned char *buffer,size_t len,const char *fmt,...);
 #else
@@ -135,6 +137,7 @@ void log_assert_buf(const unsigned char *buffer,size_t len,const char *fmt,...);
 #define  log_assert_master()
 #define  log_assert_worker()
 #define  log_assert_helper()
+#define  log_assert_code(X)
 #endif
 
 

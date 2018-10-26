@@ -554,18 +554,20 @@ int jhd_listening_set_tls_cert_and_key(jhd_listening_t *lis,u_char *cert_text,si
 
 
 
-int jhd_listening_config(jhd_listening_t *lis,void *lis_ctx,void (*lis_ctx_close)(void*),const char **alpn_list,jhd_connection_start_pt start_func){
+int jhd_listening_config(jhd_listening_t *lis, void *lis_ctx, void (*lis_ctx_close)(void*), const char **alpn_list, jhd_connection_start_pt start_func) {
 	log_assert_masert();
-
-	if(lis->ssl == NULL){
-		if(JHD_OK != jhd_listening_create_tls_config(lis)){
-			return JHD_ERROR;
+	if (alpn_list != NULL) {
+		if (lis->ssl == NULL) {
+			if (JHD_OK != jhd_listening_create_tls_config(lis)) {
+				return JHD_ERROR;
+			}
 		}
+		((jhd_tls_ssl_config *) lis->ssl)->alpn_list;
 	}
-	((jhd_tls_ssl_config *)lis->ssl)->alpn_list;
 	lis->lis_ctx = lis_ctx;
 	lis->lis_ctx_close = lis_ctx_close;
 	lis->connection_start = start_func;
+	return JHD_OK;
 }
 
 
@@ -721,6 +723,19 @@ static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 	for (q = jhd_queue_head(head); q != jhd_queue_sentinel(head); q = jhd_queue_next(q)) {
 		++listening_count;
 		lis = jhd_queue_data(q, jhd_listening_t, queue);
+
+		if(lis->accept_timeout==0){
+			lis->accept_timeout = 5000;
+		}
+		if(lis->read_timeout==0){
+			lis->read_timeout = 5000;
+		}
+		if(lis->write_timeout==0){
+			lis->write_timeout = 5000;
+		}
+		if(lis->wait_mem_timeout==0){
+			lis->wait_mem_timeout = 5000;
+		}
 		if (JHD_OK != jhd_open_listening_sockets(lis)) {
 			goto failed;
 		}
@@ -855,6 +870,7 @@ static int jhd_connection_worker_startup_listening(jhd_listener_t* listener) {
 			connection->idx = i;
 			connection->read.data = connection;
 			connection->write.data = connection;
+			connection->fd = -1;
 			++i;
 			connection->data = free_connections;
 			free_connections = connection;
@@ -996,10 +1012,127 @@ ssize_t jhd_connection_send(jhd_connection_t *c, u_char *buf, size_t size) {
 	return ret;
 }
 
+void jhd_connection_close(jhd_connection_t *c) {
+	int op;
+	struct epoll_event ee;
+	log_notice("==>jhd_connection_close");
+	log_assert(c->closed == 0);
+	log_assert_code(c->closed = 1);
+	log_assert(c->fd >2);
+	log_assert(g_connections[c->idx] == c);
+	log_assert(c == c->read.data);
+	log_assert(c == c->write.data);
+	if(c->read.queue.next){
+		jhd_queue_remove(&c->read.queue);
+	}
+	if(c->write.queue.next){
+		jhd_queue_remove(&c->write.queue);
+	}
+	c->read.handler = jhd_connection_empty_read;
+	c->write.handler = jhd_connection_empty_write;
+	if(c->read.timer.key != 0){
+		jhd_event_del_timer(&c->read);
+	}
+	if(c->write.timer.key != 0){
+			jhd_event_del_timer(&c->write);
+	}
+	c->read.timedout = 0;
+	c->write.timedout = 0;
+	op = EPOLL_CTL_DEL;
+	ee.events = 0;
+	ee.data.ptr = NULL;
+	epoll_ctl(epoll_fd, op, c->fd, &ee);
+	close(c->fd);
+	c->fd = -1;
+	++free_connection_count;
+	c->data = free_connections;
+	free_connections = c;
+	log_notice("==>jhd_connection_close");
+}
+
+#define connection_get_with_accept()\
+	c = free_connections;\
+	if (c) {\
+		log_assert(free_connection_count>0);\
+		--free_connection_count;\
+		free_connections = c->data;\
+		log_assert(c->closed == 1);\
+		log_assert_code(c->closed = 1);\
+		log_assert(c == c->read.data);\
+		log_assert(c == c->write.data);\
+		log_assert(c->fd == -1);\
+		log_assert(c->read.queue.next == jhd_connection_empty_read);\
+		log_assert(c->write.queue.next == jhd_connection_empty_write);\
+		log_assert(c->read.timer.key ==0);\
+		log_assert(c->write.timer.key ==0);\
+		log_assert(g_connections[c->idx] == c);\
+	}else
 
 
+#define connection_config_socket_with_accept()\
+		nb = 1;\
+		err = ioctl(fd, FIONBIO, &nb);\
+		log_debug("exec ioctl(,FIONBIO,)==%d", err);\
+		if (err == (-1)) {\
+			jhd_connection_free();\
+			close(fd);\
+			log_err("connection acccept[%s] error with:%s", lis->addr_text, "ioctl(,FIONBIO,)== -1");\
+			log_notice("<== function with:%s", "ioctl(,FIONBIO,)== -1");\
+			return;\
+		}\
+		if(lis->rcvbuf){\
+			nb = lis->rcvbuf ;\
+			if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF,(const void *) &nb, sizeof(int)) == -1) {\
+				jhd_connection_free();\
+				close(fd);\
+				log_err("connection acccept[%s] error with:setsockopt(SO_RCVBUF,%d) == -1 error=%d", lis->addr_text,(int)lis->rcvbuf,errno);\
+				log_notice("<== function with:%s  error");\
+				return;\
+			}\
+		}\
+		if(lis->sndbuf){\
+			nb = lis->sndbuf ;\
+			if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF,(const void *) &nb, sizeof(int)) == -1) {\
+				jhd_connection_free();\
+				close(fd);\
+				log_err("connection acccept[%s] error with:setsockopt(SO_SNDBUF,%d) == -1 error=%d", lis->addr_text,(int)lis->sndbuf,errno);\
+				log_notice("<== function with:%s error");\
+				return;\
+			}\
+		}
 
+#define connection_check_socket_with_accept()\
+		if (fd == (-1)) {\
+			err = errno;\
+			if ((err == EAGAIN)) {\
+				jhd_connection_free();\
+				log_notice("<== function (%s) accept(...) ==-1,errno != EAGAIN",lis->addr_text);\
+				return;\
+			}else if(err != EINTR){\
+				jhd_connection_free();\
+				log_err("connection acccept[%s] error with:%s", lis->addr_text, "accept(...) = -1,errno= %d",errno);\
+				log_notice("<== function accept(...) ==-1,errno != EINTR");\
+				return;\
+			}else{\
+				jhd_connection_free();\
+				continue;\
+			}\
+		}
 
+#define connection_add_to_event_list()  	c->listening = sc->listening;\
+		c->fd = fd;\
+		if(jhd_event_add_connection(c)){\
+			c->close = jhd_connection_close;\
+			c->listening = sc->listening;\
+			jhd_event_add_timer(&c->read,lis->accept_timeout);\
+			sc->listening->connection_start(c);\
+		}else{\
+			close(fd);\
+			c->fd = -1;\
+			jhd_connection_free();\
+			log_notice("<== function with: error");\
+			return;\
+		}
 
 void jhd_connection_accept_use_accept(jhd_event_t *ev) {
 	jhd_listening_t* lis;
@@ -1010,99 +1143,22 @@ void jhd_connection_accept_use_accept(jhd_event_t *ev) {
 
 	sc = ev->data;
 	lis = sc->listening;
-
 	log_notice("==>jhd_connection_accept_use_accept(%s)",lis->addr_text);
-	if (ev->timedout) {
-		ev->timedout = 0;
-		return;
-	}
 	for (;;) {
-		c = NULL;
-		c = free_connections;
-		if (c) {
-			--free_connection_count;
-			free_connections = c->data;
-		} else {
+		connection_get_with_accept(){
 			log_assert(free_connection_count==0);
 			log_notice("<==jhd_connection_accept_use_accept(%s)",lis->addr_text);
 			return;
 		}
-		log_assert(free_connection_count>=0);
 		c->socklen = sizeof(jhd_sockaddr_t);
 		fd = accept(lis->fd,(struct sockaddr *) &c->sockaddr, &c->socklen);
 		log_debug("exec accept(...)==%d", fd);
-		if (fd == (-1)) {
-			err = errno;
-			if ((err == EAGAIN)) {
-				++free_connection_count;
-				c->data = free_connections;
-				free_connections = c;
-				log_notice("<==jhd_connection_accept_use_accept(%s) accept(...) ==-1,errno != EAGAIN",lis->addr_text);
-				return;
-			}else if(err != EINTR){
-				++free_connection_count;
-				c->data = free_connections;
-				free_connections = c;
-				log_err("connection acccept[%s] error with:%s", lis->addr_text, "accept(...) = -1,errno= %d",errno);
-				log_notice("<== jhd_connection_accept_use_accept accept(...) ==-1,errno != EINTR");
-				return;
-			}else{
-				continue;
-			}
-		}
-		nb = 1;
-		err = ioctl(fd, FIONBIO, &nb);
-		log_debug("exec ioctl(,FIONBIO,)==%d", err);
-		if (err == (-1)) {
-			++free_connection_count;
-			c->data = free_connections;
-			free_connections = c;
-			close(fd);
-			log_err("connection acccept[%s] error with:%s", lis->addr_text, "ioctl(,FIONBIO,)== -1");
-			log_notice("<== jhd_connection_accept_use_accept with:%s", "ioctl(,FIONBIO,)== -1");
-			return;
-		}
-		if(lis->rcvbuf){
-			nb = lis->rcvbuf ;
-			if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF,(const void *) &nb, sizeof(int)) == -1) {
-				++free_connection_count;
-				c->data = free_connections;
-				free_connections = c;
-				close(fd);
-				log_err("connection acccept[%s] error with:setsockopt(SO_RCVBUF,%d) == -1 error=%d", lis->addr_text,(int)lis->rcvbuf,errno);
-				log_notice("<== jhd_connection_accept_use_accept with:%s  error");
-				return;
-			}
-		}
-		if(lis->sndbuf){
-			nb = lis->sndbuf ;
-			if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF,(const void *) &nb, sizeof(int)) == -1) {
-				++free_connection_count;
-				c->data = free_connections;
-				free_connections = c;
-				close(fd);
-				log_err("connection acccept[%s] error with:setsockopt(SO_SNDBUF,%d) == -1 error=%d", lis->addr_text,(int)lis->sndbuf,errno);
-				log_notice("<== jhd_connection_accept_use_accept with:%s error");
-				return;
-			}
-		}
-		c->fd = fd;
-		if(jhd_event_add_connection(c)){
-			c->close = jhd_connection_close;
-			c->listening = sc->listening;
-			if(lis->accept_timeout){
-				jhd_event_add_timer(&c->read,lis->accept_timeout);
-			}
-			sc->listening->connection_start(c);
-		}else{
-			close(fd);
-			c->fd = -1;
-			++free_connection_count;
-			c->data = free_connections;
-			free_connections = c;
-			log_notice("<== jhd_connection_accept_use_accept with:%s error");
-			return;
-		}
+
+		connection_check_socket_with_accept()
+
+		connection_config_socket_with_accept()
+
+		connection_add_to_event_list()
 	}
 }
 
@@ -1111,103 +1167,26 @@ void jhd_connection_accept_use_accept4(jhd_event_t *ev) {
 	jhd_connection_t *c, *sc;
 	int fd;
 	int err;
-
 	int nb;
 	log_notice("==>jhd_connection_accept_use_accept4");
-	if (ev->timedout) {
-		ev->timedout = 0;
-		return;
-	}
 	sc = ev->data;
 	lis = sc->listening;
 	log_info("begin connection acccept[%s]", lis->addr_text);
 	for (;;) {
-		c = NULL;
-		c = free_connections;
-		if (c) {
-			--free_connection_count;
-			free_connections = c->data;
-		} else {
+		connection_get_with_accept(){
 			log_assert(free_connection_count==0);
 			log_notice("<==jhd_connection_accept_use_accept4 : free_connections_count ==%d", free_connection_count);
 			return;
 		}
-		log_assert(free_connection_count>=0);
 		c->socklen = sizeof(jhd_sockaddr_t);
 		fd = accept4(lis->fd,(struct sockaddr *) &c->sockaddr, &c->socklen, SOCK_NONBLOCK);
 		log_debug("exec accept4(...)==%d", fd);
-		if (fd == (-1)) {
-			err = errno;
-			if ((err == EAGAIN)) {
-				++free_connection_count;
-				c->data = free_connections;
-				free_connections = c;
-				log_notice("<== jhd_connection_accept_use_accept4 accept4(...) ==-1,errno = EAGAIN");
-				return;
-			}else if(err != EINTR){
-				++free_connection_count;
-				c->data = free_connections;
-				free_connections = c;
-				log_err("connection acccept[%s] error with:%s", lis->addr_text, "accept(...)");
-				log_notice("<== jhd_connection_accept_use_accept4 accept4(...) ==-1,errno != EINTR");
-				return;
-			}else{
-				continue;
-			}
-		}
-		nb = 1;
-		err = ioctl(fd, FIONBIO, &nb);
-		log_debug("exec ioctl(,FIONBIO,)==%d", err);
-		if (err == (-1)) {
-			++free_connection_count;
-			c->data = free_connections;
-			free_connections = c;
-			close(fd);
-			log_err("connection acccept[%s] error with:%s", lis->addr_text, "ioctl(,FIONBIO,)== -1");
-			log_notice("<== jhd_connection_accept_use_accept4 with:%s", "ioctl(,FIONBIO,)== -1");
-			return;
-		}
-		if(lis->rcvbuf){
-			nb = lis->rcvbuf ;
-			if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF,(const void *) &nb, sizeof(int)) == -1) {
-				++free_connection_count;
-				c->data = free_connections;
-				free_connections = c;
-				close(fd);
-				log_err("connection acccept[%s] error with:setsockopt(SO_RCVBUF,%d) == -1 error=%d", lis->addr_text,(int)lis->rcvbuf,errno);
-				log_notice("<== jhd_connection_accept_use_accept4 with:%s error");
-				return;
-			}
-		}
-		if(lis->sndbuf){
-			nb = lis->sndbuf ;
-			if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF,(const void *) &nb, sizeof(int)) == -1) {
-				++free_connection_count;
-				c->data = free_connections;
-				free_connections = c;
-				close(fd);
-				log_err("connection acccept[%s] error with:setsockopt(SO_SNDBUF,%d) == -1 error=%d", lis->addr_text,(int)lis->sndbuf,errno);
-				log_notice("<== jhd_connection_accept_use_accept4 with:%s error");
-				return;
-			}
-		}
-		c->fd = fd;
-		if(jhd_event_add_connection(c)){
-			c->close = jhd_connection_close;
-			c->listening = sc->listening;
-			if(lis->accept_timeout){
-				jhd_event_add_timer(&c->read,lis->accept_timeout);
-			}
-			sc->listening->connection_start(c);
-		}else{
-			close(fd);
-			c->fd = -1;
-			++free_connection_count;
-			c->data = free_connections;
-			free_connections = c;
-			log_notice("<== jhd_connection_accept_use_accept4 with:%s error");
-			return;
-		}
+
+		connection_check_socket_with_accept()
+
+		connection_config_socket_with_accept()
+
+		connection_add_to_event_list()
 	}
 }
 void jhd_connection_accept(jhd_event_t *ev) {
@@ -1218,20 +1197,10 @@ void jhd_connection_accept(jhd_event_t *ev) {
 	int nb;
 	jhd_queue_t *head,*q;
 	log_notice("==>jhd_connection_accept_use_accept4");
-	if (ev->timedout) {
-		ev->timedout = 0;
-		return;
-	}
 	sc = ev->data;
 	lis = sc->listening;
 	log_info("begin connection acccept[%s]", lis->addr_text);
-	c = NULL;
-	c = free_connections;
-
-	if (c) {
-		--free_connection_count;
-		free_connections = c->data;
-	} else {
+	connection_add_to_event_list(){
 		log_assert(free_connection_count==0);
 		log_notice("<==jhd_connection_accept: free_connections_count ==%d", free_connection_count);
 		return;
@@ -1241,130 +1210,49 @@ void jhd_connection_accept(jhd_event_t *ev) {
 	if (fd == (-1)) {
 		err = errno;
 		if ((err == EAGAIN)) {
-			++free_connection_count;
-			c->data = free_connections;
-			free_connections = c;
-
+			jhd_connection_free();
 			head = &g_listening_queue;
 			nb = 0;
 			for (q = jhd_queue_head(head); q != head; q = jhd_queue_next(q)) {
-				lis = jhd_queue_data(q, jhd_listening_t, queue);
-				++nb;
-				lis->connection->read.handler = jhd_connection_accept_use_accept4;
+				(jhd_queue_data(q, jhd_listening_t, queue))->connection->read.handler = jhd_connection_accept_use_accept4;
 			}
 			log_notice("<== jhd_connection_accept accept4(...) ==-1,errno = EAGAIN");
 			return;
 		}else if (err == ENOSYS) {
-			++free_connection_count;
-			c->data = free_connections;
-			free_connections = c;
-
+			jhd_connection_free();
 			log_err("connection acccept[%s] error with:%s", lis->addr_text, "accept4(...)==-1,errno = ENOSYS");
 			head = &g_listening_queue;
 			nb = 0;
 			for (q = jhd_queue_head(head); q != head; q = jhd_queue_next(q)) {
-				lis = jhd_queue_data(q, jhd_listening_t, queue);
-				++nb;
-				lis->connection->read.handler = jhd_connection_accept_use_accept;
+				(jhd_queue_data(q, jhd_listening_t, queue))->connection->read.handler = jhd_connection_accept_use_accept;
 			}
 			jhd_post_event(ev,&jhd_posted_accept_events);
 			log_notice("<== jhd_connection_accept accept4(...) ==-1,errno = ENOSYS");
 			return;
 		}else if(err == EINTR){
-			++free_connection_count;
-			c->data = free_connections;
-			free_connections = c;
+			jhd_connection_free();
 			jhd_post_event(ev,&jhd_posted_accept_events);
 			return;
 		}else{
-			++free_connection_count;
-			c->data = free_connections;
-			free_connections = c;
+			jhd_connection_free();
 			log_err("connection acccept[%s] error with: accept4(...)==-1,errno =%d", lis->addr_text, err);
 			return;
 		}
 	}
 	head = &g_listening_queue;
-	nb = 0;
 	for (q = jhd_queue_head(head); q != head; q = jhd_queue_next(q)) {
-		lis = jhd_queue_data(q, jhd_listening_t, queue);
-		++nb;
-		lis->connection->read.handler = jhd_connection_accept_use_accept4;
+		(jhd_queue_data(q, jhd_listening_t, queue))->connection->read.handler = jhd_connection_accept_use_accept4;
 	}
-	c->listening = sc->listening;
-	nb = 1;
-	err = ioctl(fd, FIONBIO, &nb);
-	log_debug("exec ioctl(,FIONBIO,)==%d", err);
-	if (err == (-1)) {
-		++free_connection_count;
-		c->data = free_connections;
-		free_connections = c;
-		close(fd);
-		log_err("connection acccept[%s] error with:%s", lis->addr_text, "ioctl(,FIONBIO,)== -1");
-		log_notice("leave function return with:%s", "ioctl(,FIONBIO,)== -1");
-		return;
-	}
-	if(lis->rcvbuf){
-		nb = lis->rcvbuf ;
-		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF,(const void *) &nb, sizeof(int)) == -1) {
-			++free_connection_count;
-			c->data = free_connections;
-			free_connections = c;
-			close(fd);
-			log_err("connection acccept[%s] error with:setsockopt(SO_RCVBUF,%d) == -1 error=%d", lis->addr_text,(int)lis->rcvbuf,errno);
-			log_notice("<== jhd_connection_accept with:%s error");
-			return;
-		}
-	}
-	if(lis->sndbuf){
-		nb = lis->sndbuf ;
-		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF,(const void *) &nb, sizeof(int)) == -1) {
-			++free_connection_count;
-			c->data = free_connections;
-			free_connections = c;
-			close(fd);
-			log_err("connection acccept[%s] error with:setsockopt(SO_SNDBUF,%d) == -1 error=%d", lis->addr_text,(int)lis->sndbuf,errno);
-			log_notice("<== jhd_connection_accept with:%s error");
-			return;
-		}
-	}
-    c->fd = fd;
-	if(jhd_event_add_connection(c)){
-		c->close = jhd_connection_close;
-		c->listening = sc->listening;
-		if(lis->accept_timeout){
-			jhd_event_add_timer(&c->read,lis->accept_timeout);
-		}
-		sc->listening->connection_start(c);
-	}else{
-		close(fd);
-		c->fd = -1;
-		++free_connection_count;
-		c->data = free_connections;
-		free_connections = c;
-		log_notice("<== jhd_connection_accept error");
-	}
+
+	connection_config_socket_with_accept()
+
+	connection_add_to_event_list()
+
 	jhd_post_event(ev,&jhd_posted_accept_events);
 	log_notice("<== jhd_connection_accept OK ");
 }
 
 
-void jhd_connection_close(jhd_connection_t *c) {
-	int op;
-	struct epoll_event ee;
 
-	log_notice("==>jhd_connection_close");
-	if (c->fd != (-1)) {
-		op = EPOLL_CTL_DEL;
-		ee.events = 0;
-		ee.data.ptr = NULL;
-		epoll_ctl(epoll_fd, op, c->fd, &ee);
-		close(c->fd);
-		c->fd = -1;
-	}
-	++free_connection_count;
-	c->data = free_connections;
-	free_connections = c;
-	log_notice("==>jhd_connection_close");
 
-}
+

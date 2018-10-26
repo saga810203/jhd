@@ -4,7 +4,8 @@
  *  Created on: 2018年5月17日
  *      Author: root
  */
-#include <jhd_core.h>
+#include <jhd_config.h>
+#include <jhd_log.h>
 
 #define JHD_BUFFER_SIZE 8192
 #define JHD_MAX_POOL_SIZE (JHD_BUFFER_SIZE + sizeof(void*))
@@ -66,6 +67,8 @@ int jhd_pool_init() {
 	jhd_pool_t *pool;
 	int i;
 
+	log_assert_worker();
+
 	queue = &jhd_pool_config_queue;
 
 	if ((!jhd_max_pool) || (jhd_max_pool->size < JHD_MAX_POOL_SIZE)) {
@@ -101,6 +104,8 @@ int jhd_pool_init() {
 void* jhd_malloc(size_t size) {
 	u_char *ret, *begin, *end;
 	jhd_pool_t *pool = jhd_pool_data[size];
+
+	log_assert_worker();
 	if (pool->data) {
 		ret = pool->data;
 		pool->data = *((u_char**) pool->data);
@@ -125,7 +130,13 @@ void* jhd_malloc(size_t size) {
 	}
 	return NULL;
 }
+void* jhd_alloc(size_t size){
+	log_assert_worker();
+	log_err("NO IMPL");
+	return NULL;
+}
 void* jhd_calloc(size_t size) {
+	log_assert_worker();
 	u_char* ret = jhd_malloc(size_t);
 	if (ret) {
 		memset(ret, 0, size);
@@ -135,12 +146,14 @@ void* jhd_calloc(size_t size) {
 void jhd_free(void* ptr) {
 	jhd_pool_t *pool;
 	uint16_t size = *((uint16_t*) (((u_char*) ptr) - 2));
+	log_assert_worker();
 	pool = jhd_pool_data[size];
 	*((u_char**) ptr) = pool->data;
 	pool->data = ptr;
 }
 void jhd_free_with_size(size_t size, void* ptr) {
 	jhd_pool_t *pool = jhd_pool_data[size];
+	log_assert_worker();
 	*((u_char**) ptr) = pool->data;
 	pool->data = ptr;
 }
@@ -151,4 +164,11 @@ void  jhd_free_original(void* ptr,uint16_t size){
 	((u_char*)ptr) +=2;
 	*((u_char**) ptr) = pool->data;
 	pool->data = (u_char*)ptr;
+}
+
+
+void  jhd_wait_mem(jhd_event_t *ev,size_t){
+	log_assert_worker();
+
+
 }

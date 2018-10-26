@@ -668,18 +668,33 @@ static int ssl_parse_client_hello(jhd_connection_t *c) {
 	}
 #endif
 
-	ciphersuite_info = supported_ciphersuites;
-	while (ciphersuite_info->id != 0) {
-		for (j = 0, p = buf + ciph_offset + 2; j < ciph_len; j += 2, p += 2) {
+//	ciphersuite_info = supported_ciphersuites;
+//	while (ciphersuite_info->id != 0) {
+//		for (j = 0, p = buf + ciph_offset + 2; j < ciph_len; j += 2, p += 2) {
+//			if (p[0] != (((ciphersuite_info->id) >> 8) & 0xFF) || p[1] != ((ciphersuite_info->id) & 0xFF)) {
+//				continue;
+//			}
+//			got_common_suite = 1;
+//			if (ssl_ciphersuite_match(ssl, ciphersuite_info)) {
+//				goto have_ciphersuite;
+//			}
+//		}
+//		ciphersuite_info++;
+//	}
+	for (j = 0, p = buf + ciph_offset + 2; j < ciph_len; j += 2, p += 2) {
+		ciphersuite_info = supported_ciphersuites;
+		while (ciphersuite_info->id != 0) {
 			if (p[0] != (((ciphersuite_info->id) >> 8) & 0xFF) || p[1] != ((ciphersuite_info->id) & 0xFF)) {
+				ciphersuite_info++;
 				continue;
 			}
 			got_common_suite = 1;
 			if (ssl_ciphersuite_match(ssl, ciphersuite_info)) {
 				goto have_ciphersuite;
 			}
+
 		}
-		ciphersuite_info++;
+
 	}
 	if (got_common_suite) {
 		log_err("got ciphersuites in common, " "but none of them usable" );

@@ -446,28 +446,8 @@ int jhd_tls_ssl_is_server_side(jhd_tls_ssl_context * ssl);
 #define jhd_tls_ssl_is_server_side(ssl) ((ssl)->conf->server_side)
 #endif
 
-/**
- * \brief          Set up an SSL context for use
- *
- * \note           No copy of the configuration context is made, it can be
- *                 shared by many jhd_tls_ssl_context structures.
- *
- * \warning        The conf structure will be accessed during the session.
- *                 It must not be modified or freed as long as the session
- *                 is active.
- *
- * \warning        This function must be called exactly once per context.
- *                 Calling jhd_tls_ssl_setup again is not supported, even
- *                 if no session is active.
- *
- * \param ssl      SSL context
- * \param conf     SSL configuration to use
- *
- * \return         0 if successful, or JHD_TLS_ERR_SSL_ALLOC_FAILED if
- *                 memory allocation failed
- */
-int jhd_tls_ssl_setup(jhd_tls_ssl_context *ssl, const jhd_tls_ssl_config *conf);
 
+int jhd_tls_ssl_context_alloc(jhd_tls_ssl_context **pssl,const jhd_tls_ssl_config *conf,jhd_event_t *ev);
 
 #if !defined(JHD_TLS_INLINE)
 /**

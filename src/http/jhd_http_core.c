@@ -1,4 +1,3 @@
-#include <jhd_log.h>
 #include <jhd_http_core.h>
 
 

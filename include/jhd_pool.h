@@ -7,8 +7,10 @@
 
 #ifndef JHD_POOL_H_
 #define JHD_POOL_H_
-
 #include <jhd_config.h>
+#include <jhd_log.h>
+#include <jhd_event.h>
+
 
 #define MEM_SIZE_PTR(p) (((u_char*)(p))-2)
 
@@ -30,10 +32,13 @@ struct jhd_pool_s{
 	void  jhd_init_pool();
 
 	void* jhd_malloc(size_t  size);
+	void* jhd_alloc(size_t size);
 	void* jhd_calloc(size_t  size);
 	void  jhd_free(void* ptr);
 	void  jhd_free_with_size(size_t size,void* ptr);
 	void  jhd_free_original(void* ptr,uint16_t size);
+
+	void  jhd_wait_mem(jhd_event_t *ev,size_t);
 
 
 	int	jhd_add_pool_config(uint16_t size,uint32_t page_size,uint32_t page_count);

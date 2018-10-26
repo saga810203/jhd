@@ -1031,44 +1031,93 @@ void jhd_tls_ssl_init(jhd_tls_ssl_context *ssl) {
 
 #endif
 
-/*
- * Setup an SSL context
- */
-int jhd_tls_ssl_setup(jhd_tls_ssl_context *ssl, const jhd_tls_ssl_config *conf) {
-	const size_t len = JHD_TLS_SSL_BUFFER_LEN;
-	ssl->conf = conf;
-	if ((ssl->in_hdr = jhd_tls_malloc(len)) == NULL){
-		log_err( "alloc(%d bytes) failed", len);
-		return JHD_ERROR;
-	}
-	if((ssl->out_hdr = jhd_tls_malloc(len)) == NULL) {
-		log_err( "alloc(%d bytes) failed", len);
-		jhd_tls_free(ssl->in_hdr);
-		ssl->in_hdr = NULL;
-		return JHD_ERROR;
-	}
+//MAX IN_HDR = 5+16 +16384 +48
 
-	ssl->handshake = jhd_tls_alloc(sizeof(jhd_tls_ssl_handshake_params));
-	if (ssl->handshake == NULL) {
-		jhd_tls_free(ssl->in_hdr);
-		jhd_tls_free(ssl->out_hdr);
-		ssl->in_hdr = NULL;
-		ssl->out_hdr = NULL;
-		return JHD_ERROR;
+int jhd_tls_ssl_context_alloc(jhd_tls_ssl_context **pssl,const jhd_tls_ssl_config *conf,jhd_event_t *ev){
+	jhd_tls_ssl_context *ssl =*pssl;
+	log_assert_worker();
+	if(ssl == NULL){
+		ssl = jhd_tls_alloc(sizeof(jhd_tls_ssl_context));
+		if(ssl  == NULL){
+			jhd_tls_wait_mem(ev,sizeof(jhd_tls_ssl_context));
+			return JHD_AGAIN;
+		}
+		*pssl = ssl;
+		jhd_tls_platform_zeroize(ssl,sizeof(jhd_tls_ssl_context));
+		ssl->conf = conf;
 	}
-
-
-	jhd_tls_platform_zeroize(ssl->handshake,sizeof(jhd_tls_ssl_handshake_params));
-	jhd_tls_md5_starts_ret(&ssl->handshake->fin_md5);
-	jhd_tls_sha1_starts_ret(&ssl->handshake->fin_sha1);
-	jhd_tls_sha256_starts_ret_with_256(&ssl->handshake->fin_sha256);
-	jhd_tls_sha512_starts_ret_with_384(&ssl->handshake->fin_sha512);
-	ssl->handshake->update_checksum = ssl_update_checksum_start;
-	ssl->out_msg =ssl->out_iv = ssl->out_hdr + 5;
-	ssl->in_msg =ssl->in_iv = ssl->in_hdr + 5;
+	if (ssl->in_hdr == NULL){
+		ssl->in_hdr = jhd_tls_alloc(16512);
+		if(ssl->in_hdr == NULL){
+			jhd_tls_wait_mem(ev,16512);
+			return JHD_AGAIN;
+		}
+		ssl->in_msg =ssl->in_iv = ssl->in_hdr + 5;
+	}
+	if(ssl->out_hdr == NULL){
+		ssl->out_hdr =jhd_tls_alloc(16*1024);
+		if(ssl->out_hdr == NULL){
+			jhd_tls_wait_mem(ev,16*1024);
+			return JHD_AGAIN;
+		}
+		ssl->out_msg =ssl->out_iv = ssl->out_hdr + 5;
+	}
+	if(NULL == ssl->handshake){
+		ssl->handshake = jhd_tls_alloc(sizeof(jhd_tls_ssl_handshake_params));
+		if (ssl->handshake == NULL) {
+			jhd_tls_wait_mem(ev,sizeof(jhd_tls_ssl_handshake_params));
+			return JHD_AGAIN;
+		}
+		jhd_tls_platform_zeroize(ssl->handshake,sizeof(jhd_tls_ssl_handshake_params));
+		jhd_tls_md5_starts_ret(&ssl->handshake->fin_md5);
+		jhd_tls_sha1_starts_ret(&ssl->handshake->fin_sha1);
+		jhd_tls_sha256_starts_ret_with_256(&ssl->handshake->fin_sha256);
+		jhd_tls_sha512_starts_ret_with_384(&ssl->handshake->fin_sha512);
+		ssl->handshake->update_checksum = ssl_update_checksum_start;
+	}
 	return JHD_OK;
 }
 
+
+/*
+ * Free an SSL context
+ */
+void jhd_tls_ssl_context_free(jhd_tls_ssl_context **pssl) {
+	jhd_tls_ssl_context *ssl;
+
+	log_assert_worker();
+	log_assert(*pssl != NULL);
+	ssl = *pssl;
+	*pssl = NULL;
+
+	if (ssl->out_hdr != NULL) {
+		jhd_tls_free_with_size(ssl->out_hdr,16*1024);
+	}
+	if (ssl->in_hdr != NULL) {
+		jhd_tls_free_with_size(ssl->in_hdr,16512);
+	}
+	if (ssl->handshake != NULL) {
+		jhd_tls_ssl_handshake_free(ssl);
+		jhd_tls_free_with_size(ssl->handshake,sizeof(jhd_tls_ssl_handshake_params));
+	}
+	if(ssl->enc_hmac != NULL){
+		log_assert(NULL != ssl->md_info);
+		jhd_tls_free_with_size(ssl->enc_hmac,ssl->md_info->block_size << 1);
+	}
+	if(ssl->dec_hmac != NULL){
+		log_assert(NULL != ssl->md_info);
+		jhd_tls_free_with_size(ssl->dec_hmac,ssl->md_info->block_size << 1);
+	}
+	if(ssl->dec_ctx != NULL){
+		log_assert(NULL != ssl->cipher_info);
+		jhd_tls_free_with_size(ssl->dec_ctx,ssl->cipher_info->base->ctx_size);
+	}
+	if(ssl->enc_ctx != NULL){
+		log_assert(NULL != ssl->cipher_info);
+		jhd_tls_free_with_size(ssl->enc_ctx,ssl->cipher_info->base->ctx_size);
+	}
+	jhd_tls_free_with_size(ssl,sizeof(jhd_tls_ssl_context));
+}
 
 
 
@@ -1831,38 +1880,7 @@ void jhd_tls_ssl_handshake_free(jhd_tls_ssl_context *ssl) {
 }
 
 
-/*
- * Free an SSL context
- */
-void jhd_tls_ssl_free(jhd_tls_ssl_context *ssl) {
-	log_notice("==>jhd_tls_ssl_free");
-	if (ssl->out_hdr != NULL) {
-		jhd_tls_free(ssl->out_hdr);
-	}
-	if (ssl->in_hdr != NULL) {
-		jhd_tls_free(ssl->in_hdr);
-	}
-	if (ssl->handshake) {
-		jhd_tls_ssl_handshake_free(ssl);
-		jhd_tls_free_with_size(ssl->handshake,sizeof(jhd_tls_ssl_handshake_params));
-		ssl->handshake = NULL;
-	}
-	if(ssl->enc_hmac){
-		log_assert(NULL != ssl->md_info);
-		jhd_tls_free_with_size(ssl->enc_hmac,ssl->md_info->block_size << 1);
-	}
-	if(ssl->dec_hmac){
-		log_assert(NULL != ssl->md_info);
-		jhd_tls_free_with_size(ssl->dec_hmac,ssl->md_info->block_size << 1);
-	}
-	if(ssl->dec_ctx != NULL){
-		jhd_tls_free_with_size(ssl->dec_ctx,ssl->cipher_info->base->ctx_size);
-	}
-	if(ssl->enc_ctx != NULL){
-		jhd_tls_free_with_size(ssl->enc_ctx,ssl->cipher_info->base->ctx_size);
-	}
-	log_notice("<==jhd_tls_ssl_free");
-}
+
 
 #if !defined(JHD_TLS_INLINE)
 /**

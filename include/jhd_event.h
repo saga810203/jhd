@@ -129,7 +129,7 @@ jhd_inline void jhd_event_del_timer(jhd_event_t event) {
 }
 
 jhd_inline void jhd_post_event(jhd_event_t *EVENT,jhd_queue_t *QUEUE){
-	if (!(EVENT->queue.next)){
+	if (!(EVENT)->queue.next ){
 		jhd_queue_insert_tail(QUEUE, &(EVENT)->queue);
 	}
 }
@@ -164,8 +164,12 @@ jhd_inline void  jhd_event_process_posted(jhd_queue_t *posted) {
 		q = jhd_queue_head(posted);
 		ev = jhd_queue_data(q, jhd_event_t, queue);
 		jhd_delete_posted_event(ev);
+		log_assert(ev->handler != NULL);
 		ev->handler(ev);
 	}
 }
+
+#define jhd_event_with_timeout(EV) if((EV)->timedout ==0){\
+	if((EV)->timer.key){ jhd_event_del_timer(ev);}else
 
 #endif /* JHD_EVENT_H_ */

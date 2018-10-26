@@ -9,6 +9,7 @@
 #define JHD_CONNECTION_H_
 
 #include <jhd_config.h>
+#include <jhd_log.h>
 #include <jhd_queue.h>
 #include <jhd_event.h>
 
@@ -44,7 +45,11 @@ struct jhd_listening_s {
 	jhd_queue_t queue;
 	void *lis_ctx;
 	void (*lis_ctx_close)(void *lis_ctx);
-	size_t accept_timeout;
+	uint32_t accept_timeout;
+	uint32_t read_timeout;
+	uint32_t write_timeout;
+	uint32_t wait_mem_timeout;
+
 	jhd_connection_start_pt connection_start;
 };
 
@@ -62,7 +67,15 @@ struct jhd_connection_s {
 	void *ssl;
 	int idx;
 	unsigned shutdown_remote:1;
+
+#ifdef JHD_LOG_ASSERT_ENABLE
+	unsigned closed;
+#endif
+
 };
+
+#define jhd_connection_free() ++free_connection_count;c->data = free_connections;free_connections = c
+
 
 
 int jhd_connection_parse_sockaddr(jhd_sockaddr_t* addr,socklen_t *socklen,u_char *addr_text,size_t addr_text_len);
@@ -74,7 +87,6 @@ void jhd_connection_init();
 
 void jhd_connection_empty_read(jhd_event_t *rv);
 void jhd_connection_empty_write(jhd_event_t *wv);
-void jhd_connection_empty_ssl_write(jhd_event_t *wv);
 
 ssize_t jhd_connection_error_recv(jhd_connection_t *c,u_char *buf,size_t size);
 ssize_t jhd_connection_error_send(jhd_connection_t *c,u_char *buf,size_t size);
@@ -109,9 +121,19 @@ ssize_t jhd_connection_send(jhd_connection_t *c, u_char *buf, size_t size);
 
 ssize_t jhd_connection_tls_send(jhd_connection_t *c, u_char *buf, size_t size);
 int jhd_connection_tls_handshark(jhd_connection_t *c);
-void jhd_connection_tls_noop_write(jhd_event_t * ev);
+void jhd_connection_tls_close(jhd_connection_t *c);
+
 
 void jhd_connection_close(jhd_connection_t *c);
+
+#define jhd_connection_close_by_only_read(CON) \
+	log_assert((CON->write.handler == jhd_connection_empty_write) ||(CON->write.handler == jhd_connection_tls_empty_write) );\
+    log_assert(CON->write.next == NULL);\
+    log_assert(CON->read.next == NULL);\
+    log_assert_code(CON->read.handler = NULL);\
+	log_assert_code(CON->write.handler = NULL);\
+	CON->close(CON);
+
 
 
 extern int free_connection_count;
