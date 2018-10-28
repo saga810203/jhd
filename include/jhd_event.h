@@ -170,6 +170,6 @@ jhd_inline void  jhd_event_process_posted(jhd_queue_t *posted) {
 }
 
 #define jhd_event_with_timeout(EV) if((EV)->timedout ==0){\
-	if((EV)->timer.key){ jhd_event_del_timer(ev);}else
+	if((EV)->timer.key){ jhd_event_del_timer(ev);}}else
 
 #endif /* JHD_EVENT_H_ */

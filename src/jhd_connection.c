@@ -15,6 +15,7 @@
 #include <tls/jhd_tls_ssl_internal.h>
 
 jhd_connection_t *g_connections;
+jhd_connection_t * event_c;
 
 static jhd_queue_t g_listening_queue;
 

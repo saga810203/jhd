@@ -140,4 +140,6 @@ extern int free_connection_count;
 extern int listening_count;
 extern jhd_connection_t *g_connections;
 
+extern jhd_connection_t * event_c;
+
 #endif /* JHD_CONNECTION_H_ */

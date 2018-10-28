@@ -823,6 +823,8 @@ int jhd_tls_ssl_config_defaults(jhd_tls_ssl_config *conf, jhd_tls_bool server_si
  */
 void jhd_tls_ssl_config_free(jhd_tls_ssl_config *conf);
 
+int jhd_tls_ssl_flush(jhd_connection_t *c,jhd_tls_ssl_context *ssl);
+
 
 
 
