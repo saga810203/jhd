@@ -8,6 +8,7 @@
 #ifndef HTTP2_JHD_HTTP2_H_
 #define HTTP2_JHD_HTTP2_H_
 #include <jhd_config.h>
+#include <http/jhd_http_core.h>
 
 
 #define JHD_HTTP2_FRAME_TYPE_DATA_FRAME           0x0
@@ -37,18 +38,7 @@
 
 
 
-typedef struct {
-	unsigned type:4;
-	unsigned ack:1;
-	unsigned end_header:1;
-	//TODO impl
-	unsigned free_data:1;
-	u_char   *data;
-	u_int16_t data_len;
-	u_char   *pos;
-	uint16_t len;
-	void * next;
-}jhd_http2_frame;
+typedef  jhd_http_data jhd_http2_frame;
 
 typedef struct {
 	uint32_t idle_timeout;
@@ -56,9 +46,24 @@ typedef struct {
 	uint32_t write_timeout;
 	uint32_t wait_mem_timeout;
 
+	uint32_t initial_window_size;
+
+    uint32_t recv_window_size_threshold; // if(connection->recv.window_size <  recv_window_size_threshold then send window_update
+
+	// http2 connection begin idle triger   can add idle timer(server) or send ping frame(client)
     jhd_event_handler_pt connection_idle;
+    // in read event triger timeout (readtimeout or idle_timeout or mem_timeout)
     jhd_event_handler_pt connection_read_timeout;
+    //
+    jhd_event_handler_pt connection_read_error;
+
+    // in read event read connection data invalid
     jhd_event_handler_pt connection_protocol_error;
+
+
+
+
+
 
 
 
@@ -88,15 +93,9 @@ typedef struct{
 		jhd_http2_stream *stream;
 
 		uint32_t last_stream_id;
+        uint32_t window_size;
 
-
-
-
-
-
-
-
-		jhd_event_handler_pt next_recv_handler;
+        void *state_param;
 }jhd_http2_conneciton_recv_part;
 typedef struct{
 		jhd_http2_frame *head;
@@ -160,12 +159,28 @@ typedef struct {
 
 }jhd_http2_connection;
 
+
+typedef struct{
+		void (*remote_close_with_empty_data)(jhd_http2_stream *stream);
+		void (*remote_data_arrival)(jhd_http2_stream *stream,jhd_http2_frame *frame);
+		void (*remote_rst_stream)(jhd_http2_stream *stream);
+
+
+
+
+
+}jhd_http2_stream_handler;
+
 struct jhd_http2_stream_s{
+	jhd_http2_stream_handler *handler;
 	uint32_t id;
 
 
+	int recv_window_size;
+	int send_window_size;
+
 	jhd_queue_t queue;
-}
+};
 
 
 
@@ -176,41 +191,41 @@ void jhd_http2_send_event_handler_clean(jhd_event_t *ev);
 void jhd_http2_send_event_handler_ssl(jhd_event_t *ev);
 
 #if !defined(JHD_INLINE)
-jhd_inline void jhd_http2_send_queue_frame(jhd_event_t *wev,jhd_http2_frame *frame){
+jhd_inline void jhd_http2_send_queue_frame(jhd_http2_frame *frame){
 	if(event_h2c->send.tail != NULL){
 		event_h2c->send.tail->next = frame;
 		event_h2c->send.tail = frame;
 	}else{
 		event_h2c->send.head = event_h2c->send.tail = frame;
-		if(wev->queue.next == NULL){
-			jhd_post_event(wev,&jhd_posted_events);
+		if(event_c->write.queue.next == NULL){
+			jhd_post_event(&event_c->write,&jhd_posted_events);
 		}
 	}
 }
 
-jhd_inline void jhd_http2_send_headers_frame(jhd_event_t *wev,jhd_http2_frame *begin_headers,jhd_http2_frame * end_headers){
+jhd_inline void jhd_http2_send_headers_frame(jhd_http2_frame *begin_headers,jhd_http2_frame * end_headers){
 	if(event_h2c->send.tail != NULL){
 		event_h2c->send.tail->next = begin_headers;
 		event_h2c->send.tail = end_headers;
 	}else{
 		event_h2c->send.head =begin_headers;
 		event_h2c->send.tail = end_headers;
-		if(wev->queue.next == NULL){
-			jhd_post_event(wev,&jhd_posted_events);
+		if(event_c->write.queue.next == NULL){
+			jhd_post_event(&event_c->write,&jhd_posted_events);
 		}
 	}
 }
 
 
 #else
-#define jhd_http2_send_queue_frame(WEV,F) \
+#define jhd_http2_send_queue_frame(F) \
 	if(event_h2c->send.tail != NULL){\
 		event_h2c->send.tail->next = F;\
 		event_h2c->send.tail = F;\
 	}else{\
 		event_h2c->send.head = event_h2c->send.tail = F;\
-		if((WEV)->queue.next == NULL){\
-			jhd_post_event(WEV,&jhd_posted_events);\
+		if(event_c->write.queue.next == NULL){\
+			jhd_post_event(&event_c->write,&jhd_posted_events);\
 		}\
 	}
 
@@ -221,14 +236,14 @@ jhd_inline void jhd_http2_send_headers_frame(jhd_event_t *wev,jhd_http2_frame *b
 	}else{\
 		event_h2c->send.head =B;\
 		event_h2c->send.tail = E;\
-		if((WEV)->queue.next == NULL){\
-			jhd_post_event((WEV),&jhd_posted_events);\
+		if(event_c->write.queue.next == NULL){\
+			jhd_post_event(&event_c->write,&jhd_posted_events);\
 		}\
 	}
 
 
 #endif
-jhd_inline void jhd_http2_send_ping_ack(jhd_event_t *wev,jhd_http2_frame *frame){
+jhd_inline void jhd_http2_send_ping_ack(jhd_http2_frame *frame){
 	jhd_http2_frame *prev,*next_frame;
 	if(event_h2c->send.head != NULL){
 		prev = next_frame = event_h2c->send.head->next;
@@ -264,11 +279,14 @@ jhd_inline void jhd_http2_send_ping_ack(jhd_event_t *wev,jhd_http2_frame *frame)
 		}
 	}else{
 		event_h2c->send.head = event_h2c->send.tail = frame;
-		if(wev->queue.next == NULL){
-			jhd_post_event(wev,&jhd_posted_events);
+		if(event_c->write.queue.next == NULL){
+			jhd_post_event(&event_c->write,&jhd_posted_events);
 		}
 	}
 }
+
+
+
 
 
 void jhd_http2_connection_default_idle_handler(jhd_event_t *ev);

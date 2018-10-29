@@ -19,6 +19,25 @@ typedef enum {
 
 
 
+typedef struct {
+	unsigned type:4;
+	union{
+		unsigned ack:1;
+		unsigned end_stream:1;
+	};
+	union{
+		unsigned end_header:1;
+		unsigned padded:1;
+	};
+	//TODO impl
+	unsigned free_data:1;
+	u_char   *data;
+	u_int16_t data_len;
+	u_char   *pos;
+	uint16_t len;
+	void * next;
+}jhd_http_data;
+
 
 
 

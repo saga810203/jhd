@@ -113,6 +113,8 @@ jhd_inline static  void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 
 #define jhd_post_event(EVENT, QUEUE)  if (!((EVENT)->queue.next)) { jhd_queue_insert_tail(QUEUE, &(EVENT)->queue);}
 
+#define jhd_unshift_event(EVENT, QUEUE)  if (!((EVENT)->queue.next)) { jhd_queue_insert_head(QUEUE, &(EVENT)->queue);}
+
 #define jhd_delete_posted_event(EVENT)   jhd_queue_remove(&(EVENT)->queue)
 
 #define jhd_event_from_queue(QUEUE)    jhd_queue_data(QUEUE,jhd_event_t,queue);
@@ -131,6 +133,11 @@ jhd_inline void jhd_event_del_timer(jhd_event_t event) {
 jhd_inline void jhd_post_event(jhd_event_t *EVENT,jhd_queue_t *QUEUE){
 	if (!(EVENT)->queue.next ){
 		jhd_queue_insert_tail(QUEUE, &(EVENT)->queue);
+	}
+}
+jhd_inline void jhd_unshift_event(jhd_event_t *EVENT,jhd_queue_t *QUEUE){
+	if (!(EVENT)->queue.next ){
+		jhd_queue_insert_head(QUEUE, &(EVENT)->queue);
 	}
 }
 
