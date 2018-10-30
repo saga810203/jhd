@@ -9,6 +9,24 @@
 #define HTTP2_JHD_HTTP2_H_
 #include <jhd_config.h>
 #include <http/jhd_http_core.h>
+#include <http2/jhd_http2_hpack.h>
+
+
+#define JHD_HTTP2_NO_ERROR                     0x0
+#define JHD_HTTP2_PROTOCOL_ERROR               0x1
+#define JHD_HTTP2_INTERNAL_ERROR               0x2
+#define JHD_HTTP2_FLOW_CTRL_ERROR              0x3
+#define JHD_HTTP2_SETTINGS_TIMEOUT             0x4
+#define JHD_HTTP2_STREAM_CLOSED                0x5
+#define JHD_HTTP2_SIZE_ERROR                   0x6
+#define JHD_HTTP2_REFUSED_STREAM               0x7
+#define JHD_HTTP2_CANCEL                       0x8
+#define JHD_HTTP2_COMP_ERROR                   0x9
+#define JHD_HTTP2_CONNECT_ERROR                0xa
+#define JHD_HTTP2_ENHANCE_YOUR_CALM            0xb
+#define JHD_HTTP2_INADEQUATE_SECURITY          0xc
+#define JHD_HTTP2_HTTP_1_1_REQUIRED            0xd
+#define JHD_HTTP2_UNSUPPORTED_TYPE             0xF0000;
 
 
 #define JHD_HTTP2_FRAME_TYPE_DATA_FRAME           0x0
@@ -22,9 +40,14 @@
 #define JHD_HTTP2_FRAME_TYPE_WINDOW_UPDATE_FRAME  0x8
 #define JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME   0x9
 
+#define JHD_HTTP2_STREAM_STATE_CLOSE              0x00
+#define JHD_HTTP2_STREAM_STATE_CLOSE_LOCAL        0x01
+#define JHD_HTTP2_STREAM_STATE_CLOSE_REMOTE       0x02
+#define JHD_HTTP2_STREAM_STATE_OPEN               0x03
+
 
 #define JHD_HTTP2_CONNECTION_HANDLE_READ_TIMEOUT(ev) \
-	if((ev)->timedout ==0){\
+	if((ev)->timedout ==1){\
 		log_err("timeout");\
 		event_h2c->conf->connection_read_timeout(ev);\
 		log_notice("<==%s with timedout",__FUNCTION__);\
@@ -33,8 +56,7 @@
 
 #define JHD_HTTP2_CONNECTION_ADD_READ_TIMEOUT(ev) jhd_event_add_timer(ev,event_h2c->conf->read_timeout)
 #define JHD_HTTP2_CONNECTION_ADD_IDLE_TIMEOUT(ev) jhd_event_add_timer(ev,event_h2c->conf->idle_timeout)
-#define JHD_HTTP2_CONNECTION_ADD_WRITE_TIMEOUT(ev) jhd_event_add_timer(ev,event_h2c->conf->write_timeout)
-#define JHD_HTTP2_CONNECTION_ADD_MEM_TIMEOUT(ev) jhd_event_add_timer(ev,event_h2c->conf->write_timeout)
+#define JHD_HTTP2_CONNECTION_ADD_MEM_TIMEOUT(ev) jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout)
 
 
 
@@ -47,6 +69,8 @@ typedef struct {
 	uint32_t wait_mem_timeout;
 
 	uint32_t initial_window_size;
+	uint32_t max_header_table_size;
+	uint32_t max_streams;
 
     uint32_t recv_window_size_threshold; // if(connection->recv.window_size <  recv_window_size_threshold then send window_update
 
@@ -54,20 +78,26 @@ typedef struct {
     jhd_event_handler_pt connection_idle;
     // in read event triger timeout (readtimeout or idle_timeout or mem_timeout)
     jhd_event_handler_pt connection_read_timeout;
-    //
+    // in read event triger error (do del timer,hand..)
     jhd_event_handler_pt connection_read_error;
+
+    // in read event triger error (do del timer,hand..)
+    jhd_event_handler_pt connection_send_error;
+
+    //
+    jhd_event_handler_pt connection_send_timeout;
 
     // in read event read connection data invalid
     jhd_event_handler_pt connection_protocol_error;
 
 
+    jhd_event_handler_pt connection_frame_header_read;
+    //  too long  max_header_size  too long header name   too long header val
+    jhd_event_handler_pt connection_unsupported_error;
 
 
 
 
-
-
-    uint8_t max_streams;
 
 	void *extend_param;
 }jhd_http2_connection_conf;
@@ -95,13 +125,20 @@ typedef struct{
 		uint32_t last_stream_id;
         uint32_t window_size;
 
+        jhd_http2_hpack hpack;
+
+
+
         void *state_param;
 }jhd_http2_conneciton_recv_part;
 typedef struct{
 		jhd_http2_frame *head;
 		jhd_http2_frame *tail;
-		u_char   *pos;
-		uint16_t len;
+
+		uint16_t frame_szie;
+		uint32_t window_size;
+		uint32_t initial_window_size;
+
 
 }jhd_http2_conneciton_send_part;
 
@@ -113,7 +150,7 @@ typedef struct {
 	void *data;
 	jhd_http2_conneciton_recv_part recv;
 	jhd_http2_conneciton_send_part send;
-	uint8_t processing;
+	uint32_t processing;
 
 //	size_t headers_table_size;
 //	size_t init_window;
@@ -155,6 +192,8 @@ typedef struct {
 
 		jhd_connection_close_pt  close_pt;
 
+		uint32_t max_streams;
+
 		jhd_queue_t streams[32];
 
 }jhd_http2_connection;
@@ -174,6 +213,7 @@ typedef struct{
 struct jhd_http2_stream_s{
 	jhd_http2_stream_handler *handler;
 	uint32_t id;
+	u_char state;
 
 
 	int recv_window_size;
@@ -292,6 +332,12 @@ jhd_inline void jhd_http2_send_ping_ack(jhd_http2_frame *frame){
 void jhd_http2_connection_default_idle_handler(jhd_event_t *ev);
 void jhd_http2_connection_default_protocol_error_handler(jhd_event_t *ev);
 void jhd_http2_read_frame_header(jhd_event_t *ev);
+
+void jhd_http2_send_setting_frame(jhd_event_t *ev);
+void jhd_http2_send_setting_frame_ack(jhd_event_t *ev);
+void jhd_http2_send_ping_frame(jhd_event_t *ev);
+void jhd_http2_send_ping_frame_ack(jhd_event_t *ev);
+
 extern jhd_http_request_info  jhd_http2_info;
 
 extern u_char* jhd_http2_preface;
