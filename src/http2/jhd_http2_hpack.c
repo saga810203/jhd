@@ -179,7 +179,7 @@ int jhd_http2_hpack_add(jhd_http2_hpack  *hpack,u_char* name,uint16_t name_len,u
 
 
 
-int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,uint16_t *out_capacity){
+int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,uint16_t *out_capacity,u_char **old_data,uint16_t *old_capacity){
 	uint16_t new_capacity;
 	int64_t delta;
 	u_char* new_data;
@@ -192,7 +192,8 @@ int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,uint16_t *ou
 
 	if(new_size == 0){
 		if(hpack->capacity != 0){
-			jhd_free_with_size(hpack->data,hpack->capacity);
+			*old_data = hpack->data;
+			*old_capacity = hpack->capacity;
 			memset(hpack,sizeof(jhd_http2_hpack));
 			return JHD_OK;
 
@@ -201,7 +202,9 @@ int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,uint16_t *ou
 	}else{
 		new_capacity = 4096;
 		while(new_capacity< new_size){
-			log_assert(new_capacity < (65535 -4096));
+			if(new_capacity > (65535 - 4096)){
+				return JHD_ERROR;
+			}
 			new_capacity+=4096;
 		}
 	}
@@ -225,7 +228,8 @@ int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,uint16_t *ou
 				for(i=0;i< hpack->rds_headers;++i){
 					new_index[i] = hpack->index[i]+delta;
 				}
-				jhd_free_with_size(hpack->data,hpack->capacity);
+				*old_data = hpack->data;
+				*old_capacity = hpack->capacity;
 				hpack->data = new_data;
 				hpack->capacity = new_capacity;
 				hpack->index = new_index;

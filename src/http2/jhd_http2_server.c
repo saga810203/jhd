@@ -227,12 +227,85 @@ void jhd_http2_with_alpn_server_connection_start(jhd_connection_t *c){
 
 
 
-
+static void server_headers_frame_parse_item(jhd_event_t *ev);
 static void server_headers_frame_parse_item(jhd_event_t *ev);
 
 
 
+static void jhd_http2_recv_continuation_payload(jhd_event_t *ev){
+	jhd_http_header *header;
+	jhd_queue_t h,*q;
+	ssize_t rc;
+	size_t len;
+	u_char *p;
 
+	log_assert_worker();
+	event_c = ev->data;
+	event_h2c = event_c->data;
+
+	header = event_h2c->recv.state_param;
+	p = event_h2c->recv.alloc_buffer[0];
+
+
+	if((ev)->timedout){
+		log_err("timeout");
+		len =  event_h2c->recv.payload_len;
+		event_h2c->recv.state_param = NULL;
+		jhd_queue_move(&h,&event_h2c->recv.headers);
+		event_h2c->conf->connection_read_timeout(ev);
+		goto func_free;
+	}
+
+	p += event_h2c->recv.state;
+
+	len = event_h2c->recv.payload_len - event_h2c->recv.state;
+
+	log_assert(len >0);
+
+	rc = event_c->recv(event_c,p,len);
+	if(rc > 0){
+		if(rc == len){
+			event_h2c->recv.state = 0;
+			ev->handler = server_headers_frame_parse_item;
+			jhd_unshift_event(ev,&jhd_posted_events);
+		}else{
+			event_h2c->recv.state += rc;
+			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
+		}
+	}else if(rc == JHD_AGAIN){
+		jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
+	}else{
+		p = event_h2c->recv.alloc_buffer[0];
+		len =  event_h2c->recv.payload_len;
+		event_h2c->recv.state_param = NULL;
+		jhd_queue_move(&h,&event_h2c->recv.headers);
+		event_h2c->conf->connection_read_error(ev);
+		goto func_free;
+	}
+	return;
+	func_free:
+			jhd_free_with_size(p,len);
+			if(header->name_alloced){
+				jhd_free_with_size(header->name,header->name_alloced);
+			}
+			if(header->value_alloced){
+				jhd_free_with_size(header->value,header->value_alloced);
+			}
+			jhd_free_with_size(header,sizeof(jhd_http_header));
+		while(!(jhd_queue_empty(&h))){
+			q = h.next;
+			jhd_queue_remove(q);
+			header = jhd_queue_data(q,jhd_http_header,queue);
+			if(header->name_alloced){
+				jhd_free_with_size(header->name,header->name_len);
+			}
+			if(header->value_alloced){
+				jhd_free_with_size(header->value,header->value_len);
+			}
+			jhd_free_with_size(header,sizeof(jhd_http_header));
+		}
+
+}
 
 
 static server_continuation_head_read(jhd_event_t *ev){
@@ -248,9 +321,6 @@ static server_continuation_head_read(jhd_event_t *ev){
 
 	event_c = ev->data;
 	event_h2c = event_c->data;
-
-
-
 	header = event_h2c->recv.state_param;
 	len = event_h2c->recv.payload_len;
 	log_assert(header!= NULL);
@@ -275,17 +345,22 @@ static server_continuation_head_read(jhd_event_t *ev){
 			jhd_event_add_timer(ev, event_h2c->conf->read_timeout);
 			return;
 		} else {
+			event_h2c->recv.state_param = NULL;
+			jhd_queue_move(&h,&event_h2c->recv.headers);
 			event_h2c->conf->connection_read_error(ev);
 			goto func_free;
 		}
-
 	}
 	if(event_h2c->recv.buffer[3] != JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME){
+		event_h2c->recv.state_param = NULL;
+		jhd_queue_move(&h,&event_h2c->recv.headers);
 		event_h2c->conf->connection_protocol_error(ev);
 		goto func_free;
 	}
 	sid = (event_h2c->recv.buffer[5] << 24) | (event_h2c->recv.buffer[6] << 16) |  (event_h2c->recv.buffer[7] << 8) |  (event_h2c->recv.buffer[8]);
 	if(sid != event_h2c->recv.last_stream_id){
+		event_h2c->recv.state_param = NULL;
+		jhd_queue_move(&h,&event_h2c->recv.headers);
 		event_h2c->conf->connection_protocol_error(ev);
 		goto func_free;
 	}
@@ -295,11 +370,16 @@ static server_continuation_head_read(jhd_event_t *ev){
 	}
     c_payload_len = (event_h2c->recv.buffer[0] << 16) |  (event_h2c->recv.buffer[1] << 8) |  (event_h2c->recv.buffer[2]);
     if(c_payload_len > 16384){
+    	event_h2c->recv.state_param = NULL;
+    	jhd_queue_move(&h,&event_h2c->recv.headers);
+		event_h2c->conf->connection_protocol_error(ev);
+		goto func_free;
+    }else if(c_payload_len ==0){
+    	event_h2c->recv.state_param = NULL;
+		jhd_queue_move(&h,&event_h2c->recv.headers);
 		event_h2c->conf->connection_protocol_error(ev);
 		goto func_free;
     }
-
-
     rc = event_h2c->recv.end - event_h2c->recv.pos;
     log_assert(rc>=0);
     log_assert(rc < 8192);
@@ -316,6 +396,7 @@ static server_continuation_head_read(jhd_event_t *ev){
 			jhd_wait_mem(ev,c_payload_len);
 			return;
 		}
+		event_h2c->recv.alloc_buffer[0]= p;
     }
     if(rc>0){
     	memcpy(p,event_h2c->recv.pos,rc);
@@ -327,12 +408,10 @@ static server_continuation_head_read(jhd_event_t *ev){
     event_h2c->recv.payload_len = c_payload_len;
     event_h2c->recv.alloc_buffer[0] = p;
     event_h2c->recv.state = rc;
-    jhd_http2_do_recv_payload(ev,event_h2c,server_headers_frame_parse_item);
-
-
-
-
+	ev->handler = jhd_http2_recv_continuation_payload;
+	jhd_unshift_event(ev,&jhd_posted_events);
     if(header->queue.next){
+    	header->queue.next = NULL;
     	jhd_free_with_size(header->queue->next,len);
     }
    return;
@@ -399,12 +478,13 @@ static void server_headers_frame_header_check(jhd_event_t *ev){
 static void server_headers_frame_parse_item(jhd_event_t *ev){
 	jhd_http_header *header;
 	jhd_queue_t h,*q;
-	u_char *p,*end;;
+	u_char *p,*end,*old_hpack_data;
+	jhd_event_handler_pt err_handler;
 
-    u_char      ch,indexed,index,size_update,prefix;
+    u_char      ch,indexed,index,size_update,prefix,octet,shift;
     size_t   value;
-
-
+    uint16_t hpack_capacity,old_capacity;
+    int rc;
 
 	log_assert_worker();
 	event_c = ev->data;
@@ -414,11 +494,8 @@ static void server_headers_frame_parse_item(jhd_event_t *ev){
 
 	if((ev)->timedout){
 		log_err("timeout");
-		event_h2c->recv.state_param = NULL;
-		jhd_queue_move(&h,&event_h2c->recv.headers);
-		event_h2c->conf->connection_read_timeout(ev);
-
-		goto func_free;
+		err_handler = event_h2c->conf->connection_read_timeout;
+		goto func_error;
 	}
 	p = event_h2c->recv.pos;
 	end = event_h2c->recv.end;
@@ -436,16 +513,13 @@ static void server_headers_frame_parse_item(jhd_event_t *ev){
 		if(((end - p) < 4 ) && (0 == (event_h2c->recv.frame_flag & JHD_HTTP2_END_HEADERS_FLAG))){
 			event_h2c->recv.pos = p;
 			event_h2c->recv.end = end;
-			event_h2c->recv.state_param = header;
 			header->queue.next =event_h2c->recv.alloc_buffer[0];
 			event_h2c->recv.state = 0;
 			ev->handler = server_continuation_head_read;
 			jhd_unshift_event(ev,&jhd_posted_events);
 			return;
 		}
-
-
-        ch = *p;
+        ch = *p++;
         index = size_update = indexed = 0;
 		if (ch >= (1 << 7)) {   //0x80
 			/* indexed header field */
@@ -470,6 +544,75 @@ static void server_headers_frame_parse_item(jhd_event_t *ev){
 			/* literal header field without indexing */
 			prefix = jhd_http2_prefix(4);
 		}
+
+	    value = ch & prefix;
+	    if (value == prefix) {
+			shift = 0;
+			for(;;){
+				if( p >= end  || shift >= 21){
+					//index < (1 << 14+prefix) size_update <(1 << 14+prefix)
+					err_handler = event_h2c->conf->connection_protocol_error;
+					goto func_error;
+				}
+				octet = *p++;
+				value += (octet & 0x7f) << shift;
+				if(octet<128){
+					break;
+				}
+				shift+=7;
+			}
+		}
+	    if(indexed){
+	    	header->name = NULL;
+	    	header->value = NULL;
+	    	header->name_alloced = 0;
+	    	header->value_alloced = 0;
+
+
+	    	jhd_http2_hpack_get_index_header_item(&event_h2c->recv.hpack,value,&header->name,&header->name_len,
+	    		&header->value,&header->value_len);
+	    	if(header->name == NULL || header->value == NULL){
+				err_handler = event_h2c->conf->connection_protocol_error;
+				goto func_error;
+	    	}
+	    }else if(size_update){
+	    	old_hpack_data = NULL;
+	    	rc = jhd_http2_hpack_resize(&event_h2c->recv.hpack,value,&hpack_capacity,&old_hpack_data,&old_capacity);
+	    	if(rc == JHD_AGAIN){
+	    		jhd_wait_mem(ev,hpack_capacity);
+	    		jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
+	    		return;
+	    	}else if(rc== JHD_ERROR){
+	    		//invalid hapck size; > 65535 -4096
+				err_handler = event_h2c->conf->connection_protocol_error;
+				goto func_error;
+	    	}
+	    	if(old_hpack_data != NULL){
+	    		//TODO:
+
+	    		return;
+	    	}
+
+		}else{
+			h2c->recv_paser_value = 0;
+			if(value){
+				if(ngx_http2_hpack_get_index_header(h2c,value,1)){
+					goto failed;
+				}
+				h2c->recv_paser_value = 1;
+			}else{
+				header = ngx_pcalloc(h2c->recv.pool,sizeof(ngx_http2_header_t));
+				if(header){
+					h2c->recv.c_header = header;
+					ngx_queue_insert_tail(&h2c->recv.headers_queue,&header->queue);
+				}else{
+					goto failed;
+				}
+			}
+			h2c->recv.min_len = 0 ;
+			h2c->recv.handler = ngx_http_upstream_http2_read_field_len;
+		}
+
 
 
 
@@ -515,7 +658,12 @@ static void server_headers_frame_parse_item(jhd_event_t *ev){
 
 
 	return;
-func_free:
+func_error:
+	event_h2c->recv.state_param = NULL;
+	jhd_queue_move(&h,&event_h2c->recv.headers);
+	p = event_h2c->recv.alloc_buffer[0];
+	value = event_h2c->recv.payload_len;
+	err_handler(ev);
 	if(header != NULL){
 		if(header->name_alloced){
 			jhd_free_with_size(header->name,header->name_len);
@@ -537,6 +685,7 @@ func_free:
 		}
 		jhd_free_with_size(header,sizeof(jhd_http_header));
 	}
+	jhd_free_with_size(p,value);
 }
 
 static void server_headers_frame_parse_begin(jhd_event_t *ev){
