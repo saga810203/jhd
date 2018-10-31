@@ -29,6 +29,14 @@
 #define JHD_HTTP2_UNSUPPORTED_TYPE             0xF0000;
 
 
+#define JHD_HTTP2_NO_FLAG              0x00
+#define JHD_HTTP2_ACK_FLAG             0x01
+#define JHD_HTTP2_END_STREAM_FLAG      0x01
+#define JHD_HTTP2_END_HEADERS_FLAG     0x04
+#define JHD_HTTP2_PADDED_FLAG          0x08
+#define JHD_HTTP2_PRIORITY_FLAG        0x20
+
+
 #define JHD_HTTP2_FRAME_TYPE_DATA_FRAME           0x0
 #define JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME        0x1
 #define JHD_HTTP2_FRAME_TYPE_PRIORITY_FRAME       0x2
@@ -58,6 +66,15 @@
 #define JHD_HTTP2_CONNECTION_ADD_IDLE_TIMEOUT(ev) jhd_event_add_timer(ev,event_h2c->conf->idle_timeout)
 #define JHD_HTTP2_CONNECTION_ADD_MEM_TIMEOUT(ev) jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout)
 
+
+#define JHD_HTTP2_RECV_PART_BUFFER_LEN  16
+
+#if JHD_HTTP2_RECV_PART_BUFFER_LEN < 16
+#error "JHD_HTTP2_RECV_PART_BUFFER_LEN >=16"
+#endif
+
+
+#define jhd_http2_prefix(bits)  ((1 << (bits)) - 1)
 
 
 typedef  jhd_http_data jhd_http2_frame;
@@ -98,6 +115,12 @@ typedef struct {
 
 
 
+    jhd_event_handler_pt *frame_header_check_pts;
+    jhd_event_handler_pt *frame_payload_handler_pts;
+
+
+
+
 
 	void *extend_param;
 }jhd_http2_connection_conf;
@@ -114,8 +137,10 @@ typedef struct jhd_http2_stream_s jhd_http2_stream;
 
 typedef struct{
 		uint32_t state;
-		u_char   buffer[16];
-
+		union{
+		u_char   buffer[JHD_HTTP2_RECV_PART_BUFFER_LEN];
+		u_char * alloc_buffer[2];
+		};
 		u_char frame_type;
 		u_char frame_flag;
 		uint32_t payload_len;
@@ -128,6 +153,10 @@ typedef struct{
         jhd_http2_hpack hpack;
 
 
+        jhd_queue_t headers;
+
+        u_char *pos;
+        u_char *end;
 
         void *state_param;
 }jhd_http2_conneciton_recv_part;
@@ -167,6 +196,9 @@ typedef struct {
 
 
 
+
+
+
 //		unsigned recv_index:1;
 //		unsigned recv_paser_value:1;
 //		unsigned recv_huff:1;
@@ -187,7 +219,7 @@ typedef struct {
 
 
 
-		jhd_http2_frame *alloc_frame;
+//		jhd_http2_frame *alloc_frame;
 
 
 		jhd_connection_close_pt  close_pt;
@@ -224,8 +256,64 @@ struct jhd_http2_stream_s{
 
 
 
-void jhd_http2_recv_skip(jhd_event_t *ev);
 
+jhd_inline static ssize_t jhd_http2_parse_int(u_char **pos, u_char *end,u_char prefix)
+{
+    u_char      *start, *p;
+    uint64_t   value, octet, shift,len;
+
+
+    start = *pos;
+    p = start;
+    len = end - *pos;
+
+    value = *p++ & prefix;
+
+    if (value != prefix) {
+        if (len == 0) {
+            return JHD_ERROR;
+        }
+        --len;
+        *pos = p;
+        return value;
+    }
+
+    if (end - start > 4 /*NGX_HTTP_V2_INT_OCTETS*/) {
+        end = start + 4 /*NGX_HTTP_V2_INT_OCTETS*/;
+    }
+
+    for (shift = 0; p != end; shift += 7) {
+        octet = *p++;
+
+        value += (octet & 0x7f) << shift;
+
+        if (octet < 128) {
+            if ((size_t) (p - start) > h2c->state.length) {
+                return NGX_ERROR;
+            }
+
+            h2c->state.length -= p - start;
+
+            *pos = p;
+            return value;
+        }
+    }
+
+    if ((size_t) (end - start) >= h2c->state.length) {
+        return NGX_ERROR;
+    }
+
+    if (end == start + NGX_HTTP_V2_INT_OCTETS) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_AGAIN;
+}
+
+
+void jhd_http2_recv_skip(jhd_event_t *ev);
+void jhd_http2_recv_payload(jhd_event_t *ev);
+void jhd_http2_recv_buffer(jhd_event_t *ev);
 
 void jhd_http2_send_event_handler_clean(jhd_event_t *ev);
 void jhd_http2_send_event_handler_ssl(jhd_event_t *ev);
@@ -257,7 +345,34 @@ jhd_inline void jhd_http2_send_headers_frame(jhd_http2_frame *begin_headers,jhd_
 }
 
 
+jhd_inline void jhd_http2_do_recv_skip(jhd_event_t *ev,jhd_http2_connection h2c,uint32_t size,jhd_event_handler_pt handler){
+	h2c->recv.state = size;
+	h2c->recv.state_param = handler;
+	ev->handler = jhd_http2_recv_skip;
+	jhd_unshift_event(ev,&jhd_posted_events);
+}
+
+jhd_inline void jhd_http2_do_recv_payload(jhd_event_t *ev,jhd_http2_connection h2c,jhd_event_handler_pt handler){
+	h2c->recv.state_param = handler;
+	ev->handler = jhd_http2_recv_payload;
+	jhd_unshift_event(ev,&jhd_posted_events);
+}
+
+jhd_inline void jhd_http2_do_recv_buffer(jhd_event_t *ev,jhd_http2_connection h2c,jhd_event_handler_pt handler){
+	h2c->recv.state_param = handler;
+	ev->handler = jhd_http2_recv_buffer;
+	jhd_unshift_event(ev,&jhd_posted_events);
+}
+
 #else
+
+#define jhd_http2_do_recv_skip(E,H2C,SIZE,HAND) (H2C)->recv.state = SIZE;(H2C)->recv.state_param = HAND;(E)->handler = jhd_http2_recv_skip;jhd_unshift_event(E,&jhd_posted_events)
+
+#define jhd_http2_do_recv_payload(E,H2C,HAND) (H2C)->recv.state_param = HAND;(E)->handler = jhd_http2_recv_payload;jhd_unshift_event(E,&jhd_posted_events)
+
+#define jhd_http2_do_recv_buffer(E,H2C,HAND) (H2C)->recv.state_param = HAND;(E)->handler = jhd_http2_recv_buffer;jhd_unshift_event(E,&jhd_posted_events)
+
+
 #define jhd_http2_send_queue_frame(F) \
 	if(event_h2c->send.tail != NULL){\
 		event_h2c->send.tail->next = F;\
@@ -326,7 +441,19 @@ jhd_inline void jhd_http2_send_ping_ack(jhd_http2_frame *frame){
 }
 
 
-
+jhd_inline jhd_http2_stream * jhd_http2_stream_get(jhd_http2_connection *h2c,uint32_t sid){
+	jhd_http2_stream *stream;
+	jhd_queue_t *q,*head;
+	head = &(event_h2c->streams[(sid >1) & 0x1F]);
+	for(q = head->next; q != head ; q = q->next){
+		stream = jhd_queue_data(q,jhd_http2_stream,queue);
+		if(stream->id == sid){
+			log_assert(stream->state  != JHD_HTTP2_STREAM_STATE_CLOSE);
+			return stream;
+		}
+	}
+	return NULL;
+}
 
 
 void jhd_http2_connection_default_idle_handler(jhd_event_t *ev);

@@ -5,6 +5,9 @@
 #include <jhd_queue.h>
 #include <jhd_event.h>
 
+
+
+
 typedef struct jhd_http_listening_context_s jhd_http_listening_context;
 typedef struct jhd_http_header_s jhd_http_header;
 typedef struct jhd_http_request_s jhd_http_request;
@@ -72,8 +75,8 @@ struct jhd_http_header_s{
      u_char *value;
      uint16_t name_len;
      uint16_t value_len;
-     u_char name_alloced;
-     u_char value_alloced;
+     uint16_t name_alloced;
+     uint16_t value_alloced;
 	jhd_queue_t queue;
 };
 

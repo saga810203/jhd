@@ -308,9 +308,9 @@ uint32_t jhd_http2_hpack_find_item(jhd_http2_hpack *hpack,int32_t idx,u_char *na
 		if(name_len ==(*((uint16_t*)p))){
 			p+=sizeof(uint16_t);
 			if(val_len ==(*((uint16_t*)(p+name_len +1)))){
-				if(mecmp(p,name,name_len)==0){
+				if(memcmp(p,name,name_len)==0){
 					p+=(name_len + 1 + sizeof(uint16_t));
-					if(mecmp(p,val,val_len)==0){
+					if(memcmp(p,val,val_len)==0){
 						return i + 62;
 					}
 				}
@@ -320,6 +320,50 @@ uint32_t jhd_http2_hpack_find_item(jhd_http2_hpack *hpack,int32_t idx,u_char *na
 	}
 	return 0;
 }
+
+
+void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,int32_t idx,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len,jhd_http2_hpack_search_result *result){
+	uint32_t i;
+	u_char *p;
+	jhd_http2_hpack_header_item *static_item = jhd_http2_headers_static;
+
+	log_assert(result->name_idx == 0  &&  result->val_idx == 0);
+
+	for(static_item = jhd_http2_headers_static,i = 0 ; i < 61; ++i,++static_item){
+		if(static_item->name.len == name_len){
+			if(memcmp(static_item->name.data,name,name_len)==0){
+				result->name_idx = i+1;
+				if(static_item->val.len == val_len){
+					if(memcmp(static_item->val.data,val,val_len)==0){
+						result->val_idx = i+i;
+						return;
+					}
+				}
+			}
+		}
+	}
+	for(i = 0 ; i < hpack->rds_headers ; ++i){
+		p =hpack->index[idx];
+		if(name_len ==(*((uint16_t*)p))){
+			p+=sizeof(uint16_t);
+			if(memcmp(p,name,name_len)==0){
+				result->name_idx = i+62;
+				++p;
+				p+=name_len;
+				if(val_len ==(*((uint16_t*)p))){
+
+					p+= sizeof(uint16_t);
+					if(mecmp(p,val,val_len)==0){
+						result->val_idx = i+62;
+						return;
+					}
+				}
+			}
+		}
+	}
+}
+
+
 uint32_t jhd_http2_hpack_find_name(jhd_http2_hpack *hpack,int32_t idx,u_char *name,uint16_t *name_len){
 	uint32_t i;
 	u_char *p;

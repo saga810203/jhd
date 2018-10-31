@@ -123,6 +123,8 @@ extern  int jhd_err;
 extern  u_char jhd_g_hex_char[];
 extern sig_atomic_t jhd_process;
 
+extern u_char jhd_calc_buffer[4096];
+
 typedef void (*jhd_obj_free_pt)(void*);
 
 

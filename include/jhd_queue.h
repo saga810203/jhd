@@ -65,7 +65,12 @@ struct jhd_queue_ptr_s{
     (x)->prev->next = (x)->next;                                              \
     (x)->next = NULL
 
-#define jhd_queue_only_remove(x)   (x)->next->prev = (x)->prev; (x)->prev->next = (x)->next;
+#define jhd_queue_only_remove(x)   (x)->next->prev = (x)->prev; (x)->prev->next = (x)->next
+
+
+#define jhd_queue_move(dst,src) (dst)->next = (src)->next;(dst)->prev = (src)->prev;\
+	(src)->next->prev = dst;(src)->prev->next = dst;\
+	(src)->prev = src;(src)->next = src;
 
 
 
@@ -78,6 +83,15 @@ jhd_inline void jhd_queue_init(jhd_queue_t *QUEUE){
 
 jhd_inline int jhd_queue_empty(jhd_queue_t *QUEUE){
 	return QUEUE == QUEUE->prev;
+}
+
+jhd_inline void jhd_queue_move(jhd_queue_t *dst,jhd_queue_t *src){
+	dst->next = src ->next;
+	dst->prev = src->prev;
+	src->next->prev = dst;
+	src->prev->next = dst;
+	src->prev = src;
+	src->next = src;
 }
 
 
