@@ -57,6 +57,9 @@
 #include <inttypes.h>
 
 
+#include <jhd_error.h>
+
+
 
 #define JHD_PROCESS_MASTER     0
 #define JHD_PROCESS_WORKER     1

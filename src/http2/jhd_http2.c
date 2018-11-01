@@ -647,6 +647,7 @@ void jhd_http2_recv_payload(jhd_event_t *ev){
 		if(rc == len){
 			event_h2c->recv.state = 0;
 			ev->handler = event_h2c->recv.state_param;
+			event_h2c->recv.state_param = NULL;
 			jhd_unshift_event(ev,&jhd_posted_events);
 		}else{
 			event_h2c->recv.state += rc;

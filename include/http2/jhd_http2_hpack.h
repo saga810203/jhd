@@ -72,6 +72,10 @@ jhd_inline uint16_t jhd_http2_hpack_calc_real_capacity(uint16_t size){
 
 #ifdef JHD_INLINE
 #define jhd_http2_hpack_is_static(idx) ((idx) < 62)
+#define jhd_htttp2_hapck_is_dyncmic(idx)((idx) > 61)
+
+
+
 #define jhd_http2_hpack_free(H)  jhd_free_with_size((H)->data,(H)->capacity)
 #else
 
@@ -80,10 +84,27 @@ jhd_inline uint16_t jhd_http2_hpack_calc_real_capacity(uint16_t size){
 jhd_inline jhd_bool jhd_http2_hpack_is_static(uint32_t idx){
 	return idx < 62;
 }
+
+jhd_inline jhd_bool jhd_htttp2_hapck_is_dyncmic(uint32_t idx){
+	return idx > 61;
+}
 jhd_inline void jhd_http2_hpack_free(jhd_http2_hpack *hpack){
      jhd_free_with_size(hpack->data,hpack->capacity);
 }
 #endif
+
+
+
+
+int jhd_http2_hpack_parse_value(u_char *start,u_char *end,u_char **val,uint16_t *val_len,uint16_t *val_alloced,uint16_t *wait_mem_num);
+
+
+
+
+
+
+
+
 
 
 #endif /* HTTP2_JHD_HTTP2_HPACK_H_ */

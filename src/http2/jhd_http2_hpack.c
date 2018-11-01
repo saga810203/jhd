@@ -368,6 +368,90 @@ void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,int32_t idx,u_char *name
 }
 
 
+int jhd_http2_hpack_parse_value(u_char *start,u_char *end,u_char **val,uint16_t *val_len,uint16_t *val_alloced,uint16_t *wait_mem_num){
+	u_char *p,huff;
+	int rc;
+	uint32_t len,alloc;
+	log_assert_code(u_char old_val[8192];)
+
+	p = start;
+	huff = *p >> 7;
+	rc = jhd_http2_parse_int(&len,jhd_http2_prefix(7),p,end,21);
+	if(rc == JHD_ERROR){
+		return JHD_ERROR;
+	}else if(rc == JHD_AGAIN){
+		return JHD_AGAIN;
+	}
+    p+=rc;
+    if((end - p) < len){
+    	returjn JHD_AGAIN;
+    }
+
+    if(huff){
+		alloc = len * 8 / 5;
+		if (*val_alloced == 0) {
+			*val = jhd_alloc(alloc + 1);
+			if (*val == NULL) {
+				*wait_mem_num = alloc + 1;
+				return JHD_AGAIN;
+			}
+			*val_alloced = alloc+1;
+			rc = jhd_http2_huff_decode(p, len,*val
+#ifdef JHD_LOG_ASSERT_ENABLE
+,alloc
+#endif
+);
+			if(rc == JHD_ERROR){
+				return JHD_ERROR;
+			}
+			if(rc >8192){
+				jhd_err = JHD_HTTP2_ENHANCE_YOUR_CALM;
+				return JHD_ERROR;
+			}
+			*val_len = rc;
+			(*val)[rc]= 0;
+		log_assert_code(}else{
+
+			log_assert(*val_alloced == alloc+1);
+
+			log_assert(*val_len <= 8192);
+
+			rc =jhd_http2_huff_decode(p, len,old_val,alloc);
+
+			log_assert(rc == *val_len);
+
+			log_assert(memcmp(*val,old_val,rc)==0);
+			)
+		}
+    }else{
+    	if(len >8192){
+    		jhd_err = JHD_HTTP2_ENHANCE_YOUR_CALM;
+    		return JHD_ERROR;
+    	}
+    	if(*val_alloced ==0){
+    		*val=jhd_alloc(len+1);
+    		if(*val == NULL){
+    			*wait_mem_num  = len+1;
+    			return JHD_AGAIN;
+    		}
+    		*val_len =len;
+    		*val_alloced = len+1;
+    		memcpy(*val,p,len);
+    		(*val)[len] = 0;
+    	}log_assert_code(else{
+    		log_assert(*val_alloced == len+1);
+    		log_assert(*val_len == len);
+    		log_assert(*val != NULL);
+    		log_assert(0 == memcmp(*val,p,len));
+
+    	})
+
+    }
+    return p +len - start;
+}
+
+
+
 uint32_t jhd_http2_hpack_find_name(jhd_http2_hpack *hpack,int32_t idx,u_char *name,uint16_t *name_len){
 	uint32_t i;
 	u_char *p;

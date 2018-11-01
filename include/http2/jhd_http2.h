@@ -12,21 +12,7 @@
 #include <http2/jhd_http2_hpack.h>
 
 
-#define JHD_HTTP2_NO_ERROR                     0x0
-#define JHD_HTTP2_PROTOCOL_ERROR               0x1
-#define JHD_HTTP2_INTERNAL_ERROR               0x2
-#define JHD_HTTP2_FLOW_CTRL_ERROR              0x3
-#define JHD_HTTP2_SETTINGS_TIMEOUT             0x4
-#define JHD_HTTP2_STREAM_CLOSED                0x5
-#define JHD_HTTP2_SIZE_ERROR                   0x6
-#define JHD_HTTP2_REFUSED_STREAM               0x7
-#define JHD_HTTP2_CANCEL                       0x8
-#define JHD_HTTP2_COMP_ERROR                   0x9
-#define JHD_HTTP2_CONNECT_ERROR                0xa
-#define JHD_HTTP2_ENHANCE_YOUR_CALM            0xb
-#define JHD_HTTP2_INADEQUATE_SECURITY          0xc
-#define JHD_HTTP2_HTTP_1_1_REQUIRED            0xd
-#define JHD_HTTP2_UNSUPPORTED_TYPE             0xF0000;
+
 
 
 #define JHD_HTTP2_NO_FLAG              0x00
@@ -117,6 +103,9 @@ typedef struct {
 
     jhd_event_handler_pt *frame_header_check_pts;
     jhd_event_handler_pt *frame_payload_handler_pts;
+
+
+    jhd_event_handler_pt connection_end_headers_handler;
 
 
 
@@ -256,59 +245,43 @@ struct jhd_http2_stream_s{
 
 
 
-
-jhd_inline static ssize_t jhd_http2_parse_int(u_char **pos, u_char *end,u_char prefix)
-{
-    u_char      *start, *p;
-    uint64_t   value, octet, shift,len;
-
-
-    start = *pos;
+jhd_inline int jhd_http2_parse_int(uint32_t *value,u_char prefix,u_char *start, u_char *end,u_char shift_limit){
+    u_char   *p, octet, shift;
     p = start;
-    len = end - *pos;
-
-    value = *p++ & prefix;
-
-    if (value != prefix) {
-        if (len == 0) {
-            return JHD_ERROR;
-        }
-        --len;
-        *pos = p;
-        return value;
+    if(p >= end){
+    	return JHD_AGAIN;
     }
-
-    if (end - start > 4 /*NGX_HTTP_V2_INT_OCTETS*/) {
-        end = start + 4 /*NGX_HTTP_V2_INT_OCTETS*/;
+    *value = *p & prefix;
+    ++p;
+    if (*value == prefix) {
+    	shift = 0;
+		for(;;){
+			if(p >= end){
+				return JHD_AGAIN;
+			}
+			if(shift > shift_limit){
+				jhd_err = JHD_HTTP2_ENHANCE_YOUR_CALM;
+				return JHD_ERROR;
+			}
+			octet = *p;
+			++p;
+			*value += ((octet & 0x7f) << shift);
+			if (octet < 128) {
+				break;
+			}
+			shift +=7;
+		}
     }
-
-    for (shift = 0; p != end; shift += 7) {
-        octet = *p++;
-
-        value += (octet & 0x7f) << shift;
-
-        if (octet < 128) {
-            if ((size_t) (p - start) > h2c->state.length) {
-                return NGX_ERROR;
-            }
-
-            h2c->state.length -= p - start;
-
-            *pos = p;
-            return value;
-        }
-    }
-
-    if ((size_t) (end - start) >= h2c->state.length) {
-        return NGX_ERROR;
-    }
-
-    if (end == start + NGX_HTTP_V2_INT_OCTETS) {
-        return NGX_DECLINED;
-    }
-
-    return NGX_AGAIN;
+    return p - start;
 }
+
+int jhd_http2_huff_decode(u_char *src, uint16_t src_len, u_char *dst
+#ifdef JHD_LOG_ASSERT_ENABLE
+,uint16_t dst_len
+#endif
+);
+
+
 
 
 void jhd_http2_recv_skip(jhd_event_t *ev);
@@ -459,6 +432,7 @@ jhd_inline jhd_http2_stream * jhd_http2_stream_get(jhd_http2_connection *h2c,uin
 void jhd_http2_connection_default_idle_handler(jhd_event_t *ev);
 void jhd_http2_connection_default_protocol_error_handler(jhd_event_t *ev);
 void jhd_http2_read_frame_header(jhd_event_t *ev);
+void jhd_http2_headers_frame_parse_item(jhd_event_t *ev);
 
 void jhd_http2_send_setting_frame(jhd_event_t *ev);
 void jhd_http2_send_setting_frame_ack(jhd_event_t *ev);
