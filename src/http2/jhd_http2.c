@@ -591,8 +591,8 @@ void jhd_http2_recv_skip(jhd_event_t *ev){
 	}
 	for(;;){
 		len = event_h2c->recv.state;
-		if(len > 4096){
-			len = 4096;
+		if(len > 16384){
+			len = 16384;
 		}
 		rc = event_c->read(event_c,jhd_calc_buffer,len);
 		if(rc > 0){

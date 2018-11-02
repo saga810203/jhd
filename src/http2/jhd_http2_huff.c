@@ -2648,7 +2648,7 @@ int jhd_http2_huff_decode(u_char *src, uint16_t src_len, u_char *dst
             return JHD_ERROR;
         }
         if (code.emit) {
-        	log_assert(dst_len >(p - dst) );
+        	log_assert(dst_len <(p - dst) );
         	*p = code.sym;
         	++p;
         }
@@ -2660,7 +2660,7 @@ int jhd_http2_huff_decode(u_char *src, uint16_t src_len, u_char *dst
             return JHD_ERROR;
         }
         if (code.emit) {
-        	log_assert(dst_len >(p - dst) );
+        	log_assert(dst_len <(p - dst) );
         	*p = code.sym;
         	++p;
         }

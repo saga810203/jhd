@@ -3,6 +3,10 @@
 #include <http/jhd_http_core.h>
 #include <http2/jhd_http2.h>
 
+#ifdef JHD_LOG_ASSERT_ENABLE
+#include <tls/jhd_tls_md5.h>
+#endif
+
 
 
 
@@ -251,86 +255,437 @@ jhd_inline static int http2_get_indexed_header(uint32_t idx,jhd_http_header *hea
 	if(idx ==0){
 		return JHD_ERROR;
 	}
+
 	log_assert(header!= NULL);
+
 	jhd_http2_hpack_get_index_header_item(&event_h2c->recv.hpack,idx,&idx_name,&idx_name_len,&idx_val,&idx_val_len);
 	if(idx_name == NULL || idx_val == NULL){
 		return JHD_ERROR;
 	}
-	if(jhd_http2_hpack_is_dyncmic(idx)){
-	   if(header->name_alloced == 0){
-		   log_assert(header->name == NULL);
-		   header->name = jhd_alloc(idx_name_len +1);
-		   if(header->name == NULL){
-			   *wait_mem_len = idx_name_len +1;
-			   return JHD_AGAIN;
+	if(idx_val_len >0){
+		if(jhd_http2_hpack_is_dyncmic(idx)){
+		   if(header->name_alloced == 0){
+			   log_assert(header->name == NULL);
+			   header->name = jhd_alloc(idx_name_len +1);
+			   if(header->name == NULL){
+				   *wait_mem_len = idx_name_len +1;
+				   return JHD_AGAIN;
+			   }
+			   memcpy(header->name,idx_name,idx_name_len+1);
+			   header->name_alloced = idx_name_len +1;
+			   header->name_len = idx_name_len;
 		   }
-		   memcpy(header->name,idx_name,idx_name_len+1);
-		   header->name_alloced = idx_name_len +1;
-		   header->name_len = idx_name_len;
-	   }log_assert_code(else{
-
-		  log_assert(header->name_alloced == (idx_name_len +1));
-
-		  log_assert(memcmp(header->name,idx_name,idx_name_len +1)==0);
-
-		  log_assert(header->name_len = idx_name_len);
-	   })
-	   if(0 == header->value_alloced){
-		   log_assert(header->value == NULL);
-		   header->value = jhd_alloc(idx_val_len +1);
-
-		   if(header->value == NULL){
-			   *wait_mem_len = idx_val_len +1;
-			    return JHD_AGAIN;
+#ifdef JHD_LOG_ASSERT_ENABLE
+		   else{
+			  log_assert(header->name_alloced == (idx_name_len +1));
+			  log_assert(memcmp(header->name,idx_name,idx_name_len +1)==0);
+			  log_assert(header->name_len = idx_name_len);
 		   }
-		   memcpy(header->value,idx_val,idx_val_len+1);
-		   header->value_alloced = idx_val_len +1;
-		   header->value_len = idx_val_len;
-	   }log_assert_code(else{
-		  log_assert(header->value_alloced == (idx_val_len +1));
+#endif
+		   if(0 == header->value_alloced){
+			   log_assert(header->value == NULL);
+			   header->value = jhd_alloc(idx_val_len +1);
 
-		  log_assert(memcmp(header->value,idx_val,idx_val_len +1)==0);
+			   if(header->value == NULL){
+				   *wait_mem_len = idx_val_len +1;
+					return JHD_AGAIN;
+			   }
+			   memcpy(header->value,idx_val,idx_val_len+1);
+			   header->value_alloced = idx_val_len +1;
+			   header->value_len = idx_val_len;
+		   }
+#ifdef JHD_LOG_ASSERT_ENABLE
+		   else{
+			  log_assert(header->value_alloced == (idx_val_len +1));
 
-		  log_assert(header->value_len = idx_val_len);
-	   })
-	}else{
-		if(header->name == NULL){
-			log_assert(header->name_len == 0);
+			  log_assert(memcmp(header->value,idx_val,idx_val_len +1)==0);
 
-			log_assert(header->value == NULL);
+			  log_assert(header->value_len = idx_val_len);
+		   }
+#endif
+		}else{
+			if(header->name == NULL){
+				log_assert(header->name_len == 0);
 
-			log_assert(header->value_len == 0);
+				log_assert(header->value == NULL);
 
-			log_assert(header->name_alloced == 0);
+				log_assert(header->value_len == 0);
 
-			log_assert(header->value_alloced == 0);
+				log_assert(header->name_alloced == 0);
 
-			header->name = idx_name;
-			header->value = idx_val;
-			header->name_len = idx_name_len;
-			header->value = idx_val_len;
-		}log_assert_code(else{
-			log_assert(header->name == idx_name);
+				log_assert(header->value_alloced == 0);
 
-			log_assert(header->name_len == idx_name_len);
+				header->name = idx_name;
+				header->value = idx_val;
+				header->name_len = idx_name_len;
+				header->value = idx_val_len;
+			}
+#ifdef JHD_LOG_ASSERT_ENABLE
+			else{
+				log_assert(header->name == idx_name);
 
-			log_assert(header->value == idx_val);
+				log_assert(header->name_len == idx_name_len);
 
-			log_assert(header->value_len == idx_val_len);
+				log_assert(header->value == idx_val);
 
-			log_assert(header->name_alloced == 0);
+				log_assert(header->value_len == idx_val_len);
 
-			log_assert(header->value_alloced == 0);
+				log_assert(header->name_alloced == 0);
+
+				log_assert(header->value_alloced == 0);
 
 
-		})
+			}
+#endif
+		}
 	}
+#ifdef JHD_LOG_ASSERT_ENABLE
+	else{
+		log_assert(header->name_alloced == 0);
+		log_assert(header->value_alloced == 0);
+		log_assert(header->name == NULL);
+	}
+#endif
 	return JHD_OK;
 }
 
-jhd_inline static int http2_get_huff_header(jhd_http2_hpack *hpack, uint32_t idx,jhd_http_header *header,u_char *start,u_char *end,uint16_t *wait_mem_len){
+
+static int jhd_http2_hpack_parse_header_name(u_char *start,u_char *end,jhd_http_header *header){
+	u_char *p,huff;
+	int rc;
+	uint32_t len;
+
+	p = start;
+	huff = *p >> 7;
+	rc = jhd_http2_parse_int(&len,jhd_http2_prefix(7),p,end,21);
+	if(rc == JHD_ERROR){
+		return JHD_ERROR;
+	}else if(rc == JHD_AGAIN){
+		return JHD_AGAIN;
+	}
+	p+=rc;
+
+	if(header->name_alloced == 0){
+
+		if(len){
+			if((end - p) < len){
+				return JHD_AGAIN;
+			}
+			if(huff){
+				rc = jhd_http2_huff_decode(p, len,jhd_calc_buffer
+#ifdef JHD_LOG_ASSERT_ENABLE
+																,256
+#endif
+				);
+				if(rc == JHD_ERROR){
+					return JHD_ERROR;
+				}
+				if(rc >128){
+					jhd_err = JHD_HTTP2_ENHANCE_YOUR_CALM;
+					return JHD_ERROR;
+				}
+				log_assert(header->name_len == 0 || header->name_len == rc);
+				header->name_len = rc;
+				header->name = jhd_calc_buffer;
+				jhd_calc_buffer[rc] = 0;
+			}else{
+				if(len >128){
+					jhd_err = JHD_HTTP2_ENHANCE_YOUR_CALM;
+					return JHD_ERROR;
+				}
+				memcpy(jhd_calc_buffer,p,len);
+				jhd_calc_buffer[len] = 0;
+				*olen = len;
+			}
+
+		}else{
+			return JHD_ERROR;
+		}
+	}
+#ifdef JHD_LOG_ASSERT_ENABLE
+	else{
+		log_assert(len >0);
+		log_assert(header->name_len<=128);
+		log_assert(header->name_alloced = (header->name_len+1));
+		log_assert((end-p)>= len);
+		log_assert(header->name != jhd_calc_buffer);
+		if(huff){
+			rc = jhd_http2_huff_decode(p, len,jhd_calc_buffer,256);
+			log_assert(rc == header->name_len);
+			log_assert(memcmp(header->name,jhd_calc_buffer,rc)==0);
+		}else{
+			log_assert(len == header->name_len);
+			log_assert(memcmp(header->name,p,len)==0);
+		}
+	}
+#endif
+    return p +len - start;
+}
+
+
+static int jhd_http2_hpack_parse_header_val(u_char *start,u_char *end,jhd_http_header *header){
+	u_char *p,huff,*buf;
+	int rc;
+	uint32_t len;
+
+	buf = jhd_calc_buffer + 256;
+
+	p = start;
+	huff = *p >> 7;
+	rc = jhd_http2_parse_int(&len,jhd_http2_prefix(7),p,end,21);
+	if(rc == JHD_ERROR){
+		return JHD_ERROR;
+	}else if(rc == JHD_AGAIN){
+		return JHD_AGAIN;
+	}
+	p+=rc;
+	if(len){
+		if((end - p) < len){
+			return JHD_AGAIN;
+		}
+		if(huff){
+			rc = jhd_http2_huff_decode(p, len,buf
+#ifdef JHD_LOG_ASSERT_ENABLE
+															,16384 -256
+#endif
+			);
+			if(rc == JHD_ERROR){
+				return JHD_ERROR;
+			}
+			if(rc >8192){
+				jhd_err = JHD_HTTP2_ENHANCE_YOUR_CALM;
+				return JHD_ERROR;
+			}
+			log_assert(header->value_len == rc || header->value_len == 0 );
+			header->value_len = rc;
+			header->value = buf;
+		}else{
+			log_assert(header->value_len ==len || header->value_len == 0);
+			if(len >8192){
+				jhd_err = JHD_HTTP2_ENHANCE_YOUR_CALM;
+				return JHD_ERROR;
+			}
+			header->value = p;
+			header->value_len = len;
+		}
+	}else{
+		header->value_len = 0;
+	}
+    return p +len - start;
+}
+
+
+
+
+jhd_inline static int http2_get_name_indexed_header(u_char add,jhd_http2_hpack *hpack, uint32_t idx,jhd_http_header *header,u_char *start,u_char *end,uint16_t *wait_mem_len){
+	u_char *p,*idx_name;
+	uint16_t idx_name_len;
+	int rc;
+
+	log_assert(idx >0);
+
+	idx_name = NULL;
+	idx_name_len = 0;
+
+	*wait_mem_len = 0;
+
+	if(header->name == NULL){
+		jhd_http2_hpack_get_index_header_name(hpack,idx,&header->name,&header->name_len);
+		if(header->name == NULL){
+			return JHD_ERROR;
+		}
+	    log_assert(header->name_alloced == 0);
+	}
+#ifdef JHD_LOG_ASSERT_ENABLE
+	else{
+		jhd_http2_hpack_get_index_header_name(hpack,idx,&idx_name,&idx_name_len);
+		log_assert(idx_name != NULL);
+		log_assert(idx_name_len == header->name_len);
+		log_assert(memcmp(header->name,idx_name,idx_name_len)==0);
+		if(header->name_alloced){
+			log_assert(header->name != idx_name);
+		}
+	}
+#endif
+	if( p == end ){
+		return JHD_AGAIN;
+	}
+	rc = jhd_http2_hpack_parse_header_val(p,end,header);
+	if(rc < 0){
+		return rc;
+	}
+	p+=rc;
+	if( header->value_len > 0){
+		if(jhd_http2_hpack_is_dyncmic(idx)){
+			if (header->name_alloced == 0) {
+				log_assert(header->name != NULL);
+				log_assert(header->name_len != 0);
+
+				idx_name = jhd_alloc(header->name_len + 1);
+				if (idx_name == NULL) {
+					*wait_mem_len = header->name_len + 1;
+					return JHD_AGAIN;
+				}
+				memcpy(idx_name, header->name,header->name_len + 1);
+				header->name_alloced = header->name_len + 1;
+				header->name = idx_name;
+			}
+#ifdef JHD_LOG_ASSERT_ENABLE
+			else{
+				log_assert(header->name_alloced == (idx_name_len +1));
+				log_assert(memcmp(header->name,idx_name,idx_name_len +1)==0);
+			}
+#endif
+		}
+
+		log_assert(header->value == (jhd_calc_buffer + 256));
+		header->value =  jhd_alloc(header->value_len + 1);
+		if(header->value == NULL){
+			*wait_mem_len = header->value_len + 1;
+			return JHD_AGAIN;
+		}
+		header->value_alloced =  header->value_len + 1;
+		if(add){
+			if(JHD_OK != jhd_http2_hpack_add(hpack,header->name,header->name_len,header->value,header->value_len)){
+				return JHD_ERROR;
+			}
+		}
+	}else{
+		if(add){
+			if(JHD_OK != jhd_http2_hpack_add(hpack,header->name,header->name_len,header->value,header->value_len)){
+				return JHD_ERROR;
+			}
+		}
+	}
+	log_assert(p > start);
+	return p - start;
+}
+
+
+jhd_inline static int http2_get_raw_header(u_char add,jhd_http2_hpack *hpack,jhd_http_header *header,u_char *start,u_char *end,uint16_t *wait_mem_len){
+	u_char *p,*idx_name;
+	uint16_t idx_name_len;
+	int rc;
+
+
+
+	idx_name = NULL;
+	idx_name_len = 0;
+	*wait_mem_len = 0;
+
+	log_assert(p <= end);
+
+	if( p == end ){
+		return JHD_AGAIN;
+	}
+
+	rc = jhd_http2_hpack_parse_header_name(p,end,&idx_name_len,header);
+	if(rc < 0){
+		return rc;
+	}
+	p+=rc;
+	log_assert(p <= end);
+
+	if( p == end ){
+		return JHD_AGAIN;
+	}
+
+	rc = jhd_http2_hpack_parse_header_val(p,end,header);
+	if(rc < 0){
+		return rc;
+	}
+
+	p+=rc;
+
+
+	if(header->value_len > 0){
+
+
+
+
+
+	}
+
+
+	if(header->name == NULL){
+		jhd_http2_hpack_get_index_header_name(hpack,idx,&header->name,&header->name_len);
+		if(header->name == NULL){
+			return JHD_ERROR;
+		}
+	    log_assert(header->name_alloced == 0);
+	}
+#ifdef JHD_LOG_ASSERT_ENABLE
+	else{
+		jhd_http2_hpack_get_index_header_name(hpack,idx,&idx_name,&idx_name_len);
+		log_assert(idx_name != NULL);
+		log_assert(idx_name_len == header->name_len);
+		log_assert(memcmp(header->name,idx_name,idx_name_len)==0);
+		if(header->name_alloced){
+			log_assert(header->name != idx_name);
+		}
+	}
+#endif
+	if( p == end ){
+		return JHD_AGAIN;
+	}
+	rc = jhd_http2_hpack_parse_header_val(p,end,header);
+	if(rc < 0){
+		return rc;
+	}
+	p+=rc;
+	if( header->value_len > 0){
+		if(jhd_http2_hpack_is_dyncmic(idx)){
+			if (header->name_alloced == 0) {
+				log_assert(header->name != NULL);
+				log_assert(header->name_len != 0);
+
+				idx_name = jhd_alloc(header->name_len + 1);
+				if (idx_name == NULL) {
+					*wait_mem_len = header->name_len + 1;
+					return JHD_AGAIN;
+				}
+				memcpy(idx_name, header->name,header->name_len + 1);
+				header->name_alloced = header->name_len + 1;
+				header->name = idx_name;
+			}
+#ifdef JHD_LOG_ASSERT_ENABLE
+			else{
+				log_assert(header->name_alloced == (idx_name_len +1));
+				log_assert(memcmp(header->name,idx_name,idx_name_len +1)==0);
+			}
+#endif
+		}
+
+		log_assert(header->value == (jhd_calc_buffer + 256));
+		header->value =  jhd_alloc(header->value_len + 1);
+		if(header->value == NULL){
+			*wait_mem_len = header->value_len + 1;
+			return JHD_AGAIN;
+		}
+		header->value_alloced =  header->value_len + 1;
+		if(add){
+			if(JHD_OK != jhd_http2_hpack_add(hpack,header->name,header->name_len,header->value,header->value_len)){
+				return JHD_ERROR;
+			}
+		}
+	}else{
+		if(add){
+			if(JHD_OK != jhd_http2_hpack_add(hpack,header->name,header->name_len,header->value,header->value_len)){
+				return JHD_ERROR;
+			}
+		}
+	}
+	log_assert(p > start);
+	return p - start;
+}
+
+
+
+
+
+jhd_inline static int http2_get_huff_header(u_char index,jhd_http2_hpack *hpack, uint32_t idx,jhd_http_header *header,u_char *start,u_char *end,uint16_t *wait_mem_len){
 	u_char *p,*idx_name,*idx_val;
-	uint16_t idx_name_len,idx_val_len;
+	uint16_t idx_name_len,idx_val_len,idx_name_alloced,idx_val_alloced;
 	int rc;
 
 	*wait_mem_len = 0;
@@ -371,7 +726,7 @@ jhd_inline static int http2_get_huff_header(jhd_http2_hpack *hpack, uint32_t idx
 		if(rc < 0){
 			return rc;
 		}
-		if(header->name > 128){
+		if(header->name_len > 128){
 			return JHD_ERROR;
 		}
 		p+=rc;
@@ -411,7 +766,7 @@ jhd_inline static int http2_get_huff_header(jhd_http2_hpack *hpack, uint32_t idx
 void jhd_http2_headers_frame_parse_item(jhd_event_t *ev){
 	jhd_http_header *header;
 	jhd_queue_t h,*q;
-	u_char *p,*end,*old_hpack_data;
+	u_char *p,*end,*hpack_data;
 	jhd_event_handler_pt err_handler;
     u_char      ch,indexed,index,size_update,prefix,huff;
     uint32_t   value;
@@ -422,7 +777,6 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev){
 
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	old_hpack_data = NULL;
 	header = event_h2c->recv.state_param;
 	end = event_h2c->recv.end;
 	p = event_h2c->recv.pos;
@@ -431,6 +785,9 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev){
 		err_handler = event_h2c->conf->connection_read_timeout;
 		goto func_error;
 	}
+
+
+
 	log_assert( end > p );
 	for(;;){
 		log_assert(end > p);
@@ -450,95 +807,140 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev){
 			err_handler = event_h2c->conf->connection_protocol_error;
 			goto func_error;
 		}else if(rc == JHD_AGAIN){
-			goto func_read_next_frame;
+			goto func_read_next_frame_with_data_has_header;
 		}
 		p+=rc;
-	    if(indexed){
-	    	rc = http2_get_indexed_header(value,header,&mem_len);
-	    	if(rc == JHD_ERROR){
-	    		err_handler = event_h2c->conf->connection_protocol_error;
-	    		goto func_error;
-	    	}else if(rc == JHD_AGAIN){
-	    		 jhd_waite_mem(ev,mem_len);
-	    		 jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
-	    		 return;
-	    	}
-	    }else if(size_update){
-	    	log_assert(header != NULL);
-	    	log_assert(header->name == NULL);
-	    	log_assert(header->value == NULL);
-	    	log_assert(header->name_len == 0);
-	    	log_assert(header->name_alloced == 0);
-	    	log_assert(header->value_len == 0);
-	    	log_assert(header->value_alloced == 0);
-	    	log_assert(old_hpack_data = NULL);
-	    	rc = jhd_http2_hpack_resize(&event_h2c->recv.hpack,value,&hpack_capacity,&old_hpack_data,&old_capacity);
-	    	if(rc == JHD_AGAIN){
-	    		jhd_wait_mem(ev,hpack_capacity);
-	    		jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
-	    		return;
-	    	}else if(rc== JHD_ERROR){
-	    		//invalid hapck size; > 65535 -4096
+		if(size_update){
+			log_assert(header != NULL);
+			log_assert(header->name == NULL);
+			log_assert(header->value == NULL);
+			log_assert(header->name_len == 0);
+			log_assert(header->name_alloced == 0);
+			log_assert(header->value_len == 0);
+			log_assert(header->value_alloced == 0);
+
+			hpack_data = NULL;
+			rc = jhd_http2_hpack_resize(&event_h2c->recv.hpack,value,&hpack_data,&hpack_capacity);
+			if(rc == JHD_AGAIN){
+				jhd_wait_mem(ev,hpack_capacity);
+				jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
+				return;
+			}else if(rc== JHD_ERROR){
+				//invalid hapck size; > 65535 -4096
 				err_handler = event_h2c->conf->connection_protocol_error;
 				goto func_error;
-	    	}
+			}
+			log_assert(p <= end);
 
-
-	    	log_assert(p <= end);
-	    	if(old_hpack_data != NULL){
-	    		if(p != end){
-					event_h2c->recv.pos = p;
+			event_h2c->recv.pos = p;
+			if(hpack_data != NULL){
+				if(p != end){
 					jhd_unshift_event(ev,&jhd_posted_events);
-					jhd_free_with_size(old_hpack_data,old_capacity);
+					jhd_free_with_size(hpack_data,old_capacity);
 					return;
-	    		}else{
-	    			event_h2c->recv.pos = p;
-	    			goto func_read_next_frame;
-	    		}
-	    	}
-
-		}else{
-
-			rc = http2_get_huff_header(&event_h2c->recv.hpack,value,header,p,end,&mem_len);
-			if(rc >0){
-				p+=rc;
-				if(index){
-					if(JHD_OK !=jhd_http2_hpack_add(&event_h2c->recv.hpack,header->name,header->name_len,header->value,header->value_len)){
-						err_handler = event_h2c->conf->connection_protocol_error;
-						goto func_error;
-					}
+				}else{
+					goto func_read_next_frame_without_data_has_header;
 				}
-			}else if(rc == JHD_AGAIN){
-				if(mem_len/*!=0*/){
+			}
+		} else {
+			if (indexed) {
+				rc = http2_get_indexed_header(value, header, &mem_len);
+				if (rc == JHD_ERROR) {
+					err_handler = event_h2c->conf->connection_protocol_error;
+					goto func_error;
+				} else if (rc == JHD_AGAIN) {
 					jhd_waite_mem(ev, mem_len);
 					jhd_event_add_timer(ev, event_h2c->conf->wait_mem_timeout);
 					return;
 				}
-				goto func_read_next_frame;
-			}else {
-				err_handler = event_h2c->conf->connection_protocol_error;
-				goto func_error;
+			} else {
+				rc = http2_get_huff_header(&event_h2c->recv.hpack, value, header, p, end, &mem_len);
+				if (rc > 0) {
+					p += rc;
+					if (index) {
+						if (JHD_OK != jhd_http2_hpack_add(&event_h2c->recv.hpack, header->name, header->name_len, header->value, header->value_len)) {
+							err_handler = event_h2c->conf->connection_protocol_error;
+							goto func_error;
+						}
+					}
+				} else if (rc == JHD_AGAIN) {
+					if (mem_len/*!=0*/) {
+						jhd_waite_mem(ev, mem_len);
+						jhd_event_add_timer(ev, event_h2c->conf->wait_mem_timeout);
+						return;
+					}
+					goto func_read_next_frame_with_data_has_header;
+				} else {
+					err_handler = event_h2c->conf->connection_protocol_error;
+					goto func_error;
+				}
 			}
+
+			log_assert(p <= end);
 		}
-	    event_h2c->recv.pos = p;
-	    jhd_queue_insert_tail(&event_h2c->recv.headers,&header->queue);
-		event_h2c->recv.state_param = NULL;
-		header = NULL;
-		log_assert(p<=end);
-		if( p == end ){
-			goto func_read_next_frame;
+		if (p == end) {
+			if(header == NULL){
+
+				goto func_read_next_frame_without_data_hasnot_header;
+			}else{
+				goto func_read_next_frame_without_data_has_header;
+			}
 		}
 	}
 	return ;
-func_read_next_frame:
-    if(event_h2c->recv.pos != end){
-    	log_assert(event_h2c->recv.state_param  ==  header);
-    	log_assert(event_h2c->recv.state_param  !=  NULL);
-    	header->queue.next =event_h2c->recv.alloc_buffer[0];
-    	event_h2c->recv.state = 0;
-    	ev->handler = jhd_http2_recv_continuation_header;
-    	jhd_unshift_event(ev,&jhd_posted_events);
+func_read_next_frame_with_data_has_header:
+	log_assert(event_h2c->recv.pos != end);
+
+	log_assert(event_h2c->recv.state_param  ==  header);
+
+	log_assert(event_h2c->recv.state_param  !=  NULL);
+
+	header->queue.next =event_h2c->recv.alloc_buffer[0];
+	event_h2c->recv.state = 0;
+	ev->handler = jhd_http2_recv_continuation_header;
+	jhd_unshift_event(ev,&jhd_posted_events);
+	return;
+
+func_read_next_frame_without_data_has_header:
+	log_assert(event_h2c->recv.pos == end);
+
+	log_assert(event_h2c->recv.state_param  ==  header);
+
+	log_assert(event_h2c->recv.state_param  !=  NULL);
+
+
+	if(event_h2c->recv.frame_flag & JHD_HTTP2_END_HEADERS_FLAG){
+
+
+
+	}
+
+	header->queue.next = NULL;
+
+
+
+
+    return;
+
+
+func_read_next_frame_without_data_hasnot_header:
+
+	log_assert(event_h2c->recv.pos == end);
+
+	log_assert(NULL ==  header);
+
+	log_assert(event_h2c->recv.state_param  ==  NULL);
+
+
+
+    return;
+
+
     }else{
+    	if(event_h2c->recv.frame_flag & JHD_HTTP2_END_HEADERS_FLAG){
+    			err_handler = event_h2c->conf->connection_protocol_error;
+    			goto func_error;
+    	}
 
 
     }
@@ -562,7 +964,9 @@ func_read_next_frame:
 	if(header == NULL){
 		jhf_free_with_size(p,value);
 	}
-
+	if(hpack_data != NULL){
+		jhd_free_with_size(hpack_data,hpack_capacity);
+	}
 	return;
 func_end_header_with_size_update:
     log_assert(header != NULL);

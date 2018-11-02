@@ -8,7 +8,7 @@
 
 
 static jhd_http2_hpack_header_item jhd_http2_headers_static[]={
-	{ jhd_http2_hpack_string(":authority"), jhd_http2_hpack_string("") },
+	{ jhd_http2_hpack_string(":authority"), {jhd_empty_string,0} },
 	{ jhd_http2_hpack_string(":method"), jhd_http2_hpack_string("GET") },
 	{ jhd_http2_hpack_string(":method"), jhd_http2_hpack_string("POST") },
 	{ jhd_http2_hpack_string(":path"), jhd_http2_hpack_string("/") },
@@ -22,53 +22,53 @@ static jhd_http2_hpack_header_item jhd_http2_headers_static[]={
 	{ jhd_http2_hpack_string(":status"), jhd_http2_hpack_string("400") },
 	{ jhd_http2_hpack_string(":status"), jhd_http2_hpack_string("404") },
 	{ jhd_http2_hpack_string(":status"), jhd_http2_hpack_string("500") },
-	{ jhd_http2_hpack_string("accept-charset"), jhd_http2_hpack_string("") },
+	{ jhd_http2_hpack_string("accept-charset"), {jhd_empty_string,0} },
 	{ jhd_http2_hpack_string("accept-encoding"), jhd_http2_hpack_string("gzip, deflate") },
-	{ jhd_http2_hpack_string("accept-language"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("accept-ranges"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("accept"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("access-control-allow-origin"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("age"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("allow"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("authorization"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("cache-control"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("content-disposition"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("content-encoding"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("content-language"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("content-length"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("content-location"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("content-range"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("content-type"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("cookie"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("date"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("etag"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("expect"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("expires"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("from"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("host"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("if-match"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("if-modified-since"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("if-none-match"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("if-range"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("if-unmodified-since"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("last-modified"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("link"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("location"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("max-forwards"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("proxy-authenticate"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("proxy-authorization"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("range"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("referer"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("refresh"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("retry-after"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("server"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("set-cookie"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("strict-transport-security"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("transfer-encoding"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("user-agent"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("vary"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("via"), jhd_http2_hpack_string("") },
-	{ jhd_http2_hpack_string("www-authenticate"), jhd_http2_hpack_string("") },
+	{ jhd_http2_hpack_string("accept-language"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("accept-ranges"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("accept"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("access-control-allow-origin"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("age"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("allow"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("authorization"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("cache-control"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("content-disposition"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("content-encoding"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("content-language"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("content-length"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("content-location"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("content-range"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("content-type"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("cookie"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("date"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("etag"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("expect"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("expires"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("from"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("host"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("if-match"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("if-modified-since"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("if-none-match"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("if-range"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("if-unmodified-since"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("last-modified"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("link"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("location"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("max-forwards"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("proxy-authenticate"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("proxy-authorization"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("range"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("referer"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("refresh"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("retry-after"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("server"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("set-cookie"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("strict-transport-security"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("transfer-encoding"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("user-agent"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("vary"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("via"), {jhd_empty_string,0} },
+	{ jhd_http2_hpack_string("www-authenticate"), {jhd_empty_string,0} },
 };
 
 
@@ -159,8 +159,10 @@ int jhd_http2_hpack_add(jhd_http2_hpack  *hpack,u_char* name,uint16_t name_len,u
 	++p;
 	*((uint16_t*)p) = val_len;
 	p+=sizeof(uint16_t);
-	memcpy(p,val,val_len);
-	p+=val_len;
+	if(val_len){
+		memcpy(p,val,val_len);
+		p+=val_len;
+	}
 	*p=0;
 	++p;
 	hpack->next = p;
@@ -179,21 +181,17 @@ int jhd_http2_hpack_add(jhd_http2_hpack  *hpack,u_char* name,uint16_t name_len,u
 
 
 
-int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,uint16_t *out_capacity,u_char **old_data,uint16_t *old_capacity){
+int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,u_char **old_data,uint16_t *capacity_size){
 	uint16_t new_capacity;
 	int64_t delta;
 	u_char* new_data;
 	u_char** new_index;
 	u_char** idx;
 	int i ;
-
-
-
-
 	if(new_size == 0){
 		if(hpack->capacity != 0){
 			*old_data = hpack->data;
-			*old_capacity = hpack->capacity;
+			*capacity_size = hpack->capacity;
 			memset(hpack,sizeof(jhd_http2_hpack));
 			return JHD_OK;
 
@@ -229,7 +227,7 @@ int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,uint16_t *ou
 					new_index[i] = hpack->index[i]+delta;
 				}
 				*old_data = hpack->data;
-				*old_capacity = hpack->capacity;
+				*capacity_size = hpack->capacity;
 				hpack->data = new_data;
 				hpack->capacity = new_capacity;
 				hpack->index = new_index;
@@ -237,7 +235,7 @@ int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,uint16_t *ou
 				hpack->size = new_size;
 				return JHD_OK;
 			}else{
-				*out_capacity = new_capacity;
+				*capacity_size = new_capacity;
 				return JHD_AGAIN;
 			}
 		}
@@ -368,87 +366,6 @@ void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,int32_t idx,u_char *name
 }
 
 
-int jhd_http2_hpack_parse_value(u_char *start,u_char *end,u_char **val,uint16_t *val_len,uint16_t *val_alloced,uint16_t *wait_mem_num){
-	u_char *p,huff;
-	int rc;
-	uint32_t len,alloc;
-	log_assert_code(u_char old_val[8192];)
-
-	p = start;
-	huff = *p >> 7;
-	rc = jhd_http2_parse_int(&len,jhd_http2_prefix(7),p,end,21);
-	if(rc == JHD_ERROR){
-		return JHD_ERROR;
-	}else if(rc == JHD_AGAIN){
-		return JHD_AGAIN;
-	}
-    p+=rc;
-    if((end - p) < len){
-    	returjn JHD_AGAIN;
-    }
-
-    if(huff){
-		alloc = len * 8 / 5;
-		if (*val_alloced == 0) {
-			*val = jhd_alloc(alloc + 1);
-			if (*val == NULL) {
-				*wait_mem_num = alloc + 1;
-				return JHD_AGAIN;
-			}
-			*val_alloced = alloc+1;
-			rc = jhd_http2_huff_decode(p, len,*val
-#ifdef JHD_LOG_ASSERT_ENABLE
-,alloc
-#endif
-);
-			if(rc == JHD_ERROR){
-				return JHD_ERROR;
-			}
-			if(rc >8192){
-				jhd_err = JHD_HTTP2_ENHANCE_YOUR_CALM;
-				return JHD_ERROR;
-			}
-			*val_len = rc;
-			(*val)[rc]= 0;
-		log_assert_code(}else{
-
-			log_assert(*val_alloced == alloc+1);
-
-			log_assert(*val_len <= 8192);
-
-			rc =jhd_http2_huff_decode(p, len,old_val,alloc);
-
-			log_assert(rc == *val_len);
-
-			log_assert(memcmp(*val,old_val,rc)==0);
-			)
-		}
-    }else{
-    	if(len >8192){
-    		jhd_err = JHD_HTTP2_ENHANCE_YOUR_CALM;
-    		return JHD_ERROR;
-    	}
-    	if(*val_alloced ==0){
-    		*val=jhd_alloc(len+1);
-    		if(*val == NULL){
-    			*wait_mem_num  = len+1;
-    			return JHD_AGAIN;
-    		}
-    		*val_len =len;
-    		*val_alloced = len+1;
-    		memcpy(*val,p,len);
-    		(*val)[len] = 0;
-    	}log_assert_code(else{
-    		log_assert(*val_alloced == len+1);
-    		log_assert(*val_len == len);
-    		log_assert(*val != NULL);
-    		log_assert(0 == memcmp(*val,p,len));
-
-    	})
-
-    }
-    return p +len - start;
-}
 
 
 
