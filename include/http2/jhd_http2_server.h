@@ -9,6 +9,13 @@
 #define HTTP2_JHD_HTTP2_SERVER_H_
 #include <http2/jhd_http2.h>
 
+
+
+
+typedef struct{
+	jhd_event_handler_pt servcie;
+}jhd_http2_servcer_service;
+
 void jhd_http2_only_by_clean_server_connection_start(jhd_connection_t *c);
 void jhd_http2_only_by_tls_server_connection_start(jhd_connection_t *c);
 void jhd_http2_with_alpn_server_connection_start(jhd_connection_t *c);

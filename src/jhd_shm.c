@@ -47,7 +47,7 @@ void jhd_free_shm(){
 			jhd_queue_init(queue);
 		}
 
-		while(!(jhd_queue_empty(queue))){
+		while(jhd_queue_has_item(queue)){
 			jhd_shm_t* shm = jhd_queue_data(jhd_queue_head(queue),jhd_shm_t,queue);
 			jhd_queue_remove(&shm->queue);
 			munmap((void *) shm->addr, shm->size);

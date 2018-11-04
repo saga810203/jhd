@@ -109,20 +109,55 @@ struct jhd_http_request_info_s{
 
 
 
-typedef struct {
-	uint32_t idle_timeout;
-	uint32_t read_timeout;
-	uint32_t write_timeout;
-	uint32_t wait_mem_timeout;
-
-
-	void *extend_param;
-}jhd_http2_connection_conf;
 
 
 
 
+#if !define(JHD_INLINE)
 
+jhd_inline void jhd_http_header_init(jhd_http_header *header){
+	memset(header,0,sizeof(jhd_http_header));
+}
+jhd_inline void jhd_http_header_free(jhd_http_header *header){
+	if(header->name_alloced){
+		jhd_free_with_size(header->name,header->name_alloced);
+	}
+	if(header->value_alloced){
+		jhd_free_with_size(header->value,header->value_alloced);
+	}
+}
+jhd_inline void jhd_http_free_header(jhd_http_header *header){
+	if(header->name_alloced){
+		jhd_free_with_size(header->name,header->name_alloced);
+	}
+	if(header->value_alloced){
+		jhd_free_with_size(header->value,header->value_alloced);
+	}
+	jhd_free_with_size(header,sizeof(jhd_http_header));
+}
+
+#else
+#define jhd_http_header_init(H) memset(H,0,sizeof(jhd_http_header))
+
+#define jhd_http_header_free(H) \
+	if((H)->name_alloced){\
+		jhd_free_with_size((H)->name,(H)->name_alloced);\
+	}\
+	if((H)->value_alloced){\
+		jhd_free_with_size((H)->value,(H)->value_alloced);\
+	}
+
+#define jhd_http_free_header(H) \
+	if((H)->name_alloced){\
+		jhd_free_with_size((H)->name,(H)->name_alloced);\
+	}\
+	if((H)->value_alloced){\
+		jhd_free_with_size((H)->value,(H)->value_alloced);\
+	}\
+	jhd_free_with_size((H),sizeof(jhd_http_header))
+}
+
+#endif
 
 
 void jhd_http_listening_context_free(void *ctx);

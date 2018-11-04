@@ -419,7 +419,7 @@ static void jhd_listening_free_all(){
 	log_assert_master();
 
 	head = &g_listening_queue;
-	while (!jhd_queue_empty(head)) {
+	while (jhd_queue_has_item(head)) {
 		q = jhd_queue_head(head);
 		jhd_queue_only_remove(q);
 		lis = jhd_queue_data(q,jhd_listening_t,queue);
@@ -432,7 +432,7 @@ static void jhd_listening_to_inherited(){
 	jhd_listening_t *lis;
 	log_assert_master();
 	head = &g_listening_queue;
-	while (!jhd_queue_empty(head)) {
+	while (jhd_queue_has_item(head)) {
 		q = jhd_queue_head(head);
 		jhd_queue_remove(q);
 		lis = jhd_queue_data(q,jhd_listening_t,queue);

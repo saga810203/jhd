@@ -167,7 +167,7 @@ jhd_inline void  jhd_event_process_posted(jhd_queue_t *posted) {
 	jhd_queue_t *q;
 	jhd_event_t *ev;
 
-	while (!jhd_queue_empty(posted)) {
+	while (jhd_queue_has_item(posted)) {
 		q = jhd_queue_head(posted);
 		ev = jhd_queue_data(q, jhd_event_t, queue);
 		jhd_delete_posted_event(ev);

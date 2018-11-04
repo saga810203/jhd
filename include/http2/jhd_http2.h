@@ -34,10 +34,10 @@
 #define JHD_HTTP2_FRAME_TYPE_WINDOW_UPDATE_FRAME  0x8
 #define JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME   0x9
 
-#define JHD_HTTP2_STREAM_STATE_CLOSE              0x00
+#define JHD_HTTP2_STREAM_STATE_CLOSE              0x03
 #define JHD_HTTP2_STREAM_STATE_CLOSE_LOCAL        0x01
 #define JHD_HTTP2_STREAM_STATE_CLOSE_REMOTE       0x02
-#define JHD_HTTP2_STREAM_STATE_OPEN               0x03
+#define JHD_HTTP2_STREAM_STATE_OPEN               0x00
 
 
 #define JHD_HTTP2_CONNECTION_HANDLE_READ_TIMEOUT(ev) \
@@ -70,11 +70,9 @@ typedef struct {
 	uint32_t read_timeout;
 	uint32_t write_timeout;
 	uint32_t wait_mem_timeout;
-
 	uint32_t initial_window_size;
 	uint32_t max_header_table_size;
 	uint32_t max_streams;
-
     uint32_t recv_window_size_threshold; // if(connection->recv.window_size <  recv_window_size_threshold then send window_update
 
 	// http2 connection begin idle triger   can add idle timer(server) or send ping frame(client)
@@ -98,18 +96,9 @@ typedef struct {
     //  too long  max_header_size  too long header name   too long header val
     jhd_event_handler_pt connection_unsupported_error;
 
-
-
-
-    jhd_event_handler_pt *frame_header_check_pts;
     jhd_event_handler_pt *frame_payload_handler_pts;
 
-
     jhd_event_handler_pt connection_end_headers_handler;
-
-
-
-
 
 	void *extend_param;
 }jhd_http2_connection_conf;
@@ -117,7 +106,7 @@ typedef struct {
 typedef struct {
 	jhd_http2_connection_conf   h2_conf;
 	jhd_http11_connection_conf  h11_conf;
-} jhd_listening_config_ctx_with_alpn;
+} jhd_http_listenning_ctx;
 
 
 typedef struct jhd_http2_stream_s jhd_http2_stream;
@@ -138,6 +127,7 @@ typedef struct{
 
 		uint32_t last_stream_id;
         uint32_t window_size;
+        uint32_t init_window_size;
 
         jhd_http2_hpack hpack;
 
@@ -162,87 +152,44 @@ typedef struct{
 
 
 typedef struct {
-
-
 	jhd_http2_connection_conf *conf;
 	void *data;
 	jhd_http2_conneciton_recv_part recv;
 	jhd_http2_conneciton_send_part send;
 	uint32_t processing;
-
-//	size_t headers_table_size;
-//	size_t init_window;
-//	size_t frame_size;
-//	ngx_pool_t *pool;
-//	ngx_uint_t next_sid;
-//
-//		ngx_http2_connection_recv_part_t recv;
-//		ngx_http2_connection_send_part_t send;
-		unsigned recv_error :1;
-		unsigned go_away_recved :1;
-		unsigned send_error :1;
-		unsigned goaway_sent :1;
+	unsigned recv_error :1;
+	unsigned go_away_recved :1;
+	unsigned send_error :1;
+	unsigned goaway_sent :1;
 
 
-
-
-
-
-//		unsigned recv_index:1;
-//		unsigned recv_paser_value:1;
-//		unsigned recv_huff:1;
-//
-//
-//
-//
-//
-//		ngx_queue_t idle_streams;
-//
-//		ngx_http2_send_frame send_frame;
-//		ngx_http2_send_ping send_ping;
-//		ngx_http2_send_ping send_headers;
-
-
-
-		/*last element*/
-
-
-
-//		jhd_http2_frame *alloc_frame;
-
-
-		jhd_connection_close_pt  close_pt;
-
-		uint32_t max_streams;
-
-		jhd_queue_t streams[32];
-
+	jhd_connection_close_pt  close_pt;
+	uint32_t max_streams;
+	jhd_queue_t wait_flow_control;
+	jhd_queue_t wait_close;
+	jhd_queue_t streams[32];
 }jhd_http2_connection;
 
 
 typedef struct{
-		void (*remote_close_with_empty_data)(jhd_http2_stream *stream);
-		void (*remote_data_arrival)(jhd_http2_stream *stream,jhd_http2_frame *frame);
-		void (*remote_rst_stream)(jhd_http2_stream *stream);
+		jhd_event_handler_pt remote_close;
+		jhd_event_handler_pt remote_data;
+		jhd_event_handler_pt reset;
+		jhd_event_handler_pt remote_recv;
+}jhd_http2_stream_listener;
 
 
-
-
-
-}jhd_http2_stream_handler;
 
 struct jhd_http2_stream_s{
-	jhd_http2_stream_handler *handler;
+	jhd_http2_stream_listener *listener;
+	void *lis_ctx;
 	uint32_t id;
 	u_char state;
-
-
 	int recv_window_size;
 	int send_window_size;
-
 	jhd_queue_t queue;
+	jhd_queue_t flow_control;
 };
-
 
 
 jhd_inline int jhd_http2_parse_int(uint32_t *value,u_char prefix,u_char *start, u_char *end,u_char shift_limit){
@@ -275,23 +222,38 @@ jhd_inline int jhd_http2_parse_int(uint32_t *value,u_char prefix,u_char *start, 
     return p - start;
 }
 
-int jhd_http2_huff_decode(u_char *src, uint16_t src_len, u_char *dst
-#ifdef JHD_LOG_ASSERT_ENABLE
-,uint16_t dst_len
-#endif
-);
+int jhd_http2_huff_decode(u_char *src, uint16_t src_len, u_char *dst,uint16_t dst_len);
 
+void jhd_http2_frame_free_by_direct(void *data);
 
+void jhd_http2_frame_free_by_single(void *data);
 
+void jhd_http2_headers_frame_parse_item(jhd_event_t *ev);
 
 void jhd_http2_recv_skip(jhd_event_t *ev);
 void jhd_http2_recv_payload(jhd_event_t *ev);
 void jhd_http2_recv_buffer(jhd_event_t *ev);
 
+void jhd_http2_data_frame_header_check(jhd_event_t *ev);
+
+
+
+
 void jhd_http2_send_event_handler_clean(jhd_event_t *ev);
 void jhd_http2_send_event_handler_ssl(jhd_event_t *ev);
 
 #if !defined(JHD_INLINE)
+
+jhd_inline void jhd_http2_set_stream_id(u_char *p,uint32_t sid){
+	p[0] = (u_char)(sid >> 24);
+	p[1] = (u_char)(sid >> 16);
+	p[2] = (u_char)(sid >> 8);
+	p[3] = (u_char)(sid);
+}
+
+
+
+
 jhd_inline void jhd_http2_send_queue_frame(jhd_http2_frame *frame){
 	if(event_h2c->send.tail != NULL){
 		event_h2c->send.tail->next = frame;
@@ -336,8 +298,50 @@ jhd_inline void jhd_http2_do_recv_buffer(jhd_event_t *ev,jhd_http2_connection h2
 	ev->handler = jhd_http2_recv_buffer;
 	jhd_unshift_event(ev,&jhd_posted_events);
 }
+jhd_inline void jhd_http2_single_frame_init(jhd_http2_frame *frame){
+	frame->data = (u_char*)(((u_char*)frame)+sizeof(jhd_http2_frame));
+	frame->free_func = jhd_http2_frame_free_by_single;
+}
+
+jhd_inline void jhd_http2_single_frame_init_with_len(jhd_http2_frame *frame,uint32_t len){
+	frame->pos=frame->data = (u_char*)(((u_char*)frame)+sizeof(jhd_http2_frame));
+	frame->data_len = frame->len = len;
+	frame->free_func = jhd_http2_frame_free_by_single;
+}
+#ifdef JHD_LOG_ASSERT_ENABLE
+
+jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void *tag,void (*free_handler)(void *)){
+	frame->data = NULL;
+	frame->tag = tag;
+	frame->free_func = free_handler;
+}
 
 #else
+jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void (*free_handler)(void *)){
+	frame->data = NULL;
+	frame->free_func = free_handler;
+}
+
+#endif
+
+#else
+#define jhd_http2_single_frame_init(F) (F)->data = (u_char*)(((u_char*)(F))+sizeof(jhd_http2_frame));\
+	(F)->free_func = jhd_http2_frame_free_by_single
+
+#define void jhd_http2_single_frame_init_with_len(F,L) \
+	(F)->pos = (F)->data = (u_char*)(((u_char*)(F))+sizeof(jhd_http2_frame));
+	(F)->data_len = (F)->len = L;
+	(F)->free_func = jhd_http2_frame_free_by_single;
+}
+
+#ifdef JHD_LOG_ASSERT_ENABLE
+#define jhd_http2_frame_init(F,T,H) (F)->data = NULL;(F)->tag = T;(F)->free_func = H
+
+#else
+#define jhd_http2_frame_init(F,H) (F)->data = NULL;(F)->free_func = H
+
+#endif
+
 
 #define jhd_http2_do_recv_skip(E,H2C,SIZE,HAND) (H2C)->recv.state = SIZE;(H2C)->recv.state_param = HAND;(E)->handler = jhd_http2_recv_skip;jhd_unshift_event(E,&jhd_posted_events)
 
@@ -369,6 +373,9 @@ jhd_inline void jhd_http2_do_recv_buffer(jhd_event_t *ev,jhd_http2_connection h2
 		}\
 	}
 
+#define jhd_http2_stream_init(S) memset(S,0,sizeof(jhd_http2_stream))
+
+#define jhd_http2_set_stream_id(P,SID) P[0] = (u_char)((SID) >> 24);P[1] = (u_char)((SID) >> 16);P[2] = (u_char)((SID) >> 8);P[3] = (u_char)(sid)
 
 #endif
 jhd_inline void jhd_http2_send_ping_ack(jhd_http2_frame *frame){
@@ -445,5 +452,8 @@ extern u_char* jhd_http2_preface;
 
 extern jhd_http2_connection *event_h2c;
 extern jhd_http2_connection_conf *event_h2c_conf;
+
+
+extern jhd_http2_stream jhd_http2_invalid_stream;
 
 #endif /* HTTP2_JHD_HTTP2_H_ */

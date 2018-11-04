@@ -2626,13 +2626,13 @@ static jhd_http2_huff_decode_code_t  ngx_http_v2_huff_decode_codes[256][16] =
 };
 
 
-int jhd_http2_huff_decode(u_char *src, uint16_t src_len, u_char *dst
-#ifdef JHD_LOG_ASSERT_ENABLE
-,uint16_t dst_len
-#endif
-){
+int jhd_http2_huff_decode(u_char *src, uint16_t src_len, u_char *dst,uint16_t dst_len){
     u_char  *end, ch, ending,state,*p;
     jhd_http2_huff_decode_code_t  code;
+
+#ifndef JHD_LOG_ASSERT_ENABLE
+   (void*) dst_len;
+#endif
 
     p = dst;
     ch = 0;

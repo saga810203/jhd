@@ -25,6 +25,9 @@ struct jhd_queue_ptr_s{
 
 #define jhd_queue_empty(QUEUE)   (QUEUE == (QUEUE)->prev)
 
+#define jhd_queue_has_item(QUEUE) (QUEUE) != ((QUEUE)->prev)
+
+#define jhd_queue_queued(QUEUE) (QUEUE) != ((QUEUE)->prev)
 
 #define jhd_queue_insert_head(QUEUE, ELE) (ELE)->next = (QUEUE)->next;(ELE)->next->prev = (ELE);(ELE)->prev = (QUEUE);(QUEUE)->next = (ELE)
 
@@ -83,6 +86,14 @@ jhd_inline void jhd_queue_init(jhd_queue_t *QUEUE){
 
 jhd_inline int jhd_queue_empty(jhd_queue_t *QUEUE){
 	return QUEUE == QUEUE->prev;
+}
+
+jhd_inline int jhd_queue_has_item(jhd_queue_t *QUEUE){
+	return QUEUE != QUEUE->prev;
+}
+
+jhd_inline int jhd_queue_queued(jhd_queue_t *QUEUE){
+	return QUEUE != QUEUE->prev;
 }
 
 jhd_inline void jhd_queue_move(jhd_queue_t *dst,jhd_queue_t *src){
