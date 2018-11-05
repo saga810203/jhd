@@ -243,13 +243,10 @@ static void server_rst_stream(jhd_event_t *ev){
 		jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
 		return;
 	}
-	jhd_http2_single_frame_init(frame);
-	frame->data_len = 13;
-	frame->len = 13;
+	jhd_http2_single_frame_init(frame,sizeof(jhd_http2_frame)+13);
 	frame->type = JHD_HTTP2_FRAME_TYPE_RST_STREAM_FRAME;
-	p=frame->pos = frame->data;
 
-
+	p = frame->pos;
 	//IN X86   00 00 03 08 = uint32_t
 	*((uint32_t*)p) =0x03040000;
 	p[4] = 0;
@@ -259,6 +256,7 @@ static void server_rst_stream(jhd_event_t *ev){
 	p+=4;
 	*((uint32_t*)p) = JHD_HTTP2_REFUSED_STREAM_MAX_STREAM;
 	jhd_http2_send_queue_frame(frame);
+	event_h2c->recv.state = 0;
 	ev->handler = event_h2c->conf->connection_frame_header_read;
 	jhd_unshift_event(ev,&jhd_posted_events);
 	jhd_queue_move(&h,&event_h2c->recv.headers);
@@ -278,7 +276,7 @@ static void server_service(jhd_event_t *ev){
 
 
 
-
+	event_h2c->recv.state = 0;
 	ev->handler = event_h2c->conf->connection_frame_header_read;
 	jhd_unshift(ev,&jhd_posted_events);
 }
@@ -364,7 +362,24 @@ static void server_headers_frame_header_check(jhd_event_t *ev){
 }
 
 
-
+void server_goaway_frame_header_check(jhd_event_t *ev){
+	uint32_t stream_id;
+	log_assert(event_c  = ev->data);
+	log_assert(&event_c->read == ev);
+	log_assert(event_h2c = event_c->data);
+#if !define(JHD_LOG_ASSERT_ENABLE)
+	(void*) ev;
+#endif
+	if(event_h2c->recv.payload_len <8){
+		event_h2c->recv.state = 1;
+		return;
+	}
+	JHD_HTTP2_SET_STRAM_ID_IN_CHECK(stream_id);
+	if(stream_id  != 0){
+		event_h2c->recv.state = 1;
+		return;
+	}
+}
 
 
 
