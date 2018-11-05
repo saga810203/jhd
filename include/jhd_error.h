@@ -6,7 +6,7 @@
 #define JHD_HTTP2_INTERNAL_ERROR               0x20000000
 #define JHD_HTTP2_FLOW_CTRL_ERROR              0x30000000
 #define JHD_HTTP2_SETTINGS_TIMEOUT             0x40000000
-#define JHD_HTTP2_STREAM_CLOSED                0x50000000
+#define JHD_HTTP2_STREAM_CLOSED                0X50000000
 #define JHD_HTTP2_SIZE_ERROR                   0x60000000
 #define JHD_HTTP2_REFUSED_STREAM               0x70000000
 #define JHD_HTTP2_CANCEL                       0x80000000

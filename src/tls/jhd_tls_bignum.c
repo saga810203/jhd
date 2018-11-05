@@ -318,7 +318,8 @@ int jhd_tls_mpi_write_binary(const jhd_tls_mpi *X, unsigned char *buf, size_t bu
 
 
 int jhd_tls_mpi_encode(char* buf,size_t len,const jhd_tls_mpi* X,size_t *olen){
-	uint32_t i, j, n;
+	uint32_t j, n;
+	int i;
 	n = 0;
 	if(X->n>0){
 		for(i = X->n -1; i >=0;--i){

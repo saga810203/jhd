@@ -309,18 +309,14 @@ struct jhd_tls_ssl_ciphersuite_t
 {
     int id;
     const char * name;
-
     jhd_tls_cipher_type_t cipher;
     const jhd_tls_md_info_t	*md_info;
     jhd_tls_key_exchange_type_t key_exchange;
     const jhd_tls_pk_info_t *pk_info;
-
-    int min_major_ver;
-    int min_minor_ver;
-    int max_major_ver;
-    int max_minor_ver;
-//unsupported  JHD_TLS_CIPHERSUITE_WEAK    JHD_TLS_CIPHERSUITE_SHORT_TAG    JHD_TLS_CIPHERSUITE_NODTLS
-//    unsigned char flags;
+    unsigned char min_major_ver;
+    unsigned char min_minor_ver;
+    unsigned char max_major_ver;
+    unsigned char max_minor_ver;
 };
 
 extern const jhd_tls_ssl_ciphersuite_t supported_ciphersuites[];

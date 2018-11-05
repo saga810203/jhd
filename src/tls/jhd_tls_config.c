@@ -5,6 +5,7 @@
 #include <tls/jhd_tls_aesni.h>
 #include <tls/jhd_tls_cipher_internal.h>
 #include <tls/jhd_tls_entropy_poll.h>
+#include <tls/jhd_tls_gcm.h>
 #if defined(JHD_TLS_HAVE_ASM) && defined(__GNUC__) &&  \
     ( defined(__amd64__) || defined(__x86_64__) )   &&  \
     ! defined(JHD_TLS_HAVE_X86_64)
@@ -25,7 +26,7 @@ int jhd_tls_config_init(){
     b[1] = (unsigned char) ( ( (n) >>  8 ) & 0xFF );
     b[2] = (unsigned char) ( ( (n) >> 16 ) & 0xFF );
     b[3] = (unsigned char) ( ( (n) >> 24 ) & 0xFF );
-    if( *((unsigned int*)b) != n){
+    if( *((int*)b) != n){
     	log_stderr("unsupported  SYSTEM!!!!!!!!!!!!!!!!!!!!!\n");
     	exit(1);
     }

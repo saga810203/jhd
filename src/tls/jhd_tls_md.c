@@ -65,16 +65,6 @@ void jhd_tls_md_hmac(const jhd_tls_md_info_t *md_info, const unsigned char *key,
 	jhd_tls_md_hmac_finish(md_info,ctx,hmac_ctx,output,tmp);
 }
 
-void jhd_tls_md_test_finish(jhd_tls_md_info_t *md_info,void *ctx){
-	unsigned char tmp_val[128];
-	unsigned char tmp_ctx[256];
-
-	unsigned char tmp_title[128];
-	sprintf(tmp_title,"%s:md==>",md_info->name);
-	memcpy(tmp_ctx,ctx,md_info->ctx_size);
-	md_info->finish_func(tmp_ctx,tmp_val);
-	log_buf_debug(tmp_title,tmp_val,md_info->size);
-}
 
 
 void jhd_tls_md_hmac_init(const jhd_tls_md_info_t *md_info,const unsigned char *key, size_t keylen,unsigned char *hmac_ctx){

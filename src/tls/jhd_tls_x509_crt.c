@@ -1005,7 +1005,7 @@ jhd_tls_x509_crt* jhd_tls_x509_crt_parse(const unsigned char *buf, size_t buflen
 	    unsigned char tmp_buf[8192];
 	    jhd_tls_x509_crt *cert;
 		size_t tmp_buf_len;
-		jhd_tls_x509_crt *tmp_cert,*curr_cert;
+		jhd_tls_x509_crt *curr_cert;
 
 		log_assert_master();
 
@@ -1017,7 +1017,6 @@ jhd_tls_x509_crt* jhd_tls_x509_crt_parse(const unsigned char *buf, size_t buflen
 		memset(cert,0,sizeof(jhd_tls_x509_crt));
 		curr_cert = cert;
 		if (buflen != 0 && buf[buflen - 1] == '\0' && strstr((const char *) buf, "-----BEGIN CERTIFICATE-----") != NULL) {
-			int ret;
 			for(;;){
 				size_t use_len;
 				tmp_buf_len = 8192;
@@ -1043,7 +1042,7 @@ jhd_tls_x509_crt* jhd_tls_x509_crt_parse(const unsigned char *buf, size_t buflen
 			}
 			return cert;
 		}
-		if(JHD_OK != jhd_tls_x509_crt_parse_der_by_master(cert, buf, buflen,NULL)){
+		if(JHD_OK != jhd_tls_x509_crt_parse_der_by_master(cert, buf, buflen)){
 			goto func_err;
 		}
 		return cert;

@@ -125,7 +125,7 @@ jhd_inline static  void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 
 #define jhd_listener_from_queue(QUEUE)   jhd_queue_data(QUEUE,jhd_listener_t,queue);
 #else
-jhd_inline void jhd_event_del_timer(jhd_event_t event) {
+jhd_inline void jhd_event_del_timer(jhd_event_t *event) {
 	jhd_rbtree_delete(&jhd_event_timer_rbtree, &event->timer);
 	event->timer.key = 0;
 }
@@ -145,7 +145,7 @@ jhd_inline void jhd_delete_posted_event(jhd_event_t * EVENT){
 	jhd_queue_remove(&EVENT->queue);
 }
 
-jhd_inline jhd_event_t* jhd_event_from_queue(QUEUE){
+jhd_inline jhd_event_t* jhd_event_from_queue(jhd_queue_t *QUEUE){
 	return jhd_queue_data(QUEUE,jhd_event_t,queue);
 }
 

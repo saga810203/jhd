@@ -148,7 +148,7 @@ int jhd_http2_hpack_add(jhd_http2_hpack  *hpack,u_char* name,uint16_t name_len,u
 		return JHD_ERROR;
 	}
 	if((hpack->size - hpack->bytes_headers) < size){
-		ngx_http2_hpack_remove(hpack,size);
+		jhd_http2_hpack_remove(hpack,size);
 	}
 	p = n = hpack->next;
 	*((uint16_t*)p) =name_len;
@@ -169,7 +169,7 @@ int jhd_http2_hpack_add(jhd_http2_hpack  *hpack,u_char* name,uint16_t name_len,u
 
 	hpack->bytes_headers+=size;
 
-	p = (char*)hpack->index;
+	p = (u_char*)hpack->index;
 	p -=sizeof(void*);
 	if(hpack->rds_headers){
 		memmove(p,hpack->index,sizeof(void*)* hpack->rds_headers);
@@ -186,13 +186,12 @@ int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,u_char **old
 	int64_t delta;
 	u_char* new_data;
 	u_char** new_index;
-	u_char** idx;
 	int i ;
 	if(new_size == 0){
 		if(hpack->capacity != 0){
 			*old_data = hpack->data;
 			*capacity_size = hpack->capacity;
-			memset(hpack,sizeof(jhd_http2_hpack));
+			memset(hpack,0,sizeof(jhd_http2_hpack));
 			return JHD_OK;
 
 		}
@@ -221,7 +220,7 @@ int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,u_char **old
 			if(new_data){
 				memcpy(new_data,hpack->data,hpack->size);
 				delta = ((int64_t)new_data) -((int64_t)hpack->data);
-				new_index = new_data  + new_capacity - (sizeof(void*) * hpack->rds_headers);
+				new_index = (u_char **)(new_data  + new_capacity - (sizeof(void*) * hpack->rds_headers));
 
 				for(i=0;i< hpack->rds_headers;++i){
 					new_index[i] = hpack->index[i]+delta;
@@ -241,21 +240,21 @@ int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,u_char **old
 		}
 	}else if(new_size<hpack->size){
 		if(hpack->bytes_headers>new_size){
-			ngx_http2_hpack_remove(hpack->bytes_headers- new_size);
+			jhd_http2_hpack_remove(hpack,hpack->bytes_headers- new_size);
 		}
 		hpack->size = new_size;
 		return JHD_OK;
 	}
 	return JHD_OK;
 }
-void jhd_http2_hpack_get_index_header_item(jhd_http2_hpack *hpack,int32_t idx,u_char **name,uint16_t *name_len,u_char **val,uint16_t *val_len){
+void jhd_http2_hpack_get_index_header_item(jhd_http2_hpack *hpack,uint32_t idx,u_char **name,uint16_t *name_len,u_char **val,uint16_t *val_len){
 	u_char *p;
 	log_assert(idx >0);
 	--idx;
 	if(idx< 61){
 		*name = jhd_http2_headers_static[idx].name.data;
 		*name_len = jhd_http2_headers_static[idx].name.len;
-		*val = jhd_http2_headers_static[idx]->val.data;
+		*val = jhd_http2_headers_static[idx].val.data;
 		*val_len = jhd_http2_headers_static[idx].val.len;
 	}else{
 		idx -= 61;
@@ -271,7 +270,7 @@ void jhd_http2_hpack_get_index_header_item(jhd_http2_hpack *hpack,int32_t idx,u_
 		}
 	}
 }
-void jhd_http2_hpack_get_index_header_name(jhd_http2_hpack *hpack,int32_t idx,u_char **name,uint16_t *name_len){
+void jhd_http2_hpack_get_index_header_name(jhd_http2_hpack *hpack,uint32_t idx,u_char **name,uint16_t *name_len){
 	u_char *p;
 	log_assert(idx >0);
 	--idx;
@@ -289,7 +288,7 @@ void jhd_http2_hpack_get_index_header_name(jhd_http2_hpack *hpack,int32_t idx,u_
 	}
 }
 
-uint32_t jhd_http2_hpack_find_item(jhd_http2_hpack *hpack,int32_t idx,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len){
+uint32_t jhd_http2_hpack_find_item(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len){
 	uint32_t i;
 	u_char *p;
 	jhd_http2_hpack_header_item *static_item = jhd_http2_headers_static;
@@ -306,7 +305,7 @@ uint32_t jhd_http2_hpack_find_item(jhd_http2_hpack *hpack,int32_t idx,u_char *na
 	}
 
 	for(i = 0 ; i < hpack->rds_headers ; ++i){
-		p =hpack->index[idx];
+		p =hpack->index[i];
 		if(name_len ==(*((uint16_t*)p))){
 			p+=sizeof(uint16_t);
 			if(val_len ==(*((uint16_t*)(p+name_len +1)))){
@@ -324,7 +323,7 @@ uint32_t jhd_http2_hpack_find_item(jhd_http2_hpack *hpack,int32_t idx,u_char *na
 }
 
 
-void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,int32_t idx,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len,jhd_http2_hpack_search_result *result){
+void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len,jhd_http2_hpack_search_result *result){
 	uint32_t i;
 	u_char *p;
 	jhd_http2_hpack_header_item *static_item = jhd_http2_headers_static;
@@ -345,7 +344,7 @@ void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,int32_t idx,u_char *name
 		}
 	}
 	for(i = 0 ; i < hpack->rds_headers ; ++i){
-		p =hpack->index[idx];
+		p =hpack->index[i];
 		if(name_len ==(*((uint16_t*)p))){
 			p+=sizeof(uint16_t);
 			if(memcmp(p,name,name_len)==0){
@@ -355,7 +354,7 @@ void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,int32_t idx,u_char *name
 				if(val_len ==(*((uint16_t*)p))){
 
 					p+= sizeof(uint16_t);
-					if(mecmp(p,val,val_len)==0){
+					if(memcmp(p,val,val_len)==0){
 						result->val_idx = i+62;
 						return;
 					}
@@ -369,7 +368,7 @@ void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,int32_t idx,u_char *name
 
 
 
-uint32_t jhd_http2_hpack_find_name(jhd_http2_hpack *hpack,int32_t idx,u_char *name,uint16_t *name_len){
+uint32_t jhd_http2_hpack_find_name(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len){
 	uint32_t i;
 	u_char *p;
 	jhd_http2_hpack_header_item *static_item = jhd_http2_headers_static;
@@ -382,10 +381,10 @@ uint32_t jhd_http2_hpack_find_name(jhd_http2_hpack *hpack,int32_t idx,u_char *na
 	}
 
 	for(i = 0 ; i < hpack->rds_headers ; ++i){
-		p =hpack->index[idx];
+		p =hpack->index[i];
 		if(name_len ==(*((uint16_t*)p))){
 			p+=sizeof(uint16_t);
-			if(mecmp(p,name,name_len)==0){
+			if(memcmp(p,name,name_len)==0){
 					return i + 62;
 			}
 		}

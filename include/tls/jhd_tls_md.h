@@ -192,9 +192,6 @@ void jhd_tls_md_process(jhd_tls_md_info_t *md_info,void *md_ctx, const unsigned 
 #endif
 
 
-void jhd_tls_md_test_finish(jhd_tls_md_info_t *md_info,void *ctx);
-
-
 
 
 void jhd_tls_md_hmac(const jhd_tls_md_info_t *md_info, const unsigned char *key, size_t keylen, const unsigned char *input, size_t ilen, unsigned char *output);

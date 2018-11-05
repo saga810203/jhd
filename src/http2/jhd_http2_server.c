@@ -126,7 +126,6 @@ void jhd_http2_read_preface(jhd_event_t *ev){
 void jhd_http2_init_with_alpn(jhd_event_t *ev){
 	jhd_connection_t *c;
 	jhd_http2_connection_conf *conf;
-	int ret;
 	log_assert_worker();
 	c = ev->data;
 
@@ -159,7 +158,6 @@ void jhd_http2_alpn_handshake(jhd_event_t *ev){
 
 	ret = jhd_connection_tls_handshark(c);
 	if(ret == JHD_OK){
-
 		if(((jhd_tls_ssl_context*)(c->ssl))->alpn_chosen ==jhd_http_alpn_list[0]){
 			ev->handler = jhd_http2_init_with_alpn;
 			jhd_http2_init_with_alpn(ev);
@@ -169,7 +167,7 @@ void jhd_http2_alpn_handshake(jhd_event_t *ev){
 		}
 	}else if(ret != JHD_AGAIN){
 		if(c->write.queue.next){
-			jhd_queue_remove(&c->write);
+			jhd_queue_remove(&c->write.queue);
 		}
 		c->close(c);
 	}

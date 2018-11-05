@@ -9,6 +9,7 @@
 #define HTTP2_JHD_HTTP2_HPACK_H_
 #include <jhd_config.h>
 #include <jhd_log.h>
+#include <jhd_pool.h>
 #include <jhd_event.h>
 
 
@@ -48,31 +49,21 @@ int jhd_http2_hpack_add(jhd_http2_hpack  *hpack,u_char* name,uint16_t name_len,u
 
 
 
-int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,uint16_t *out_capacity);
-void jhd_http2_hpack_get_index_header_item(jhd_http2_hpack *hpack,int32_t idx,u_char **name,uint16_t *name_len,u_char **val,uint16_t *val_len);
-void jhd_http2_hpack_get_index_header_name(jhd_http2_hpack *hpack,int32_t idx,u_char **name,uint16_t *name_len);
+int jhd_http2_hpack_resize(jhd_http2_hpack *hpack,uint16_t new_size,u_char **old_hpack_data,uint16_t *out_capacity);
+void jhd_http2_hpack_get_index_header_item(jhd_http2_hpack *hpack,uint32_t idx,u_char **name,uint16_t *name_len,u_char **val,uint16_t *val_len);
+void jhd_http2_hpack_get_index_header_name(jhd_http2_hpack *hpack,uint32_t idx,u_char **name,uint16_t *name_len);
 
-uint32_t jhd_http2_hpack_find_item(jhd_http2_hpack *hpack,int32_t idx,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len);
-uint32_t jhd_http2_hpack_find_name(jhd_http2_hpack *hpack,int32_t idx,u_char *name,uint16_t *name_len);
+uint32_t jhd_http2_hpack_find_item(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len);
+uint32_t jhd_http2_hpack_find_name(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len);
 
-void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,int32_t idx,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len,jhd_http2_hpack_search_result *result);
+void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len,jhd_http2_hpack_search_result *result);
 
 
-
-jhd_inline uint16_t jhd_http2_hpack_calc_real_capacity(uint16_t size){
-	uint16_t capacity = 4096;
-	u_char* data;
-	while(capacity < size){
-		log_assert(capacity <=(0xFFFF - 4096));
-		capacity+=4096;
-	}
-	return capacity;
-}
 
 
 #ifdef JHD_INLINE
 #define jhd_http2_hpack_is_static(idx) ((idx) < 62)
-#define jhd_htttp2_hapck_is_dyncmic(idx)((idx) > 61)
+#define jhd_http2_hpack_is_dyncmic(idx)((idx) > 61)
 
 
 
@@ -85,7 +76,7 @@ jhd_inline jhd_bool jhd_http2_hpack_is_static(uint32_t idx){
 	return idx < 62;
 }
 
-jhd_inline jhd_bool jhd_htttp2_hapck_is_dyncmic(uint32_t idx){
+jhd_inline jhd_bool jhd_http2_hpack_is_dyncmic(uint32_t idx){
 	return idx > 61;
 }
 jhd_inline void jhd_http2_hpack_free(jhd_http2_hpack *hpack){

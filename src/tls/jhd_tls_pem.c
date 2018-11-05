@@ -292,7 +292,6 @@ void jhd_tls_pem_init(jhd_tls_pem_context *ctx) {
 //}
 
 int jhd_tls_pem_read_buffer(unsigned char *buf, size_t *buf_len, const char *header, const char *footer,const unsigned char *data,size_t *use_len){
-	int ret;
 	size_t len;
 	const unsigned char *s1, *s2, *end;
 	*use_len = 0;
@@ -316,7 +315,7 @@ int jhd_tls_pem_read_buffer(unsigned char *buf, size_t *buf_len, const char *hea
 	if (*end == '\n') end++;
 	*use_len = end - data;
 
-	log_assert(((s2-s1 +3) / 4 * 3)<= *buf_len/*,"out buffer too small"*/);
+	log_assert(((s2-s1 +3) / 4 * 3) <= *((ssize_t*)buf_len)/*,"out buffer too small"*/);
 	if (JHD_OK != jhd_base64_decode(buf, *buf_len, &len, s1, s2 - s1)){
 		return JHD_ERROR;
 	}

@@ -2,6 +2,7 @@
 #define HTTP_JHD_HTTP_CORE_H_
 #include <jhd_config.h>
 #include <jhd_log.h>
+#include <jhd_pool.h>
 #include <jhd_queue.h>
 #include <jhd_event.h>
 
@@ -37,7 +38,7 @@ log_assert_code(void *tag;)
 	u_int16_t data_len;
 	u_char   *pos;
 	uint16_t len;
-	void (*free_func)(struct jhd_http_data* data);
+	void (*free_func)(void* data);
 	void * next;
 }jhd_http_data;
 
@@ -113,7 +114,7 @@ struct jhd_http_request_info_s{
 
 
 
-#if !define(JHD_INLINE)
+#if !defined(JHD_INLINE)
 
 jhd_inline void jhd_http_header_init(jhd_http_header *header){
 	memset(header,0,sizeof(jhd_http_header));

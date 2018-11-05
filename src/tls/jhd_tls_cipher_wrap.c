@@ -332,7 +332,7 @@ const jhd_tls_cipher_definition_t jhd_tls_cipher_definitions[] = {
 int jhd_tls_cipher_supported[NUM_CIPHERS];
 
 void jhd_tls_ciphers_init(){
-	int i ;
+	uint32_t i ;
 	for(i = 0 ;i < NUM_CIPHERS; ++i){
 		jhd_tls_cipher_supported[i] = (int)jhd_tls_cipher_definitions[i].type;
 

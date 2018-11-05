@@ -523,7 +523,8 @@ static int ssl_parse_alpn_ext(jhd_connection_t *c,  const unsigned char *buf, si
 }
 
 static int ssl_parse_server_hello(jhd_connection_t *c) {
-	int ret, i,msg_len;
+	int ret, i;
+	uint32_t msg_len;
 	size_t n;
 	size_t ext_len;
 	unsigned char *buf, *ext;
@@ -959,7 +960,8 @@ static int ssl_parse_server_key_exchange(jhd_connection_t *c) {
 }
 
 static int ssl_parse_certificate_request(jhd_connection_t *c) {
-	int ret,msg_len;
+	int ret;
+	uint32_t msg_len;
 	unsigned char *buf;
 	size_t n = 0;
 	size_t cert_type_len = 0, dn_len = 0;

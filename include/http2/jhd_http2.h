@@ -8,6 +8,8 @@
 #ifndef HTTP2_JHD_HTTP2_H_
 #define HTTP2_JHD_HTTP2_H_
 #include <jhd_config.h>
+#include <jhd_log.h>
+#include <jhd_connection.h>
 #include <http/jhd_http_core.h>
 #include <http2/jhd_http2_hpack.h>
 
@@ -200,6 +202,32 @@ struct jhd_http2_stream_s{
 };
 
 
+
+
+
+
+
+
+
+
+
+extern jhd_http_request_info  jhd_http2_info;
+
+extern const char* jhd_http2_preface;
+
+extern jhd_http2_connection *event_h2c;
+extern jhd_http2_connection_conf *event_h2c_conf;
+
+
+extern jhd_http2_stream jhd_http2_invalid_stream;
+
+
+
+
+
+
+
+
 jhd_inline int jhd_http2_parse_int(uint32_t *value,u_char prefix,u_char *start, u_char *end,u_char shift_limit){
     u_char   *p, octet, shift;
     p = start;
@@ -303,27 +331,26 @@ jhd_inline void jhd_http2_send_headers_frame(jhd_http2_frame *begin_headers,jhd_
 	}else{
 		event_h2c->send.head =begin_headers;
 		event_h2c->send.tail = end_headers;
-		if(event_c->write.queue.next == NULL){
-			jhd_post_event(&event_c->write,&jhd_posted_events);
-		}
+		jhd_post_event(&event_c->write,&jhd_posted_events);
+
 	}
 }
 
 
-jhd_inline void jhd_http2_do_recv_skip(jhd_event_t *ev,jhd_http2_connection h2c,uint32_t size,jhd_event_handler_pt handler){
+jhd_inline void jhd_http2_do_recv_skip(jhd_event_t *ev,jhd_http2_connection *h2c,uint32_t size,jhd_event_handler_pt handler){
 	h2c->recv.state = size;
 	h2c->recv.state_param = handler;
 	ev->handler = jhd_http2_recv_skip;
 	jhd_unshift_event(ev,&jhd_posted_events);
 }
 
-jhd_inline void jhd_http2_do_recv_payload(jhd_event_t *ev,jhd_http2_connection h2c,jhd_event_handler_pt handler){
+jhd_inline void jhd_http2_do_recv_payload(jhd_event_t *ev,jhd_http2_connection *h2c,jhd_event_handler_pt handler){
 	h2c->recv.state_param = handler;
 	ev->handler = jhd_http2_recv_payload;
 	jhd_unshift_event(ev,&jhd_posted_events);
 }
 
-jhd_inline void jhd_http2_do_recv_buffer(jhd_event_t *ev,jhd_http2_connection h2c,jhd_event_handler_pt handler){
+jhd_inline void jhd_http2_do_recv_buffer(jhd_event_t *ev,jhd_http2_connection *h2c,jhd_event_handler_pt handler){
 	h2c->recv.state_param = handler;
 	h2c->recv.state = 0;
 	ev->handler = jhd_http2_recv_buffer;
@@ -471,16 +498,8 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev);
 void jhd_http2_send_setting_frame(jhd_event_t *ev);
 void jhd_http2_send_setting_frame_ack(jhd_event_t *ev);
 void jhd_http2_send_ping_frame(jhd_event_t *ev);
-void jhd_http2_send_ping_frame_ack(jhd_event_t *ev);
-
-extern jhd_http_request_info  jhd_http2_info;
-
-extern u_char* jhd_http2_preface;
-
-extern jhd_http2_connection *event_h2c;
-extern jhd_http2_connection_conf *event_h2c_conf;
 
 
-extern jhd_http2_stream jhd_http2_invalid_stream;
+
 
 #endif /* HTTP2_JHD_HTTP2_H_ */

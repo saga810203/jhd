@@ -582,7 +582,8 @@ int jhd_tls_ssl_write_certificate(jhd_connection_t *c) {
 }
 
 int jhd_tls_ssl_parse_certificate(jhd_connection_t *c) {
-	int ret, msg_len;
+	int ret;
+	uint32_t msg_len;
 	size_t n;
 	unsigned char *buf;
 	jhd_tls_x509_crt * cert;
@@ -1260,8 +1261,7 @@ size_t jhd_tls_ssl_get_max_frag_len(const jhd_tls_ssl_context *ssl) {
  * Receive application data decrypted from the SSL layer
  */
 ssize_t jhd_tls_ssl_read(jhd_connection_t *c, unsigned char *buf, size_t len) {
-	ssize_t ret;
-	size_t n;
+	ssize_t ret, n;
 	jhd_tls_ssl_context *ssl= c->ssl;
 	log_notice("===============>jhd_tls_ssl_read(len=%lu)",len);
 	log_assert(len>0/*,"len==0"*/);

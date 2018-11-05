@@ -178,7 +178,7 @@ int jhd_tls_asn1_get_sequence_of( unsigned char **p,const unsigned char *end,jhd
     size_t len;
     jhd_tls_asn1_buf *buf;
 	jhd_tls_asn1_sequence *prev,*next;
-	log_assert_by_worker();
+	log_assert_worker();
     if(  jhd_tls_asn1_get_tag( p, end, &len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SEQUENCE )  != 0 )
         return JHD_ERROR;
     if( *p + len != end )
@@ -232,7 +232,7 @@ int jhd_tls_asn1_get_sequence_of_by_master( unsigned char **p,const unsigned cha
     int ret;
     size_t len;
     jhd_tls_asn1_buf *buf;
-	jhd_tls_asn1_sequence *prev,*next;
+	jhd_tls_asn1_sequence *next;
 	log_assert_master();
     if(  jhd_tls_asn1_get_tag( p, end, &len,JHD_TLS_ASN1_CONSTRUCTED | JHD_TLS_ASN1_SEQUENCE )  != 0 )
         return JHD_ERROR;
