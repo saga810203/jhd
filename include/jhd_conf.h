@@ -48,6 +48,13 @@ int jhd_conf_parse(jhd_config_handler_pt handler);
 int jhd_conf_parse_default();
 
 
+
+
+
+
+void gen_test_config();
+
+
 extern u_char *jhd_config_file;
 
 

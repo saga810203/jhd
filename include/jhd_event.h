@@ -1,9 +1,11 @@
 #ifndef JHD_EVENT_H_
 #define JHD_EVENT_H_
 #include <jhd_config.h>
+#include <jhd_log.h>
 #include <jhd_queue.h>
 #include <jhd_rbtree.h>
 #include <jhd_time.h>
+
 
 #define jhd_event_timer_set(ev)  ((ev)->timer.key)
 
@@ -40,7 +42,7 @@ typedef struct {
 } jhd_atomic_flag;
 
 
-jhd_inline char jhd_atomic_test_set_flag(volatile jhd_atomic_flag *ptr)
+static jhd_inline char jhd_atomic_test_set_flag(volatile jhd_atomic_flag *ptr)
 {
 	register char _res = 1;
 	__asm__ __volatile__(
@@ -51,7 +53,7 @@ jhd_inline char jhd_atomic_test_set_flag(volatile jhd_atomic_flag *ptr)
 :		"memory");
 	return _res == 0;
 }
-jhd_inline void jhd_atomic_clear_flag(volatile jhd_atomic_flag *ptr)
+static jhd_inline void jhd_atomic_clear_flag(volatile jhd_atomic_flag *ptr)
 {
 	__asm__ __volatile__("" ::: "memory");
 	ptr->value = 0;
@@ -125,45 +127,45 @@ jhd_inline static  void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 
 #define jhd_listener_from_queue(QUEUE)   jhd_queue_data(QUEUE,jhd_listener_t,queue);
 #else
-jhd_inline void jhd_event_del_timer(jhd_event_t *event) {
+static jhd_inline void jhd_event_del_timer(jhd_event_t *event) {
 	jhd_rbtree_delete(&jhd_event_timer_rbtree, &event->timer);
 	event->timer.key = 0;
 }
 
-jhd_inline void jhd_post_event(jhd_event_t *EVENT,jhd_queue_t *QUEUE){
+static jhd_inline void jhd_post_event(jhd_event_t *EVENT,jhd_queue_t *QUEUE){
 	if (!(EVENT)->queue.next ){
 		jhd_queue_insert_tail(QUEUE, &(EVENT)->queue);
 	}
 }
-jhd_inline void jhd_unshift_event(jhd_event_t *EVENT,jhd_queue_t *QUEUE){
+static jhd_inline void jhd_unshift_event(jhd_event_t *EVENT,jhd_queue_t *QUEUE){
 	if (!(EVENT)->queue.next ){
 		jhd_queue_insert_head(QUEUE, &(EVENT)->queue);
 	}
 }
 
-jhd_inline void jhd_delete_posted_event(jhd_event_t * EVENT){
+static jhd_inline void jhd_delete_posted_event(jhd_event_t * EVENT){
 	jhd_queue_remove(&EVENT->queue);
 }
 
-jhd_inline jhd_event_t* jhd_event_from_queue(jhd_queue_t *QUEUE){
+static jhd_inline jhd_event_t* jhd_event_from_queue(jhd_queue_t *QUEUE){
 	return jhd_queue_data(QUEUE,jhd_event_t,queue);
 }
 
-jhd_inline void jhd_post_listener(jhd_listener_t *LIS,jhd_queue_t *QUEUE){
+static jhd_inline void jhd_post_listener(jhd_listener_t *LIS,jhd_queue_t *QUEUE){
 	jhd_queue_insert_tail(QUEUE,&LIS->queue);
 }
 
-jhd_inline void jhd_delete_listener(jhd_listener_t *LIS)  {
+static jhd_inline void jhd_delete_listener(jhd_listener_t *LIS)  {
 	jhd_queue_only_remove(&LIS->queue);
 }
 
-jhd_inline jhd_listener_t* jhd_listener_from_queue(jhd_queue_t *QUEUE) {
+static jhd_inline jhd_listener_t* jhd_listener_from_queue(jhd_queue_t *QUEUE) {
 	return jhd_queue_data(QUEUE,jhd_listener_t,queue);
 }
 
 
 #endif
-jhd_inline void  jhd_event_process_posted(jhd_queue_t *posted) {
+static jhd_inline void  jhd_event_process_posted(jhd_queue_t *posted) {
 	jhd_queue_t *q;
 	jhd_event_t *ev;
 

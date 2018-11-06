@@ -116,10 +116,10 @@ struct jhd_http_request_info_s{
 
 #if !defined(JHD_INLINE)
 
-jhd_inline void jhd_http_header_init(jhd_http_header *header){
+static jhd_inline void jhd_http_header_init(jhd_http_header *header){
 	memset(header,0,sizeof(jhd_http_header));
 }
-jhd_inline void jhd_http_header_free(jhd_http_header *header){
+static jhd_inline void jhd_http_header_free(jhd_http_header *header){
 	if(header->name_alloced){
 		jhd_free_with_size(header->name,header->name_alloced);
 	}
@@ -127,7 +127,7 @@ jhd_inline void jhd_http_header_free(jhd_http_header *header){
 		jhd_free_with_size(header->value,header->value_alloced);
 	}
 }
-jhd_inline void jhd_http_free_header(jhd_http_header *header){
+static jhd_inline void jhd_http_free_header(jhd_http_header *header){
 	if(header->name_alloced){
 		jhd_free_with_size(header->name,header->name_alloced);
 	}
@@ -164,6 +164,11 @@ jhd_inline void jhd_http_free_header(jhd_http_header *header){
 void jhd_http_listening_context_free(void *ctx);
 
 int jhd_http11_server_connection_alloc(void **pcon,jhd_event_t *ev,jhd_http11_connection_conf *conf);
+
+
+
+void jhd_http11_init(jhd_event_t *ev);
+
 
 extern jhd_http_request_info  jhd_http11_info;
 

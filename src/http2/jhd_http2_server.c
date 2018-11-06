@@ -1,6 +1,7 @@
 #include <http2/jhd_http2_server.h>
 #include <tls/jhd_tls_ssl_internal.h>
 #include <jhd_pool.h>
+#include <jhd_queue.h>
 
 
 typedef struct{
@@ -22,7 +23,7 @@ void jhd_http2_only_by_tls_server_connection_start(jhd_connection_t *c){
 }
 
 
-static char *  jhd_http_alpn_list[]={"h2","http/1.1",NULL};
+static char *jhd_http_alpn_list[]={"h2","http/1.1",NULL};
 
 static void jhd_http2_server_connection_close(jhd_connection_t *c){
 	//TODO:
@@ -49,10 +50,6 @@ static int jhd_http2_server_connection_alloc(void **pcon,jhd_event_t *ev,jhd_htt
     	  hc->close_pt = c->close;
     	  c->close = jhd_http2_server_connection_close;
       }
-
-
-
-
       return JHD_OK;
 }
 
@@ -208,7 +205,6 @@ void jhd_http2_alpn_recv_start(jhd_event_t *ev){
 }
 void jhd_http2_with_alpn_server_connection_start(jhd_connection_t *c){
 	log_assert_worker();
-	log_assert(((jhd_tls_ssl_config*) c->listening->ssl)->alpn_list == jhd_http_alpn_list);
 	log_assert(((jhd_tls_ssl_config*) c->listening->ssl)->server_side == JHD_TLS_SSL_IS_SERVER);
 
 	c->write.handler = jhd_connection_tls_empty_write;
@@ -216,7 +212,7 @@ void jhd_http2_with_alpn_server_connection_start(jhd_connection_t *c){
 	c->read.queue.next = NULL;
 	c->write.queue.next = NULL;
     c->ssl = NULL;
-	jhd_queue_insert_tail(&jhd_posted_events,&c->read);
+	jhd_post_event(&c->read,&jhd_posted_events);
 }
 
 
@@ -255,7 +251,7 @@ static void server_rst_stream(jhd_event_t *ev){
 	*((uint32_t*)p) = JHD_HTTP2_REFUSED_STREAM_MAX_STREAM;
 	jhd_http2_send_queue_frame(frame);
 	event_h2c->recv.state = 0;
-	ev->handler = event_h2c->conf->connection_frame_header_read;
+	ev->handler = event_h2c->recv.connection_frame_header_read;
 	jhd_unshift_event(ev,&jhd_posted_events);
 	jhd_queue_move(&h,&event_h2c->recv.headers);
 func_free:
@@ -275,8 +271,8 @@ static void server_service(jhd_event_t *ev){
 
 
 	event_h2c->recv.state = 0;
-	ev->handler = event_h2c->conf->connection_frame_header_read;
-	jhd_unshift(ev,&jhd_posted_events);
+	ev->handler = event_h2c->recv.connection_frame_header_read;
+	jhd_unshift_event(ev,&jhd_posted_events);
 }
 
 static void server_end_headers_handler(jhd_event_t *ev){
@@ -332,30 +328,29 @@ static void server_end_headers_handler(jhd_event_t *ev){
 
 static void server_headers_frame_header_check(jhd_event_t *ev){
 	uint32_t stream_id;
-	jhd_http2_connection_server_param *srv_param;
 	log_assert(event_c  = ev->data);
 	log_assert(event_h2c = event_c->data);
 
-#if !define(JHD_LOG_ASSERT_ENABLE)
+#if !defined(JHD_LOG_ASSERT_ENABLE)
 	(void*) ev;
 #endif
 	if(event_h2c->recv.payload_len == 0){
 		event_h2c->conf->connection_protocol_error(ev);
 		return;
 	}
-	srv_param = event_h2c->data;
+//	srv_param = event_h2c->data;
 	log_assert(jhd_queue_empty(&event_h2c->recv.headers));
 
 	JHD_HTTP2_SET_STRAM_ID_IN_CHECK(stream_id);
 
-	if(stream_id & 0X80000001 != 1){
+	if((stream_id & 0X80000001) != 1){
 		event_h2c->conf->connection_protocol_error(ev);
 	}else if(stream_id <= event_h2c->recv.last_stream_id){
 		event_h2c->conf->connection_protocol_error(ev);
 	}else{
 		event_h2c->recv.last_stream_id = stream_id;
 		ev->handler = jhd_http2_headers_frame_payload_handler;
-		jhd_unshift(ev,&jhd_posted_events);
+		jhd_unshift_event(ev,&jhd_posted_events);
 	}
 }
 
@@ -365,7 +360,7 @@ void server_goaway_frame_header_check(jhd_event_t *ev){
 	log_assert(event_c  = ev->data);
 	log_assert(&event_c->read == ev);
 	log_assert(event_h2c = event_c->data);
-#if !define(JHD_LOG_ASSERT_ENABLE)
+#if !defined(JHD_LOG_ASSERT_ENABLE)
 	(void*) ev;
 #endif
 	if(event_h2c->recv.payload_len <8){
@@ -380,12 +375,37 @@ void server_goaway_frame_header_check(jhd_event_t *ev){
 }
 
 
+static jhd_event_handler_pt server_frame_handlers[]={
+		jhd_http2_data_frame_header_check,//DATA
+		server_headers_frame_header_check,//HEADERS
+		jhd_http2_priority_frame_header_check,//PRIORITY
+		jhd_http2_rst_stream_frame_header_check,//RST_STREAM
+		jhd_http2_setting_frame_header_check,//SETTING
+		jhd_http2_unsupported_frame_type,//PUSH_PROMISE
+		jhd_http2_ping_frame_header_check,//PING
+		server_goaway_frame_header_check,//GO_AWAY
+		jhd_http2_window_update_frame_header_check,//WINDOW_UPDATE
+		jhd_http2_unsupported_frame_type,//CONTINUATION
+};
 
 
 
 
+void jhd_http2_server_connection_conf_init(jhd_http2_connection_conf *conf){
+	jhd_http2_servcer_service *service;
+
+	memset(conf,0,sizeof(jhd_http2_connection_conf));
+	conf->frame_payload_handler_pts =server_frame_handlers;
 
 
+
+	conf->extend_param = service = malloc(sizeof(jhd_http2_servcer_service));
+	service->servcie = server_service;
+
+
+	///TEST
+
+}
 
 
 

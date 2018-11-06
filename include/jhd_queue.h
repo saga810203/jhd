@@ -78,25 +78,25 @@ struct jhd_queue_ptr_s{
 
 
 #else
-jhd_inline void jhd_queue_init(jhd_queue_t *QUEUE){
+static jhd_inline void jhd_queue_init(jhd_queue_t *QUEUE){
 	(QUEUE)->prev = QUEUE;
 	(QUEUE)->next = QUEUE;
 }
 
 
-jhd_inline int jhd_queue_empty(jhd_queue_t *QUEUE){
+static jhd_inline int jhd_queue_empty(jhd_queue_t *QUEUE){
 	return QUEUE == QUEUE->prev;
 }
 
-jhd_inline int jhd_queue_has_item(jhd_queue_t *QUEUE){
+static jhd_inline int jhd_queue_has_item(jhd_queue_t *QUEUE){
 	return QUEUE != QUEUE->prev;
 }
 
-jhd_inline int jhd_queue_queued(jhd_queue_t *QUEUE){
+static jhd_inline int jhd_queue_queued(jhd_queue_t *QUEUE){
 	return QUEUE != QUEUE->prev;
 }
 
-jhd_inline void jhd_queue_move(jhd_queue_t *dst,jhd_queue_t *src){
+static jhd_inline void jhd_queue_move(jhd_queue_t *dst,jhd_queue_t *src){
 	dst->next = src ->next;
 	dst->prev = src->prev;
 	src->next->prev = dst;
@@ -106,13 +106,13 @@ jhd_inline void jhd_queue_move(jhd_queue_t *dst,jhd_queue_t *src){
 }
 
 
-jhd_inline void jhd_queue_insert_head(jhd_queue_t *QUEUE,jhd_queue_t *ELE){
+static jhd_inline void jhd_queue_insert_head(jhd_queue_t *QUEUE,jhd_queue_t *ELE){
 	(ELE)->next = (QUEUE)->next;
 	(ELE)->next->prev = (ELE);
 	(ELE)->prev = (QUEUE);
 	(QUEUE)->next = (ELE);
 }
-jhd_inline void jhd_queue_insert_after(jhd_queue_t *QUEUE,jhd_queue_t *ELE){
+static jhd_inline void jhd_queue_insert_after(jhd_queue_t *QUEUE,jhd_queue_t *ELE){
 	(ELE)->next = (QUEUE)->next;
 	(ELE)->next->prev = (ELE);
 	(ELE)->prev = (QUEUE);
@@ -121,7 +121,7 @@ jhd_inline void jhd_queue_insert_after(jhd_queue_t *QUEUE,jhd_queue_t *ELE){
 
 
 
-jhd_inline void jhd_queue_insert_tail(jhd_queue_t *QUEUE,jhd_queue_t *ELE){
+static jhd_inline void jhd_queue_insert_tail(jhd_queue_t *QUEUE,jhd_queue_t *ELE){
 	(ELE)->prev = (QUEUE)->prev;
 	(ELE)->prev->next = (ELE);
 	(ELE)->next = (QUEUE);
@@ -129,24 +129,28 @@ jhd_inline void jhd_queue_insert_tail(jhd_queue_t *QUEUE,jhd_queue_t *ELE){
 }
 
 
-jhd_inline jhd_queue_t* jhd_queue_head(jhd_queue_t *QUEUE){
+static jhd_inline jhd_queue_t* jhd_queue_head(jhd_queue_t *QUEUE){
 	return (QUEUE)->next;
 }
 
-jhd_inline jhd_queue_t* jhd_queue_last(jhd_queue_t *QUEUE){
+static jhd_inline jhd_queue_t* jhd_queue_last(jhd_queue_t *QUEUE){
 	return (QUEUE)->prev;
 }
 
 
-jhd_inline jhd_queue_t* jhd_queue_sentinel(jhd_queue_t *QUEUE) {
+static jhd_inline jhd_queue_t* jhd_queue_sentinel(jhd_queue_t *QUEUE) {
 	return QUEUE;
 }
 
-jhd_inline jhd_queue_t* jhd_queue_next(jhd_queue_t *QUEUE){ return  (QUEUE)->next;}
-jhd_inline jhd_queue_t* jhd_queue_prev(jhd_queue_t *QUEUE){ return  (QUEUE)->prev;}
-jhd_inline void jhd_queue_remove(jhd_queue_t * x)   {(x)->next->prev = (x)->prev;  (x)->prev->next = (x)->next;(x)->next = NULL;}
+static jhd_inline jhd_queue_t* jhd_queue_next(jhd_queue_t *QUEUE){ return  (QUEUE)->next;}
+static jhd_inline jhd_queue_t* jhd_queue_prev(jhd_queue_t *QUEUE){ return  (QUEUE)->prev;}
+static jhd_inline void jhd_queue_remove(jhd_queue_t *x){
+	x->next->prev =x->prev;
+	x->prev->next =x->next;
+	x->next = NULL;
+}
 
-jhd_inline void jhd_queue_only_remove(jhd_queue_t *x){
+static jhd_inline void jhd_queue_only_remove(jhd_queue_t *x){
 	x->next->prev = x->prev;
 	x->prev->next = x->next;
 }

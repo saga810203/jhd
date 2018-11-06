@@ -17,6 +17,10 @@ int epoll_fd;
 jhd_rbtree_t jhd_event_timer_rbtree;
 jhd_rbtree_node_t jhd_event_timer_sentinel;
 
+
+struct epoll_event *event_list;
+
+
 static jhd_listener_t w_event_listener;
 
 int event_count;

@@ -10,7 +10,9 @@
 #include <jhd_conf.h>
 #include <jhd_connection.h>
 #include <jhd_shm.h>
+#include <jhd_process.h>
 
+int jhd_err=0;
 
 int main(int argc, char * const *argv) {
 	jhd_process = JHD_PROCESS_HELPER;
@@ -26,11 +28,14 @@ int main(int argc, char * const *argv) {
 		jhd_daemonized = 1;
 	}
 	jhd_process = JHD_PROCESS_MASTER;
-	if (JHD_OK != jhd_conf_parse_default()) {
-		log_stderr("jhttpd server parse config file[%s] error!!!!!!",jhd_config_file);
-		jhd_err = 1;
-		goto finish;
-	}
+//	if (JHD_OK != jhd_conf_parse_default()) {
+//		log_stderr("jhttpd server parse config file[%s] error!!!!!!",jhd_config_file);
+//		jhd_err = 1;
+//		goto finish;
+//	}
+
+	gen_test_config();
+
 	if (jhd_run_master_startup_listener() != JHD_OK) {
 		jhd_err = 1;
 		log_stderr("jhd start error");
@@ -53,7 +58,7 @@ int main(int argc, char * const *argv) {
 	if (!jhd_create_pidfile()) {
 		return 1;
 	}
-	if (jhd_signal_process) {
+	if (jhd_single) {
 		jhd_single_process();
 	} else {
 		jhd_master_process();

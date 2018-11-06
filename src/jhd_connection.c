@@ -5,11 +5,11 @@
  *      Author: root
  */
 #include <jhd_config.h>
+#include <jhd_log.h>
 #include <jhd_queue.h>
 #include <jhd_event.h>
 #include <jhd_core.h>
 #include <jhd_connection.h>
-#include <jhd_http.h>
 #include <jhd_log.h>
 #include <jhd_string.h>
 #include <tls/jhd_tls_ssl_internal.h>
@@ -39,7 +39,7 @@ in_addr_t jhd_inet_addr(u_char *text, size_t len)
     addr = 0;
     octet = 0;
     n = 0;
-    for (p = text; p < text + len; +p) {
+    for (p = text; p < text + len; ++p) {
         c = *p;
         if (c >= '0' && c <= '9') {
             octet = octet * 10 + (c - '0');
@@ -110,7 +110,7 @@ int jhd_inet6_addr(u_char *text, size_t len, u_char *addr)
                 return JHD_ERROR;
             }
 
-            word = ngx_inet_addr(digit, len4 - 1);
+            word = jhd_inet_addr(digit, len4 - 1);
             if (word == INADDR_NONE) {
                 return JHD_ERROR;
             }
@@ -187,7 +187,7 @@ int jhd_connection_parse_sockaddr(jhd_sockaddr_t* addr,socklen_t *socklen,u_char
 		addr_text_len -= plen;
 		addr_text_len -=3;
 	} else {
-		p = ngx_strlchr(addr_text, last, ':');
+		p = jhd_strlchr(addr_text, last, ':');
 		if (p != NULL) {
 			++p;
 			plen  = last - p;
@@ -210,7 +210,7 @@ int jhd_connection_parse_sockaddr(jhd_sockaddr_t* addr,socklen_t *socklen,u_char
         *socklen = sizeof(struct sockaddr_in);
         addr->sockaddr_in.sin_addr.s_addr = inaddr;
         addr->sockaddr_in.sin_port = htons(default_port);
-    } else if (ngx_inet6_addr(addr_text, addr_text_len, inaddr6.s6_addr) == JHD_OK) {
+    } else if (jhd_inet6_addr(addr_text, addr_text_len, inaddr6.s6_addr) == JHD_OK) {
     	addr->sockaddr.sa_family = AF_INET6;
         *socklen = sizeof(struct sockaddr_in6);
         sin6 =&addr->sockaddr_in6;
@@ -226,13 +226,13 @@ int jhd_connection_parse_sockaddr(jhd_sockaddr_t* addr,socklen_t *socklen,u_char
 int jhd_connection_resolve_host(jhd_sockaddr_t* addr,socklen_t *socklen,u_char *addr_text,size_t addr_text_len,uint16_t default_port)
 {
     u_char *p,*last;
-    size_t plen,i ;
+    size_t plen;
     char host[256];
     struct addrinfo       hints, *res, *rp;
     log_assert(addr_text_len >255);
     plen = 0;
     last = addr_text + addr_text_len;
-    p = ngx_strlchr(addr_text, last, ':');
+    p = jhd_strlchr(addr_text, last, ':');
 	if (p != NULL) {
 		++p;
 		plen  = last - p;
@@ -288,7 +288,7 @@ int jhd_connection_resolve_host(jhd_sockaddr_t* addr,socklen_t *socklen,u_char *
 }
 
 
-size_t jhd_connection_to_ip_str(jhd_sockaddr_t* addr,socklen_t socklen,, u_char *text, size_t len)
+size_t jhd_connection_to_ip_str(jhd_sockaddr_t* addr,socklen_t socklen,u_char *text, size_t len)
 {
     u_char               *p,c;
 
@@ -302,7 +302,7 @@ size_t jhd_connection_to_ip_str(jhd_sockaddr_t* addr,socklen_t socklen,, u_char 
     if(AF_INET ==addr->sockaddr.sa_family) {
         sin = &addr->sockaddr_in;
         p = (u_char *) &sin->sin_addr;
-        return snprintf(text, len, "%d.%d.%d.%d:%u",(int)(p[0]),(int)(p[1]),(int)(p[2]), (int)(p[3]), ntohs(sin->sin_port));
+        return (size_t)snprintf((char*)text, len, "%d.%d.%d.%d:%u",(int)(p[0]),(int)(p[1]),(int)(p[2]), (int)(p[3]), ntohs(sin->sin_port));
     }
     sin6 =&addr->sockaddr_in6;
     n = 0;
@@ -362,12 +362,12 @@ size_t jhd_connection_to_ip_str(jhd_sockaddr_t* addr,socklen_t socklen,, u_char 
     text[n++] = jhd_g_hex_char[c >> 4];
     text[n++] = jhd_g_hex_char[c & 0xF];
     text[n++] =':';
-    return 45+ snprintf(&text[n],len -45,"%d",(int)ntohs(sin6->sin6_port));
+    return 45 + ((size_t)snprintf(((char*)(&text[n])),(size_t)(len-n),"%d",(int)ntohs(sin6->sin6_port)));
 }
 
 
 static void jhd_listening_free_ssl(jhd_listening_t *lis){
-	jhd_tls_ssl_config cfg ;
+	jhd_tls_ssl_config *cfg ;
 	log_assert_master();
 	cfg = lis->ssl;
 	lis->ssl = NULL;
@@ -475,7 +475,7 @@ static int jhd_listening_create_tls_config(jhd_listening_t *lis){
 int jhd_listening_set_addr_text(jhd_listening_t *lis,u_char *addr_text,size_t addr_text_len,uint16_t default_port){
 	log_assert_master();
 	log_assert(lis->addr_text == NULL);
-	if(jhd_connection_parse_sockaddr(&lis->sockaddr,&lis->socklen,default_port)!=JHD_OK){
+	if(jhd_connection_parse_sockaddr(&lis->sockaddr,&lis->socklen,addr_text,addr_text_len,default_port)!=JHD_OK){
 		log_stderr("parse listening addr[%s] error",addr_text);
 		return JHD_ERROR;
 	}
@@ -491,13 +491,9 @@ int jhd_listening_set_addr_text(jhd_listening_t *lis,u_char *addr_text,size_t ad
 
 int jhd_listening_set_tls_cert_and_key(jhd_listening_t *lis,u_char *cert_text,size_t cert_text_len,u_char *key_text,size_t key_text_len){
 	jhd_tls_ssl_config *cfg;
-	jhd_tls_x509_crt *cert;
-	jhd_tls_pk_context *key;
 	jhd_tls_ssl_key_cert *key_cert,*tmp;
 
 	log_assert_master();
-	key = NULL;
-	cert = NULL;
 	key_cert = NULL;
 	if(lis->ssl == NULL){
 		if(JHD_OK != jhd_listening_create_tls_config(lis)){
@@ -556,14 +552,14 @@ int jhd_listening_set_tls_cert_and_key(jhd_listening_t *lis,u_char *cert_text,si
 
 
 int jhd_listening_config(jhd_listening_t *lis, void *lis_ctx, void (*lis_ctx_close)(void*), const char **alpn_list, jhd_connection_start_pt start_func) {
-	log_assert_masert();
+	log_assert_master();
 	if (alpn_list != NULL) {
 		if (lis->ssl == NULL) {
 			if (JHD_OK != jhd_listening_create_tls_config(lis)) {
 				return JHD_ERROR;
 			}
 		}
-		((jhd_tls_ssl_config *) lis->ssl)->alpn_list;
+		((jhd_tls_ssl_config *) lis->ssl)->alpn_list = alpn_list;
 	}
 	lis->lis_ctx = lis_ctx;
 	lis->lis_ctx_close = lis_ctx_close;
@@ -575,7 +571,7 @@ int jhd_listening_config(jhd_listening_t *lis, void *lis_ctx, void (*lis_ctx_clo
 int jhd_open_listening_sockets(jhd_listening_t *lis) {
 	int reuseaddr, reuseport;
 	jhd_queue_t *q;
-	struct sockaddr *saddr;
+//	struct sockaddr *saddr;
 	int fd;
 	reuseaddr = 1;
 	reuseport = 1;
@@ -612,7 +608,7 @@ int jhd_open_listening_sockets(jhd_listening_t *lis) {
 	}
 
 #if (JHD_HAVE_INET6 && defined IPV6_V6ONLY)
-	if (saddr->sa_family == AF_INET6) {
+	if (lis->sockaddr.sockaddr.sa_family == AF_INET6) {
 		int ipv6only;
 		ipv6only = lis->ipv6only ? 1 : 0;
 		if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const void *) &ipv6only, sizeof(int)) == -1) {
@@ -703,17 +699,22 @@ static int jhd_listening_check_before_open(){
 	jhd_queue_t *head, *q;
 	jhd_listening_t *lis;
 
+	head =&g_listening_queue;
+
 	//TODO impl
-	for (q = jhd_queue_head(head); q != jhd_queue_sentinel(head); q = jhd_queue_next(q)) {
+	for (q = jhd_queue_head(head); q != head; q = jhd_queue_next(q)) {
 			lis = jhd_queue_data(q, jhd_listening_t, queue);
 			log_assert(lis->connection_start != NULL);
-		}
+	}
 	return JHD_OK;
 }
 
 static int jhd_connection_master_startup_listening(jhd_listener_t* listener) {
 	jhd_queue_t *head, *q;
 	jhd_listening_t *lis;
+
+
+
 	event_accept_fds =NULL;
 	head = &g_listening_queue;
 	listening_count= 0 ;
@@ -1020,7 +1021,7 @@ void jhd_connection_close(jhd_connection_t *c) {
 	log_assert(c->closed == 0);
 	log_assert_code(c->closed = 1);
 	log_assert(c->fd >2);
-	log_assert(g_connections[c->idx] == c);
+	log_assert(&g_connections[c->idx] == c);
 	log_assert(c == c->read.data);
 	log_assert(c == c->write.data);
 	if(c->read.queue.next){
@@ -1062,11 +1063,11 @@ void jhd_connection_close(jhd_connection_t *c) {
 		log_assert(c == c->read.data);\
 		log_assert(c == c->write.data);\
 		log_assert(c->fd == -1);\
-		log_assert(c->read.queue.next == jhd_connection_empty_read);\
-		log_assert(c->write.queue.next == jhd_connection_empty_write);\
+		log_assert(c->read.handler == jhd_connection_empty_read);\
+		log_assert(c->write.handler == jhd_connection_empty_write);\
 		log_assert(c->read.timer.key ==0);\
 		log_assert(c->write.timer.key ==0);\
-		log_assert(g_connections[c->idx] == c);\
+		log_assert(&g_connections[c->idx] == c);\
 	}else
 
 
@@ -1198,10 +1199,11 @@ void jhd_connection_accept(jhd_event_t *ev) {
 	int nb;
 	jhd_queue_t *head,*q;
 	log_notice("==>jhd_connection_accept_use_accept4");
+
 	sc = ev->data;
 	lis = sc->listening;
 	log_info("begin connection acccept[%s]", lis->addr_text);
-	connection_add_to_event_list(){
+	connection_get_with_accept(){
 		log_assert(free_connection_count==0);
 		log_notice("<==jhd_connection_accept: free_connections_count ==%d", free_connection_count);
 		return;

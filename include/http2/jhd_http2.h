@@ -64,6 +64,9 @@
 
 #define jhd_http2_prefix(bits)  ((1 << (bits)) - 1)
 
+#define JHD_HTTP2_SET_STRAM_ID_IN_CHECK(val) val = (event_h2c->recv.buffer[5] << 24) |(event_h2c->recv.buffer[6] << 16) |(event_h2c->recv.buffer[7] << 8) |(event_h2c->recv.buffer[8])
+
+
 
 typedef  jhd_http_data jhd_http2_frame;
 
@@ -98,14 +101,12 @@ typedef struct {
     //
     jhd_event_handler_pt connection_mem_time_out;
 
-
-    jhd_event_handler_pt connection_frame_header_read;
     //  too long  max_header_size  too long header name   too long header val
     jhd_event_handler_pt connection_unsupported_error;
 
     jhd_event_handler_pt *frame_payload_handler_pts;
 
-    jhd_event_handler_pt connection_end_headers_handler;
+
 
     jhd_event_handler_pt connection_after_setting_ack;
 
@@ -145,6 +146,11 @@ typedef struct{
 
         u_char *pos;
         u_char *end;
+
+
+        jhd_event_handler_pt connection_frame_header_read;
+        jhd_event_handler_pt connection_end_headers_handler;
+
 
         void *state_param;
 }jhd_http2_conneciton_recv_part;
@@ -228,7 +234,7 @@ extern jhd_http2_stream jhd_http2_invalid_stream;
 
 
 
-jhd_inline int jhd_http2_parse_int(uint32_t *value,u_char prefix,u_char *start, u_char *end,u_char shift_limit){
+static jhd_inline int jhd_http2_parse_int(uint32_t *value,u_char prefix,u_char *start, u_char *end,u_char shift_limit){
     u_char   *p, octet, shift;
     p = start;
     if(p >= end){
@@ -276,7 +282,7 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev);
 
 
 
-
+void jhd_http2_unsupported_frame_type(jhd_event_t *ev);
 
 void jhd_http2_data_frame_header_check(jhd_event_t *ev);
 void jhd_http2_priority_frame_header_check(jhd_event_t *ev);
@@ -284,6 +290,7 @@ void jhd_http2_rst_stream_frame_header_check(jhd_event_t *ev);
 void jhd_http2_setting_frame_header_check(jhd_event_t *ev);
 void jhd_http2_ping_frame_header_check(jhd_event_t *ev);
 void jhd_http2_window_update_frame_header_check(jhd_event_t *ev);
+void jhd_http2_headers_frame_payload_handler(jhd_event_t *ev);
 
 
 
@@ -302,7 +309,7 @@ void jhd_http2_send_event_handler_ssl(jhd_event_t *ev);
 
 #if !defined(JHD_INLINE)
 
-jhd_inline void jhd_http2_set_stream_id(u_char *p,uint32_t sid){
+static jhd_inline void jhd_http2_set_stream_id(u_char *p,uint32_t sid){
 	p[0] = (u_char)(sid >> 24);
 	p[1] = (u_char)(sid >> 16);
 	p[2] = (u_char)(sid >> 8);
@@ -312,7 +319,7 @@ jhd_inline void jhd_http2_set_stream_id(u_char *p,uint32_t sid){
 
 
 
-jhd_inline void jhd_http2_send_queue_frame(jhd_http2_frame *frame){
+static jhd_inline void jhd_http2_send_queue_frame(jhd_http2_frame *frame){
 	if(event_h2c->send.tail != NULL){
 		event_h2c->send.tail->next = frame;
 		event_h2c->send.tail = frame;
@@ -324,7 +331,7 @@ jhd_inline void jhd_http2_send_queue_frame(jhd_http2_frame *frame){
 	}
 }
 
-jhd_inline void jhd_http2_send_headers_frame(jhd_http2_frame *begin_headers,jhd_http2_frame * end_headers){
+static jhd_inline void jhd_http2_send_headers_frame(jhd_http2_frame *begin_headers,jhd_http2_frame * end_headers){
 	if(event_h2c->send.tail != NULL){
 		event_h2c->send.tail->next = begin_headers;
 		event_h2c->send.tail = end_headers;
@@ -337,27 +344,27 @@ jhd_inline void jhd_http2_send_headers_frame(jhd_http2_frame *begin_headers,jhd_
 }
 
 
-jhd_inline void jhd_http2_do_recv_skip(jhd_event_t *ev,jhd_http2_connection *h2c,uint32_t size,jhd_event_handler_pt handler){
+static jhd_inline void jhd_http2_do_recv_skip(jhd_event_t *ev,jhd_http2_connection *h2c,uint32_t size,jhd_event_handler_pt handler){
 	h2c->recv.state = size;
 	h2c->recv.state_param = handler;
 	ev->handler = jhd_http2_recv_skip;
 	jhd_unshift_event(ev,&jhd_posted_events);
 }
 
-jhd_inline void jhd_http2_do_recv_payload(jhd_event_t *ev,jhd_http2_connection *h2c,jhd_event_handler_pt handler){
+static jhd_inline void jhd_http2_do_recv_payload(jhd_event_t *ev,jhd_http2_connection *h2c,jhd_event_handler_pt handler){
 	h2c->recv.state_param = handler;
 	ev->handler = jhd_http2_recv_payload;
 	jhd_unshift_event(ev,&jhd_posted_events);
 }
 
-jhd_inline void jhd_http2_do_recv_buffer(jhd_event_t *ev,jhd_http2_connection *h2c,jhd_event_handler_pt handler){
+static jhd_inline void jhd_http2_do_recv_buffer(jhd_event_t *ev,jhd_http2_connection *h2c,jhd_event_handler_pt handler){
 	h2c->recv.state_param = handler;
 	h2c->recv.state = 0;
 	ev->handler = jhd_http2_recv_buffer;
 	jhd_unshift_event(ev,&jhd_posted_events);
 }
 
-jhd_inline void jhd_http2_single_frame_init(jhd_http2_frame *frame,uint32_t len){
+static jhd_inline void jhd_http2_single_frame_init(jhd_http2_frame *frame,uint32_t len){
 	frame->pos=frame->data = (u_char*)(((u_char*)frame)+sizeof(jhd_http2_frame));
 	frame->data_len = len;
 	frame->len = len - sizeof(jhd_http2_frame);
@@ -365,14 +372,14 @@ jhd_inline void jhd_http2_single_frame_init(jhd_http2_frame *frame,uint32_t len)
 }
 #ifdef JHD_LOG_ASSERT_ENABLE
 
-jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void *tag,void (*free_handler)(void *)){
+static jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void *tag,void (*free_handler)(void *)){
 	frame->data = NULL;
 	frame->tag = tag;
 	frame->free_func = free_handler;
 }
 
 #else
-jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void (*free_handler)(void *)){
+static jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void (*free_handler)(void *)){
 	frame->data = NULL;
 	frame->free_func = free_handler;
 }
@@ -432,7 +439,7 @@ jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void (*free_handler)
 #define jhd_http2_set_stream_id(P,SID) P[0] = (u_char)((SID) >> 24);P[1] = (u_char)((SID) >> 16);P[2] = (u_char)((SID) >> 8);P[3] = (u_char)(sid)
 
 #endif
-jhd_inline void jhd_http2_send_ping_ack(jhd_http2_frame *frame){
+static jhd_inline void jhd_http2_send_ping_ack(jhd_http2_frame *frame){
 	jhd_http2_frame *prev,*next_frame;
 	if(event_h2c->send.head != NULL){
 		prev = next_frame = event_h2c->send.head->next;
@@ -475,7 +482,7 @@ jhd_inline void jhd_http2_send_ping_ack(jhd_http2_frame *frame){
 }
 
 
-jhd_inline jhd_http2_stream * jhd_http2_stream_get(jhd_http2_connection *h2c,uint32_t sid){
+static jhd_inline jhd_http2_stream * jhd_http2_stream_get(jhd_http2_connection *h2c,uint32_t sid){
 	jhd_http2_stream *stream;
 	jhd_queue_t *q,*head;
 	head = &(event_h2c->streams[(sid >1) & 0x1F]);
@@ -492,7 +499,9 @@ jhd_inline jhd_http2_stream * jhd_http2_stream_get(jhd_http2_connection *h2c,uin
 
 void jhd_http2_connection_default_idle_handler(jhd_event_t *ev);
 void jhd_http2_connection_default_protocol_error_handler(jhd_event_t *ev);
-void jhd_http2_read_frame_header(jhd_event_t *ev);
+void jhd_http2_frame_header_read(jhd_event_t *ev);
+
+
 void jhd_http2_headers_frame_parse_item(jhd_event_t *ev);
 
 void jhd_http2_send_setting_frame(jhd_event_t *ev);
@@ -500,6 +509,24 @@ void jhd_http2_send_setting_frame_ack(jhd_event_t *ev);
 void jhd_http2_send_ping_frame(jhd_event_t *ev);
 
 
+
+
+extern uint32_t jhd_http2_error_code;
+
+#ifdef JHD_LOG_LEVEL_ERR
+
+extern char *jhd_http2_error_file;
+extern char *jhd_http2_error_func;
+extern int   jhd_http2_error_line;
+
+#define log_http2_err(CODE)  jhd_http2_error_code = CODE; jhd_http2_error_file = __FILE__;jhd_http2_error_func=__FUNCTION__;jhd_http2_error_line=__LINE__
+
+
+#else
+
+#define log_http2_err(CODE)  jhd_http2_error_code = CODE
+
+#endif
 
 
 #endif /* HTTP2_JHD_HTTP2_H_ */

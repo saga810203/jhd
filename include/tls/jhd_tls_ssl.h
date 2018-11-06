@@ -826,7 +826,7 @@ void jhd_tls_ssl_config_free(jhd_tls_ssl_config *conf);
 int jhd_tls_ssl_flush(jhd_connection_t *c,jhd_tls_ssl_context *ssl);
 
 
-
+void jhd_tls_ssl_context_free(jhd_tls_ssl_context **pssl);
 
 
 

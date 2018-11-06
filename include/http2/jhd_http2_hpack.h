@@ -72,14 +72,14 @@ void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,u_char *name,uint16_t na
 
 
 
-jhd_inline jhd_bool jhd_http2_hpack_is_static(uint32_t idx){
+static jhd_inline jhd_bool jhd_http2_hpack_is_static(uint32_t idx){
 	return idx < 62;
 }
 
-jhd_inline jhd_bool jhd_http2_hpack_is_dyncmic(uint32_t idx){
+static jhd_inline jhd_bool jhd_http2_hpack_is_dyncmic(uint32_t idx){
 	return idx > 61;
 }
-jhd_inline void jhd_http2_hpack_free(jhd_http2_hpack *hpack){
+static jhd_inline void jhd_http2_hpack_free(jhd_http2_hpack *hpack){
      jhd_free_with_size(hpack->data,hpack->capacity);
 }
 #endif

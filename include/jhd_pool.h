@@ -20,7 +20,6 @@ typedef struct jhd_pool_s jhd_pool_t;
 
 struct jhd_pool_s{
 	u_int16_t size;
-	u_int32_t real_size;
 	u_int32_t page_size;
 	u_int32_t page_count;
 	u_int32_t page_used;
@@ -29,12 +28,10 @@ struct jhd_pool_s{
 };
 
 
-	void  jhd_init_pool();
+	int  jhd_pool_init();
 
-	void* jhd_malloc(size_t  size);
 	void* jhd_alloc(size_t size);
-	void* jhd_calloc(size_t  size);
-	void  jhd_free(void* ptr);
+	void  jhd_free(void* ptr,size_t size);
 	void  jhd_free_with_size(void* ptr,size_t size);
 	void  jhd_free_original(void* ptr,uint16_t size);
 

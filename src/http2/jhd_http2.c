@@ -8,6 +8,19 @@
 
 const char *jhd_http2_preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
 
+uint32_t jhd_http2_error_code;
+
+#ifdef JHD_LOG_LEVEL_ERR
+
+char *jhd_http2_error_file;
+char *jhd_http2_error_func;
+int   jhd_http2_error_line;
+#endif
+
+
+
+jhd_http2_connection *event_h2c;
+
 
 #define JHD_HTTP2_SET_STRAM_ID_IN_CHECK(val) val = (event_h2c->recv.buffer[5] << 24) |(event_h2c->recv.buffer[6] << 16) |(event_h2c->recv.buffer[7] << 8) |(event_h2c->recv.buffer[8])
 
@@ -76,10 +89,10 @@ static void jhd_http2_rest_stream_after_skip_data(jhd_event_t *ev){
 	}
 	stream->state = JHD_HTTP2_STREAM_STATE_CLOSE_BOTH;
 	if(event_h2c->recv.payload_len>0){
-		jhd_http2_do_recv_skip(ev,event_h2c,event_h2c->recv.payload_len,event_h2c->conf->connection_frame_header_read);
+		jhd_http2_do_recv_skip(ev,event_h2c,event_h2c->recv.payload_len,event_h2c->recv.connection_frame_header_read);
 	}else{
 		event_h2c->recv.state = 0;
-		ev->handler = event_h2c->conf->connection_frame_header_read;
+		ev->handler = event_h2c->recv.connection_frame_header_read;
 		jhd_unshift_event(ev,&jhd_posted_events);
 	}
 	jhd_free_with_size(stream,sizeof(jhd_http2_stream));
@@ -155,10 +168,10 @@ static void jhd_http2_data_frame_read(jhd_event_t *ev){
                     if(frame->len){
 						++frame->pos;
 						event_h2c->recv.stream->listener->remote_data(ev);
-						ev->handler = event_h2c->conf->connection_frame_header_read;
+						ev->handler = event_h2c->recv.connection_frame_header_read;
 						jhd_unshift_event(ev,&jhd_posted_events);
                     }else{
-                    	ev->handler = event_h2c->conf->connection_frame_header_read;
+                    	ev->handler = event_h2c->recv.connection_frame_header_read;
                     	jhd_unshift_event(ev,&jhd_posted_events);
                     	jhd_free_with_size(frame->data,frame->data_len);
                     	jhd_free_with_size(frame,sizeof(jhd_http2_frame));
@@ -169,7 +182,7 @@ static void jhd_http2_data_frame_read(jhd_event_t *ev){
 					event_h2c->recv.stream->state |= JHD_HTTP2_STREAM_STATE_CLOSE_REMOTE;
 				}
 				event_h2c->recv.stream->listener->remote_data(ev);
-				ev->handler = event_h2c->conf->connection_frame_header_read;
+				ev->handler = event_h2c->recv.connection_frame_header_read;
 				jhd_unshift_event(ev, &jhd_posted_events);
 			}
         }else{
@@ -179,6 +192,8 @@ static void jhd_http2_data_frame_read(jhd_event_t *ev){
 	}else if(rc == JHD_AGAIN){
 		 jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
 	}else{
+
+		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
 		event_h2c->conf->connection_read_error(ev);
 		jhd_free_with_size(frame->data,frame->data_len);
 		jhd_free_with_size(frame,sizeof(jhd_http2_frame));
@@ -266,19 +281,32 @@ static void jhd_http2_send_connection_window_update_after_read_data(jhd_event_t 
 
 void jhd_http2_data_frame_header_check(jhd_event_t *ev){
 	uint32_t stream_id;
+
+
+	log_notice("==>%s",__FUNCTION__);
+
 	log_assert(event_c  = ev->data);
 	log_assert(&event_c->read == ev);
 	log_assert(event_h2c = event_c->data);
 #if !defined(JHD_LOG_ASSERT_ENABLE)
 	(void*) ev;
 #endif
+
+
+
+
 	JHD_HTTP2_SET_STRAM_ID_IN_CHECK(stream_id);
 	if((stream_id & 0X80000001) != 1){
+
+		log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_STREAM_ID);
+		log_err("invalid stream id==>%u",stream_id);
 		event_h2c->conf->connection_protocol_error(ev);
+		log_notice("<==%s",__FUNCTION__);
 		return;
 	}
 	if(event_h2c->recv.payload_len>0){
 		if(event_h2c->recv.payload_len > event_h2c->recv.window_size){
+			log_http2_err(JHD_HTTP2_FLOW_CTRL_ERROR_CONNECTION);
 			event_h2c->conf->connection_protocol_error(ev);
 		}else{
 			event_h2c->recv.window_size-=event_h2c->recv.payload_len;
@@ -287,17 +315,17 @@ void jhd_http2_data_frame_header_check(jhd_event_t *ev){
 				if(event_h2c->recv.stream == NULL){
 					event_h2c->recv.stream = &jhd_http2_invalid_stream;
 					jhd_http2_do_recv_skip(ev,event_h2c,event_h2c->recv.payload_len,
-					event_h2c->recv.window_size < event_h2c->conf->recv_window_size_threshold?jhd_http2_send_connection_window_update:event_h2c->conf->connection_frame_header_read);
+					event_h2c->recv.window_size < event_h2c->conf->recv_window_size_threshold?jhd_http2_send_connection_window_update:event_h2c->recv.connection_frame_header_read);
 					return;
 				}
 			}
 
 			if(((int)event_h2c->recv.payload_len) > event_h2c->recv.stream->recv_window_size){
-				//TODO:set errcode
+				log_http2_err(JHD_HTTP2_FLOW_CTRL_ERROR_STREAM);
 				ev->handler = jhd_http2_rest_stream_after_skip_data;
 				jhd_http2_rest_stream_after_skip_data(ev);
 			}else if(event_h2c->recv.stream->state & JHD_HTTP2_STREAM_STATE_CLOSE_REMOTE){
-				//TODO:set errcode
+				log_http2_err(JHD_HTTP2_STREAM_CLOSED);
 				ev->handler = jhd_http2_rest_stream_after_skip_data;
 				jhd_http2_rest_stream_after_skip_data(ev);
 			}else{
@@ -313,13 +341,16 @@ void jhd_http2_data_frame_header_check(jhd_event_t *ev){
 		}
 	}else{
 		if(event_h2c->recv.frame_flag & JHD_HTTP2_PADDED_FLAG){
+			log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_DATA_PAYLOAD);
 			event_h2c->conf->connection_protocol_error(ev);
 		}if(event_h2c->recv.frame_flag & JHD_HTTP2_END_STREAM_FLAG){
 			if(event_h2c->recv.stream->id != stream_id){
 				event_h2c->recv.stream = jhd_http2_stream_get(event_h2c,stream_id);
 				if(event_h2c->recv.stream == NULL){
-					ev->handler = event_h2c->conf->connection_frame_header_read;
+					event_h2c->recv.stream= &jhd_http2_invalid_stream;
+					ev->handler = event_h2c->recv.connection_frame_header_read;
 					jhd_unshift_event(ev,&jhd_posted_events);
+					log_notice("<==%s",__FUNCTION__);
 					return;
 				}
 			}
@@ -327,13 +358,19 @@ void jhd_http2_data_frame_header_check(jhd_event_t *ev){
 				ev->handler = jhd_http2_rest_stream_after_skip_data;
 				jhd_http2_rest_stream_after_skip_data(ev);
 			}else{
-				ev->handler = event_h2c->conf->connection_frame_header_read;
+				event_h2c->recv.stream->state |= JHD_HTTP2_STREAM_STATE_CLOSE_REMOTE;
+				if(event_h2c->recv.stream->state & JHD_HTTP2_STREAM_STATE_CLOSE_REMOTE)
+
+				event_h2c->recv.stream->listener->remote_close(ev);
+				ev->handler = event_h2c->recv.connection_frame_header_read;
+				jhd_unshift_event(ev,&jhd_posted_events);
 			}
 		}else{
-			ev->handler = event_h2c->conf->connection_frame_header_read;
+			ev->handler = event_h2c->recv.connection_frame_header_read;
 			jhd_unshift_event(ev,&jhd_posted_events);
 		}
 	}
+	log_notice("<==%s",__FUNCTION__);
 }
 
 
@@ -353,7 +390,7 @@ void jhd_http2_priority_frame_header_check(jhd_event_t *ev){
 	if(event_h2c->recv.payload_len != 5){
 		event_h2c->conf->connection_protocol_error(ev);
 	}else{
-		jhd_http2_do_recv_buffer(ev,event_h2c,event_h2c->conf->connection_frame_header_read);
+		jhd_http2_do_recv_buffer(ev,event_h2c,event_h2c->recv.connection_frame_header_read);
 	}
 
 }
@@ -378,7 +415,7 @@ static void jhd_http2_rst_stream_frame_handler(jhd_event_t * ev){
 	if(jhd_queue_queued(&stream->flow_control)){
 		jhd_queue_only_remove(&stream->flow_control);
 	}
-	ev->handler = event_h2c->conf->connection_frame_header_read;
+	ev->handler = event_h2c->recv.connection_frame_header_read;
 	jhd_unshift_event(ev,&jhd_posted_events);
 	jhd_free_with_size(stream,sizeof(jhd_http2_stream));
 }
@@ -400,7 +437,7 @@ void jhd_http2_rst_stream_frame_header_check(jhd_event_t *ev){
 				event_h2c->recv.stream = jhd_http2_stream_get(event_h2c,stream_id);
 				if(event_h2c->recv.stream== NULL){
 					event_h2c->recv.stream = &jhd_http2_invalid_stream;
-					jhd_http2_do_recv_skip(ev,event_h2c,4,event_h2c->conf->connection_frame_header_read);
+					jhd_http2_do_recv_skip(ev,event_h2c,4,event_h2c->recv.connection_frame_header_read);
 					return;
 				}
 			}
@@ -568,7 +605,8 @@ static void jhd_http2_setting_frame_handler(jhd_event_t *ev){
 			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
 			return;
 		}else{
-			log_err("io error");
+
+			log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
 			event_h2c->conf->connection_read_error(ev);
 			return;
 		}
@@ -716,7 +754,7 @@ static void jhd_http2_ping_frame_handler(jhd_event_t *ev) {
 		if(event_h2c->recv.state ==8){
 			jhd_http2_send_queue_frame(frame);
 			event_h2c->recv.state = 0;
-			ev->handler = event_h2c->conf->connection_frame_header_read;
+			ev->handler = event_h2c->recv.connection_frame_header_read;
 			jhd_unshift_event(ev,&jhd_posted_events);
 		}else{
 			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
@@ -724,6 +762,8 @@ static void jhd_http2_ping_frame_handler(jhd_event_t *ev) {
 	}else if(rc == JHD_AGAIN){
 		jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
 	}else{
+
+		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
 		event_h2c->conf->connection_read_error(ev);
 	}
 }
@@ -823,7 +863,7 @@ static void jhd_http2_window_update_frame_handler(jhd_event_t *ev){
 					event_h2c->recv.stream->send_window_size = rc;
 				}
  			}else{
- 				ev->handler = event_h2c->conf->connection_frame_header_read;
+ 				ev->handler = event_h2c->recv.connection_frame_header_read;
  				jhd_unshift_event(ev,&jhd_posted_events);
  			}
  		}else{
@@ -832,6 +872,8 @@ static void jhd_http2_window_update_frame_handler(jhd_event_t *ev){
  	}else if(rc == JHD_AGAIN){
  		jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
  	}else{
+
+ 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
  		event_h2c->conf->connection_read_error(ev);
  	}
  }
@@ -889,57 +931,74 @@ void jhd_http2_connection_default_protocol_error_handler(jhd_event_t *ev){
 	//TODO impl send goaway frame
 }
 
-void jhd_http2_read_frame_header(jhd_event_t *ev){
+void jhd_http2_frame_header_read(jhd_event_t *ev){
 	ssize_t ret;
+	ssize_t len;
 	log_notice("==>%s",__FUNCTION__);
 	log_assert_worker();
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	JHD_HTTP2_CONNECTION_HANDLE_READ_TIMEOUT(ev)
 
+	if(ev->timedout ==1){
+		log_http2_err(JHD_HTTP2_ENHANCE_YOUR_CALM_READ_FRAME_HEADER);
+		log_err("timeout");
+		event_h2c->conf->connection_read_timeout(ev);
+		log_notice("<==%s with timedout",__FUNCTION__);
+		return;
+	}
 
-	log_assert(event_h2c->recv.state <= 8);
+	len = 9 - event_h2c->recv.state;
 
-	event_h2c->recv.frame_type = 0xFF;
+	log_assert(len > 0);
 
-	ret = event_c->recv(event_c,event_h2c->recv.buffer+ event_h2c->recv.state,9-event_h2c->recv.state);
+	ret = event_c->recv(event_c,event_h2c->recv.buffer+ event_h2c->recv.state,len);
 	if(ret >0){
-		event_h2c->recv.state +=ret;
-		if(event_h2c->recv.state <9){
-			JHD_HTTP2_CONNECTION_ADD_READ_TIMEOUT(ev);
-			log_notice("<==%s EAGAIN",__FUNCTION__);
-		}else{
+		if(ret == len){
 			event_h2c->recv.payload_len = (event_h2c->recv.buffer[0] << 16) | (event_h2c->recv.buffer[1] << 8) | (event_h2c->recv.buffer[2]);
 			if(event_h2c->recv.payload_len> 16384){
+				log_http2_err(JHD_HTTP2_FRAME_MAX_SIZE_ERROR);
 				log_err("invalid frame payload length[%u]",event_h2c->recv.payload_len);
 				event_h2c->conf->connection_protocol_error(ev);
+				log_notice("<==%s with timedout",__FUNCTION__);
 				return;
 			}
 			event_h2c->recv.frame_type = event_h2c->recv.buffer[3];
 			if(event_h2c->recv.frame_type > JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME){
+
+				log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_FRAME_TYPE);
 				log_err("invalid frame type[0X%02X]",event_h2c->recv.buffer[3]);
 				event_h2c->conf->connection_protocol_error(ev);
+				log_notice("<==%s with timedout",__FUNCTION__);
 				return;
 			}
 			event_h2c->recv.frame_flag = event_h2c->recv.buffer[4];
 			event_h2c->recv.state = 0;
 			event_h2c->conf->frame_payload_handler_pts[event_h2c->recv.frame_type](ev);
 			ev->handler(ev);
+			log_notice("<==%s with timedout",__FUNCTION__);
+		}else{
+			event_h2c->recv.state +=ret;
+			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
+			log_notice("<==%s EAGAIN",__FUNCTION__);
 		}
 	}else if(ret == JHD_AGAIN){
 		if(event_h2c->recv.state==0){
 			if(event_h2c->processing ==0){
 				event_h2c->conf->connection_idle(ev);
+				log_notice("<==%s IDLE",__FUNCTION__);
 			}else{
 				if(ev->timer.key){
 					jhd_event_del_timer(ev);
 				}
+				log_notice("<==%s ",__FUNCTION__);
 			}
 		}else{
-			JHD_HTTP2_CONNECTION_ADD_READ_TIMEOUT(ev);
+			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
+			log_notice("<==%s EAGAIN",__FUNCTION__);
 		}
-		log_notice("<==%s EAGAIN",__FUNCTION__);
+
 	}else{
+		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
 		event_h2c->conf->connection_read_error(ev);
 		log_notice("<==%s error",__FUNCTION__);
 	}
@@ -1008,7 +1067,7 @@ void jhd_http2_send_setting_frame(jhd_event_t *ev){
 	++p;
 	*p = (u_char) (event_h2c->conf->initial_window_size);
 	jhd_http2_send_queue_frame(frame);
-	ev->handler = event_h2c->conf->connection_frame_header_read;
+	ev->handler = event_h2c->recv.connection_frame_header_read;
 	jhd_unshift_event(ev,&jhd_posted_events);
 }
 void jhd_http2_send_setting_frame_ack(jhd_event_t *ev){
@@ -1041,7 +1100,7 @@ void jhd_http2_send_setting_frame_ack(jhd_event_t *ev){
     p+=5;
     *((uint32_t*)p) = 0;
     jhd_http2_send_queue_frame(frame);
-    ev->handler = event_h2c->conf->connection_frame_header_read;
+    ev->handler = event_h2c->recv.connection_frame_header_read;
     jhd_unshift_event(ev,&jhd_posted_events);
 }
 //void jhd_http2_send_ping_frame(jhd_event_t *ev){
@@ -1098,7 +1157,7 @@ void jhd_http2_send_setting_frame_ack(jhd_event_t *ev){
 //	p+=4;
 //	*((uint64_t*)p) = jhd_current_msec;
 //	jhd_http2_send_queue_frame(frame);
-//	ev->handler = event_h2c->conf->connection_frame_header_read;
+//	ev->handler = event_h2c->recv.connection_frame_header_read;
 //	jhd_unshift_event(ev,&jhd_posted_events);
 //}
 
@@ -1160,7 +1219,7 @@ void jhd_http2_send_setting_frame_ack(jhd_event_t *ev){
 //	p+=4;
 //	*((uint64_t*)p) = *((uint64_t*)event_h2c->recv.buffer);
 //	jhd_http2_send_ping_ack(frame);
-//	ev->handler = event_h2c->conf->connection_frame_header_read;
+//	ev->handler = event_h2c->recv.connection_frame_header_read;
 //	jhd_unshift_event(ev,&jhd_posted_events);
 //}
 

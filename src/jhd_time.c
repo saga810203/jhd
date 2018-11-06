@@ -16,8 +16,8 @@ static u_char http_time_value[JHD_CACHE_HTTP_DATE_LEN+1];
 u_char* jhd_cache_log_time = &log_time_value[0];
 u_char* jhd_cache_http_date = &http_time_value[0];
 
-volatile time_t        jhd_cache_time;
-volatile uint64_t      jhd_current_msec;
+time_t        jhd_cache_time;
+uint64_t      jhd_current_msec;
 
 static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -145,12 +145,12 @@ void jhd_update_time() {
 	}
 	jhd_cache_time = tv.tv_sec;
 	jhd_gmtime(jhd_cache_time, &gmt);
-	sprintf(jhd_cache_http_date, "%s, %02d %s %4d %02d:%02d:%02d GMT", week[gmt.tm_wday], gmt.tm_mday, months[gmt.tm_mon - 1], gmt.tm_year, gmt.tm_hour, gmt.tm_min,
+	sprintf((char*)jhd_cache_http_date, "%s, %02d %s %4d %02d:%02d:%02d GMT", week[gmt.tm_wday], gmt.tm_mday, months[gmt.tm_mon - 1], gmt.tm_year, gmt.tm_hour, gmt.tm_min,
 	        gmt.tm_sec);
 	//TODO:  impl    cache_time + timezone_value :   +  8*60*60     beijing
 	localtime_r(&tv.tv_sec, &tm);
-	tm->tm_mon++;
-	tm->tm_year += 1900;
-	sprintf(jhd_cache_log_time, "%4d/%02d/%02d %02d:%02d:%02d", tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	tm.tm_mon++;
+	tm.tm_year += 1900;
+	sprintf((char*)jhd_cache_log_time, "%4d/%02d/%02d %02d:%02d:%02d", tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 	log_debug("log time:%s",jhd_cache_log_time);
 }

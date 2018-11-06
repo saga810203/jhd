@@ -40,10 +40,10 @@
  		if(len > 16384){
  			len = 16384;
  		}
- 		rc = event_c->read(event_c,jhd_calc_buffer,len);
+ 		rc = event_c->recv(event_c,jhd_calc_buffer,len);
  		if(rc > 0){
  			event_h2c->recv.state-=rc;
- 			if(rc < len){
+ 			if(((size_t)rc) < len){
  				jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
  				break;
  			}else if(event_h2c->recv.state == 0){
@@ -55,6 +55,8 @@
  			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
  			break;
  		}else{
+
+ 			log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
  			event_h2c->conf->connection_read_error(ev);
  			break;
  		}
@@ -90,7 +92,7 @@
 
  	rc = event_c->recv(event_c,p,len);
  	if(rc > 0){
- 		if(rc == len){
+ 		if(((size_t)rc) == len){
  			event_h2c->recv.state = 0;
  			ev->handler = event_h2c->recv.state_param;
  			event_h2c->recv.state_param = NULL;
@@ -104,6 +106,8 @@
  	}else{
  		p = event_h2c->recv.alloc_buffer[0];
  		len =  event_h2c->recv.payload_len;
+
+ 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
  		event_h2c->conf->connection_read_error(ev);
  		jhd_free_with_size(p,len);
  	}
@@ -132,7 +136,7 @@
 
  	rc = event_c->recv(event_c,p,len);
  	if(rc > 0){
- 		if(rc == len){
+ 		if(((size_t)rc) == len){
  			event_h2c->recv.state = 0;
  			ev->handler = event_h2c->recv.state_param;
  			ev->handler(ev);
@@ -143,35 +147,37 @@
  	}else if(rc == JHD_AGAIN){
  		jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
  	}else{
+
+ 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
  		event_h2c->conf->connection_read_error(ev);
  	}
  }
 
 
  //TODO impl
- void jhd_http2_buffering_stream_recv_window_change(jhd_event_t *ev){
-	 log_assert(event_c == ev->data);
-	 log_assert(event_h2c == event_c->data);
-	 jhd_http2_stream *stream = event_h2c->recv.stream;
-
-	 event_h2c->recv.state = 2147483647;//maybe  a suitable value
-
-
-
- }
+// void jhd_http2_buffering_stream_recv_window_change(jhd_event_t *ev){
+//	 log_assert(event_c == ev->data);
+//	 log_assert(event_h2c == event_c->data);
+//	 jhd_http2_stream *stream = event_h2c->recv.stream;
+//
+//	 event_h2c->recv.state = 2147483647;//maybe  a suitable value
+//
+//
+//
+// }
 
  //TODO impl
- void jhd_http2_nobuffering_stream_recv_window_change(jhd_event_t *ev){
-
-	 log_assert(event_c == ev->data);
-	 log_assert(event_h2c == event_c->data);
-	 jhd_http2_stream *stream = event_h2c->recv.stream;
-
-	 //waiting writed to (proxy remote  or  local dis)
-	 event_h2c->recv.state = 0;//maybe  a suitable value
-
-	 //or waiting read from remote
-
-	 event_h2c->recv.state = 16384;//maybe a suiable value (one buffer)
-
- }
+// void jhd_http2_nobuffering_stream_recv_window_change(jhd_event_t *ev){
+//
+//	 log_assert(event_c == ev->data);
+//	 log_assert(event_h2c == event_c->data);
+//	 jhd_http2_stream *stream = event_h2c->recv.stream;
+//
+//	 //waiting writed to (proxy remote  or  local dis)
+//	 event_h2c->recv.state = 0;//maybe  a suitable value
+//
+//	 //or waiting read from remote
+//
+//	 event_h2c->recv.state = 16384;//maybe a suiable value (one buffer)
+//
+// }

@@ -11,7 +11,7 @@
 #include <jhd_queue.h>
 #include <jhd_time.h>
 #include <jhd_connection.h>
-#include <jhd_tls_config.h>
+#include <tls/jhd_tls_config.h>
 
 uint32_t jhd_core_master_startup_time;
 
@@ -22,7 +22,7 @@ uint32_t jhd_core_master_startup_time;
  sig_atomic_t jhd_restart;
  sig_atomic_t jhd_daemonized;
 
-u_char jhd_pid_file[1024];
+ char jhd_pid_file[1024];
 
  jhd_queue_t jhd_master_startup_queue;
  jhd_queue_t jhd_master_shutdown_queue;

@@ -75,7 +75,7 @@ ssize_t jhd_connection_tls_send(jhd_connection_t *c, u_char *buf, size_t size) {
 void jhd_connection_tls_empty_write(jhd_event_t * ev) {
 	jhd_connection_t *c = ev->data;
 	jhd_tls_ssl_context *ssl;
-	size_t n;
+	ssize_t n;
 	int err;
 	log_notice("=> jhd_connection_tls_noop_write");
 	if (c->ssl) {
@@ -114,6 +114,6 @@ void jhd_connection_tls_empty_write(jhd_event_t * ev) {
 void jhd_connection_tls_close(jhd_connection_t *c){
 	log_assert_worker();
 	log_assert(c->ssl != NULL);
-	jhd_tls_ssl_context_free(c->ssl);
+	jhd_tls_ssl_context_free((jhd_tls_ssl_context**)&(c->ssl));
 	jhd_connection_close(c);
 }

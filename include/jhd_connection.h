@@ -78,7 +78,7 @@ struct jhd_connection_s {
 
 
 
-int jhd_connection_parse_sockaddr(jhd_sockaddr_t* addr,socklen_t *socklen,u_char *addr_text,size_t addr_text_len);
+int jhd_connection_parse_sockaddr(jhd_sockaddr_t* addr,socklen_t *socklen,u_char *addr_text,size_t addr_text_len,uint16_t default_port);
 
 void jhd_connection_init();
 
@@ -99,7 +99,7 @@ ssize_t jhd_connection_error_send(jhd_connection_t *c,u_char *buf,size_t size);
 
 jhd_listening_t* jhd_listening_get(char *addr_text, size_t len);
 
-int jhd_listening_set_addr_text(jhd_listening_t *lis,u_char *addr_text,size_t addr_text_len);
+int jhd_listening_set_addr_text(jhd_listening_t *lis,u_char *addr_text,size_t addr_text_len,uint16_t default_port);
 
 int jhd_listening_set_tls_cert_and_key(jhd_listening_t *lis,u_char *cert_text,size_t cert_text_len,u_char *key_text,size_t key_text_len);
 
@@ -122,7 +122,7 @@ ssize_t jhd_connection_send(jhd_connection_t *c, u_char *buf, size_t size);
 ssize_t jhd_connection_tls_send(jhd_connection_t *c, u_char *buf, size_t size);
 int jhd_connection_tls_handshark(jhd_connection_t *c);
 void jhd_connection_tls_close(jhd_connection_t *c);
-
+void jhd_connection_tls_empty_write(jhd_event_t * ev);
 
 void jhd_connection_close(jhd_connection_t *c);
 

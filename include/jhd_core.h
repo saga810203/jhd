@@ -37,19 +37,19 @@ extern sig_atomic_t jhd_quit;
 extern sig_atomic_t jhd_restart;
 extern sig_atomic_t jhd_daemonized;
 extern sig_atomic_t jhd_reap;
-extern u_char jhd_pid_file[1024];
+extern char jhd_pid_file[1024];
 
 #ifndef JHD_INLINE
-jhd_inline void  jhd_add_master_startup_listener(jhd_listener_t *lis) {
+static jhd_inline void  jhd_add_master_startup_listener(jhd_listener_t *lis) {
 	jhd_queue_insert_tail(&jhd_master_startup_queue, &lis->queue);
 }
-jhd_inline void  jhd_add_worker_startup_listener(jhd_listener_t *lis) {
+static jhd_inline void  jhd_add_worker_startup_listener(jhd_listener_t *lis) {
 	jhd_queue_insert_tail(&jhd_worker_startup_queue, &lis->queue);
 }
-jhd_inline void  jhd_add_master_shutdown_listener(jhd_listener_t *lis) {
+static jhd_inline void  jhd_add_master_shutdown_listener(jhd_listener_t *lis) {
 	jhd_queue_insert_tail(&jhd_master_shutdown_queue, &lis->queue);
 }
-jhd_inline void  jhd_add_worker_shutdown_listener(jhd_listener_t *lis) {
+static jhd_inline void  jhd_add_worker_shutdown_listener(jhd_listener_t *lis) {
 	jhd_queue_insert_tail(&jhd_worker_shutdown_queue, &lis->queue);
 }
 #else

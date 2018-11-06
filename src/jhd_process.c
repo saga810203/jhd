@@ -9,12 +9,13 @@
 #include <jhd_process.h>
 #include <jhd_core.h>
 #include <jhd_string.h>
+#include <sys/sysinfo.h>
 
 pid_t jhd_pid;
 pid_t jhd_parent;
 
 jhd_listener_t jhd_pid_file_listener;
-int process_count;
+size_t process_count;
 volatile uint32_t jhd_process_slot;
 
 static int jhd_process_last;
@@ -51,7 +52,6 @@ jhd_signal_t signals[] = { { SIGHUP, "SIGHUP", "restart", jhd_signal_handler },
 
 static void jhd_process_get_status(void) {
 	int status;
-	char *process;
 	pid_t pid;
 	uint32_t i;
 	uint32_t one;
@@ -101,51 +101,38 @@ static void jhd_signal_handler(int signo, siginfo_t *siginfo, void *ucontext) {
 			break;
 		}
 	}
-	switch (jhd_process) {
-
-		case JHD_PROCESS_MASTER:
-
-			switch (signo) {
-
-				case SIGQUIT:
-				case SIGTERM:
-				case SIGINT:
-					jhd_quit = 1;
-					break;
-
-				case SIGWINCH:
-					break;
-
-				case SIGHUP:
-					jhd_restart = 1;
-					break;
-
-				case SIGUSR1:
-				case SIGUSR2:
-					break;
-				case SIGALRM:
-					//  ngx_sigalrm = 1;
-					break;
-
-				case SIGIO:
-					//  ngx_sigio = 1;
-					break;
-
-				case SIGCHLD:
-					jhd_reap = 1;
-					break;
-			}
-
-			break;
-		case JHD_PROCESS_SINGLE:
-		case JHD_PROCESS_WORKER:
-		case JHD_PROCESS_HELPER:
-			if (signo == SIGQUIT || signo == SIGTERM || signo == SIGINT) {
+	if (jhd_process == JHD_PROCESS_MASTER) {
+		switch (signo) {
+			case SIGQUIT:
+			case SIGTERM:
+			case SIGINT:
 				jhd_quit = 1;
-//    		 action = "shutting down";
-			}
-			break;
+				break;
+			case SIGWINCH:
+				break;
+			case SIGHUP:
+				jhd_restart = 1;
+				break;
+			case SIGUSR1:
+			case SIGUSR2:
+				break;
+			case SIGALRM:
+				//  ngx_sigalrm = 1;
+				break;
+			case SIGIO:
+				//  ngx_sigio = 1;
+				break;
+			case SIGCHLD:
+				jhd_reap = 1;
+				break;
+		}
+	} else {
+		if (signo == SIGQUIT || signo == SIGTERM || signo == SIGINT) {
+			jhd_quit = 1;
+			//    		 action = "shutting down";
+		}
 	}
+
 }
 
 jhd_bool jhd_init_signals() {
@@ -173,7 +160,7 @@ int jhd_signal_process(char *sig_name) {
 	pid_t pid;
 	int pid_file_fd;
 	u_char buf[64];
-	int64_t ret;
+	uint64_t read_pid;
 	jhd_signal_t *sig;
 
 	log_assert_helper();
@@ -185,7 +172,7 @@ int jhd_signal_process(char *sig_name) {
 		return 1;
 	}
 
-	n = read(pid_file_fd, buf, 64, 0);
+	n = read(pid_file_fd, buf, 64);
 
 	if (n == -1) {
 		printf("read pid file[%s] error:%d", jhd_pid_file, errno);
@@ -197,19 +184,18 @@ int jhd_signal_process(char *sig_name) {
 	while (n-- && (buf[n] == '\r' || buf[n] == '\n')) { /* void */
 	}
 
-	ret = jhd_chars_to_uint64(buf, ++n);
-	if (ret < 0) {
+	if(JHD_OK != jhd_chars_to_u64(buf, ++n,&read_pid)){
 		printf("invalid PID number in file[%s]", jhd_pid_file);
 		return 1;
 	}
-	pid = ret;
+	pid = (int)read_pid;
 
 	for (sig = signals; sig->signo != 0; sig++) {
 		if (strcmp(sig_name, sig->name) == 0) {
 			if (kill(pid, sig->signo) != -1) {
 				return 0;
 			}
-			printf("kill(%P, %d) failed", pid, sig->signo);
+			printf("kill(%d, %d) failed", pid, sig->signo);
 		}
 	}
 	return 1;
@@ -254,14 +240,15 @@ jhd_bool jhd_daemon() {
 	return jhd_true;
 }
 
-static void jhd_delete_pidfile(jhd_listener_t *lis) {
+static int jhd_delete_pidfile(jhd_listener_t *lis) {
 	unlink((const char *) jhd_pid_file);
+	return JHD_OK;
 }
 
 jhd_bool jhd_create_pidfile() {
 	size_t len;
 	int fd;
-	u_char pid[64];
+	char pid[64];
 
 	fd = open(jhd_pid_file, O_RDWR | O_CREAT | O_TRUNC, 0644);
 	if (fd == -1) {
@@ -269,8 +256,8 @@ jhd_bool jhd_create_pidfile() {
 		return jhd_false;
 	}
 
-	sprintf(&pid[0], "%d", jhd_pid);
-	len = strlen(&pid[0]);
+	sprintf(pid,"%d",jhd_pid);
+	len = strlen(pid);
 	if (pwrite(fd, pid, len, 0) == -1) {
 		//TODO:log
 		close(fd);
@@ -281,10 +268,6 @@ jhd_bool jhd_create_pidfile() {
 	jhd_pid_file_listener.handler = jhd_delete_pidfile;
 	jhd_add_master_shutdown_listener(&jhd_pid_file_listener);
 	return jhd_true;
-}
-
-void jhd_delete_pidfile() {
-	unlink((const char *) jhd_pid_file);
 }
 void jhd_single_process() {
 	if (jhd_run_worker_startup_listener() != JHD_OK) {
@@ -332,7 +315,7 @@ jhd_bool jhd_spawn_process(uint32_t idx) {
 			return jhd_false;
 		case 0:
 			jhd_parent = jhd_pid;
-			jhd_pid = ngx_getpid();
+			jhd_pid = getpid();
 			jhd_worker_process();
 			break;
 		default:
@@ -368,7 +351,7 @@ void jhd_master_wait(sigset_t *set) {
 		pc = 0;
 		for (i = 0; i < process_count; ++i) {
 			if (jhd_processes[i] != (-1)) {
-				sigsuspend(&set);
+				sigsuspend(set);
 				if (jhd_reap) {
 					jhd_reap = 0;
 					jhd_process_get_status();
@@ -384,9 +367,9 @@ void jhd_master_wait(sigset_t *set) {
 }
 
 void jhd_master_process() {
-	uint64_t n, sigio;
+//	uint64_t sigio;
 	sigset_t set;
-	struct itimerval itv;
+//	struct itimerval itv;
 	uint32_t i;
 
 	jhd_process = JHD_PROCESS_MASTER;
@@ -408,9 +391,9 @@ void jhd_master_process() {
 
 	sigemptyset(&set);
 
-	process_count = getnprocs();
+	process_count = get_nprocs();
 
-	jhd_processes = calloc(sizeof(pid_t) * process_count);
+	jhd_processes = malloc(sizeof(pid_t) * process_count);
 	if (jhd_processes == NULL) {
 		//TODO: LOG;
 		jhd_err = 1;
@@ -456,7 +439,7 @@ void jhd_master_process() {
 						kill(jhd_processes[i],SIGINT);
 					}
 				}
-				jhd_master_wait();
+				jhd_master_wait(&set);
 				return;
 			}
 			if(jhd_restart){
@@ -465,7 +448,7 @@ void jhd_master_process() {
 							kill(jhd_processes[i],SIGINT);
 						}
 				}
-				jhd_master_wait();
+				jhd_master_wait(&set);
 //TODO:
 
 

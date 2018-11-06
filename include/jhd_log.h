@@ -189,7 +189,7 @@ void log_test_buf(void *title,unsigned char *buf, size_t len);
 
 typedef struct jhd_log_s  jhd_log_t;
 // JHD_OK do next log   JHD_ERROR  don‘t next log
-typedef void (*log_handler_pt)(jhd_log_t *log,u_char* buf,size_t len,uint16_t level,u_char* file_name,u_char *func_name,int line);
+typedef void (*log_handler_pt)(jhd_log_t *log,char* buf,size_t len,const uint16_t level,const char* file_name,const char *func_name,const int line);
 
 struct jhd_log_s{
 		uint16_t  			level;
@@ -203,7 +203,7 @@ struct jhd_log_s{
 
 
 
-void jhd_log_default_handler(jhd_log_t  *log,u_char* buf,size_t len,u_char* file_name,u_char *func_name,int line);
+void jhd_log_default_handler(jhd_log_t  *log,char* buf,size_t len,const uint16_t level,const char* file_name,const char *func_name,const int line);
 
 void jhd_log_close();
 
@@ -215,7 +215,7 @@ void jhd_log_add(jhd_log_t *log);
 void jhd_log_init();
 
 
-void jhd_log_change_file(u_char* fn,size_t len);
+void jhd_log_change_file(char* fn,size_t len);
 
 void jhd_log_swtich_file();
 
