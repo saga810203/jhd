@@ -7,8 +7,8 @@ typedef struct jhd_queue_s  jhd_queue_t;
 typedef struct jhd_queue_ptr_s jhd_queue_ptr_t;
 
 struct jhd_queue_s {
-    jhd_queue_t  *prev;
-    jhd_queue_t  *next;
+	jhd_queue_t  *prev;
+	jhd_queue_t  *next;
 };
 
 struct jhd_queue_ptr_s{

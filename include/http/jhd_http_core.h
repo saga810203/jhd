@@ -71,6 +71,11 @@ struct jhd_http_listening_context_s{
 };
 
 
+typedef struct {
+	u_char *ptr;
+	size_t  len;
+}header_parse_param;
+
 struct jhd_http_header_s{
      u_char *name;
      u_char *value;
@@ -78,7 +83,10 @@ struct jhd_http_header_s{
      uint16_t value_len;
      uint16_t name_alloced;
      uint16_t value_alloced;
-	jhd_queue_t queue;
+     union{
+    	jhd_queue_t queue;
+    	header_parse_param parse_param;
+     };
 };
 
 struct jhd_http_request_s{

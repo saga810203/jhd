@@ -86,6 +86,7 @@ void jhd_http2_read_preface(jhd_event_t *ev){
 		log_notice("==>%s",__FUNCTION__);
 		log_assert_worker();
 		event_c = ev->data;
+		event_h2c = event_c->data;
 		jhd_event_with_timeout(ev){
 			log_err("timedout");
 			event_c->close(event_c);
@@ -107,8 +108,8 @@ void jhd_http2_read_preface(jhd_event_t *ev){
 			if(event_h2c->recv.state == 24){
 				log_info("read http2 preface success");
 				event_h2c->recv.state = 0;
-				ev->handler = jhd_http2_read_frame_header;
-				jhd_http2_read_frame_header(ev);
+				ev->handler = event_h2c->recv.connection_frame_header_read;
+				ev->handler(ev);
 			}else{
 				JHD_HTTP2_CONNECTION_ADD_READ_TIMEOUT(ev);
 			}
@@ -338,22 +339,59 @@ static void server_headers_frame_header_check(jhd_event_t *ev){
 		event_h2c->conf->connection_protocol_error(ev);
 		return;
 	}
-//	srv_param = event_h2c->data;
 	log_assert(jhd_queue_empty(&event_h2c->recv.headers));
 
 	JHD_HTTP2_SET_STRAM_ID_IN_CHECK(stream_id);
-
-	if((stream_id & 0X80000001) != 1){
+	if(stream_id > 0X80000000){
+		event_h2c->conf->connection_protocol_error(ev);
+	}else if((stream_id & 0X80000001) != 1){
 		event_h2c->conf->connection_protocol_error(ev);
 	}else if(stream_id <= event_h2c->recv.last_stream_id){
 		event_h2c->conf->connection_protocol_error(ev);
 	}else{
 		event_h2c->recv.last_stream_id = stream_id;
 		ev->handler = jhd_http2_headers_frame_payload_handler;
-		jhd_unshift_event(ev,&jhd_posted_events);
+		jhd_http2_headers_frame_payload_handler(ev);
 	}
 }
 
+
+void server_goaway_frame_handler(jhd_event_t *ev){
+	jhd_queue_t *head, *q;
+	jhd_http2_stream *stream;
+	jhd_http2_frame *frame;
+	u_char i;
+
+	log_assert_worker();
+	event_c = ev->data;
+	event_h2c = event_c->data;
+
+	if ((ev)->timedout) {
+			log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
+			event_h2c->conf->connection_mem_time_out(ev);
+	}
+
+
+	for (head = event_h2c->streams, i = 0; i < 32; ++i, ++head) {
+		for (q = jhd_queue_next(head); q != head; q = q->next) {
+			stream = jhd_queue_data(q, jhd_http2_stream, queue);
+
+
+		}
+	}
+
+
+	//event_h2c = ((jhd_connection_t*) ev->data)->data;
+
+
+	if(event_h2c->recv.payload_len <8){
+		log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_GOAWAY_PAYLOAD);
+		event_h2c->conf->connection_protocol_error(ev);
+	}else{
+		event_h2c->recv.state_param =
+		ev->handler = jhd_http2_goaway_payload_recv;
+	}
+}
 
 void server_goaway_frame_header_check(jhd_event_t *ev){
 	uint32_t stream_id;
@@ -363,14 +401,14 @@ void server_goaway_frame_header_check(jhd_event_t *ev){
 #if !defined(JHD_LOG_ASSERT_ENABLE)
 	(void*) ev;
 #endif
+
+	event_h2c->goaway_recved = 1;
 	if(event_h2c->recv.payload_len <8){
-		event_h2c->recv.state = 1;
-		return;
-	}
-	JHD_HTTP2_SET_STRAM_ID_IN_CHECK(stream_id);
-	if(stream_id  != 0){
-		event_h2c->recv.state = 1;
-		return;
+		log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_GOAWAY_PAYLOAD);
+		event_h2c->conf->connection_protocol_error(ev);
+	}else{
+		event_h2c->recv.state_param = server_goaway_frame_handler;
+		ev->handler = jhd_http2_goaway_payload_recv;
 	}
 }
 

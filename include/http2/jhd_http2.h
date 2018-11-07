@@ -71,6 +71,9 @@
 typedef  jhd_http_data jhd_http2_frame;
 
 typedef struct {
+	unsigned server_side:1;
+
+
 	uint32_t idle_timeout;
 	uint32_t read_timeout;
 	uint32_t write_timeout;
@@ -107,7 +110,7 @@ typedef struct {
     jhd_event_handler_pt *frame_payload_handler_pts;
 
 
-
+    // in server is frame_header read  or in client handler queued idle stream
     jhd_event_handler_pt connection_after_setting_ack;
 
 	void *extend_param;
@@ -120,7 +123,6 @@ typedef struct {
 
 
 typedef struct jhd_http2_stream_s jhd_http2_stream;
-
 
 
 typedef struct{
@@ -173,7 +175,7 @@ typedef struct {
 	jhd_http2_conneciton_send_part send;
 	uint32_t processing;
 	unsigned recv_error :1;
-	unsigned go_away_recved :1;
+	unsigned goaway_recved :1;
 	unsigned send_error :1;
 	unsigned goaway_sent :1;
 
@@ -187,11 +189,21 @@ typedef struct {
 
 
 typedef struct{
+		//notify
 		jhd_event_handler_pt remote_close;
+		//handler  set  ev->handler
 		jhd_event_handler_pt remote_data;
+		//handler  set  ev->handler;
+		jhd_event_handler_pt remote_empty_data;
+		//notify
 		jhd_event_handler_pt reset;
+		//handler do send frame but disable block  not set ev->handler
 		jhd_event_handler_pt remote_recv;
+		//notify   change stream->recv_window_size   ==  return value(event_h2c->recv.state);
 		jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+
+		//notify  don't change connection state  can send data
+		jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
 }jhd_http2_stream_listener;
 
 
@@ -226,6 +238,9 @@ extern jhd_http2_connection_conf *event_h2c_conf;
 
 
 extern jhd_http2_stream jhd_http2_invalid_stream;
+
+extern jhd_http2_frame jhd_http2_empty_frame;
+extern jhd_http2_frame jhd_http2_empty_end_stream_stream;
 
 
 
@@ -292,7 +307,7 @@ void jhd_http2_ping_frame_header_check(jhd_event_t *ev);
 void jhd_http2_window_update_frame_header_check(jhd_event_t *ev);
 void jhd_http2_headers_frame_payload_handler(jhd_event_t *ev);
 
-
+void jhd_http2_goaway_payload_recv(jhd_event_t *ev);
 
 
 
@@ -519,7 +534,7 @@ extern char *jhd_http2_error_file;
 extern char *jhd_http2_error_func;
 extern int   jhd_http2_error_line;
 
-#define log_http2_err(CODE)  jhd_http2_error_code = CODE; jhd_http2_error_file = __FILE__;jhd_http2_error_func=__FUNCTION__;jhd_http2_error_line=__LINE__
+#define log_http2_err(CODE)  jhd_http2_error_code = CODE; jhd_http2_error_file = (char*)__FILE__;jhd_http2_error_func=(char*)__FUNCTION__;jhd_http2_error_line=(int)__LINE__
 
 
 #else
