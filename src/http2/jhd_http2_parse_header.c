@@ -14,7 +14,7 @@ static void jhd_http2_recv_continuation_payload(jhd_event_t *ev){
 	event_c = ev->data;
 	event_h2c = event_c->data;
 	header = event_h2c->recv.state_param;
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_err("timeout");
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
 		p = event_h2c->recv.alloc_buffer[0];
@@ -89,7 +89,7 @@ static void http2_alloc_continuation_header(jhd_event_t *ev){
 	event_c = ev->data;
 	event_h2c = event_c->data;
 	header = event_h2c->recv.state_param;
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_err("timeout");
 		event_h2c->recv.state_param = NULL;
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
@@ -165,7 +165,7 @@ static void jhd_http2_recv_continuation_header(jhd_event_t *ev){
 	header = event_h2c->recv.state_param;
 	len = event_h2c->recv.end - event_h2c->recv.pos;
 
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_err("timeout");
 		event_h2c->recv.state_param = NULL;
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
@@ -722,7 +722,7 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev){
 	end = event_h2c->recv.end;
 	p = event_h2c->recv.pos;
 	hpack_data = NULL;
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
 		err_handler = event_h2c->conf->connection_mem_time_out;
 		goto func_error;
@@ -955,7 +955,7 @@ void jhd_http2_headers_frame_payload_handler(jhd_event_t *ev){
 	log_notice("==>%s",__FUNCTION__);
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
 		event_h2c->conf->connection_mem_time_out(ev);
 		goto func_return;

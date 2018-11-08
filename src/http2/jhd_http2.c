@@ -56,7 +56,7 @@ static void jhd_http2_rest_stream_after_skip_data(jhd_event_t *ev){
 	event_c = ev->data;
 	event_h2c = event_c->data;
 
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
 		event_h2c->conf->connection_mem_time_out(ev);
 	}else{
@@ -81,9 +81,8 @@ static void jhd_http2_rest_stream_after_skip_data(jhd_event_t *ev){
 			stream->listener->reset(ev);
 			event_h2c->recv.stream = &jhd_http2_invalid_stream;
 			jhd_queue_only_remove(&stream->queue);
-			if(jhd_queue_queued(&stream->flow_control)){
-				jhd_queue_only_remove(&stream->flow_control);
-			}
+			jhd_queue_only_remove(&stream->flow_control);
+			--event_h2c->processing;
 			event_h2c->recv.state =event_h2c->recv.payload_len;
 			event_h2c->recv.state_param = event_h2c->recv.connection_frame_header_read;
 			ev->handler = jhd_http2_recv_skip;
@@ -102,7 +101,7 @@ static void jhd_http2_rest_stream_after_read_frame_header(jhd_event_t *ev){
 	event_c = ev->data;
 	event_h2c = event_c->data;
 
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
 		event_h2c->conf->connection_mem_time_out(ev);
 	}else{
@@ -127,9 +126,8 @@ static void jhd_http2_rest_stream_after_read_frame_header(jhd_event_t *ev){
 			stream->listener->reset(ev);
 			event_h2c->recv.stream = &jhd_http2_invalid_stream;
 			jhd_queue_only_remove(&stream->queue);
-			if(jhd_queue_queued(&stream->flow_control)){
-				jhd_queue_only_remove(&stream->flow_control);
-			}
+			jhd_queue_only_remove(&stream->flow_control);
+			--event_h2c->processing;
 			event_h2c->recv.state =0;
 			ev->handler = event_h2c->recv.connection_frame_header_read;
 			jhd_unshift_event(ev,&jhd_posted_events);
@@ -146,7 +144,7 @@ static void jhd_http2_send_connection_window_update(jhd_event_t *ev){
 	log_notice("==>%s",__FUNCTION__);
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
 		event_h2c->conf->connection_mem_time_out(ev);
 		goto func_return;
@@ -185,7 +183,7 @@ static void jhd_http2_data_frame_read(jhd_event_t *ev){
 	event_c = ev->data;
 	event_h2c = event_c->data;
 	frame = event_h2c->recv.state_param;
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_err("timeout");
 		event_h2c->conf->connection_read_timeout(ev);
 		jhd_free_with_size(frame->data,frame->data_len);
@@ -253,7 +251,7 @@ static void jhd_http2_data_frame_alloc_buffer(jhd_event_t *ev){
 	event_c = ev->data;
 	event_h2c = event_c->data;
 	frame = event_h2c->recv.state_param;
-	if ((ev)->timedout) {
+	if (ev->timedout) {
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
 		event_h2c->conf->connection_mem_time_out(ev);
 		if(frame!= NULL){
@@ -300,7 +298,7 @@ static void jhd_http2_send_connection_window_update_after_read_data(jhd_event_t 
 	log_notice("==>%s", __FUNCTION__);
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	if ((ev)->timedout) {
+	if (ev->timedout) {
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
 		event_h2c->conf->connection_mem_time_out(ev);
 	} else {
@@ -501,7 +499,7 @@ static void jhd_http2_setting_resize_hpack(jhd_event_t *ev){
 	uint64_t param;
 	u_char *p;
 	event_h2c = ((jhd_connection_t*)ev->data)->data;
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_err("timeout");
 		event_h2c->conf->connection_read_timeout(ev);
 		log_notice("<==%s with timedout",__FUNCTION__);
@@ -540,7 +538,7 @@ static void jhd_http2_setting_frame_handler(jhd_event_t *ev){
 	size_t i;
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
 		event_h2c->conf->connection_read_timeout(ev);
 		log_notice("<==%s with timedout",__FUNCTION__);
@@ -680,7 +678,7 @@ static void jhd_http2_update_recv_window(jhd_event_t *ev) {
 
 	frame = NULL;
 	event_h2c = ((jhd_connection_t*) ev->data)->data;
-	if ((ev)->timedout) {
+	if (ev->timedout) {
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
 		event_h2c->conf->connection_mem_time_out(ev);
 	} else {
@@ -793,7 +791,7 @@ static void jhd_http2_ping_frame_handler(jhd_event_t *ev) {
 	event_c = ev->data;
 	event_h2c = event_c->data;
 	frame = event_h2c->recv.state_param;
-	if ((ev)->timedout) {
+	if (ev->timedout) {
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
 		event_h2c->conf->connection_read_timeout(ev);
 		jhd_free_with_size(frame, sizeof(jhd_http2_frame) + 17);
@@ -835,7 +833,7 @@ void jhd_http2_ping_frame_header_check(jhd_event_t *ev){
 	jhd_http2_frame *frame;
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	if((ev)->timedout){
+	if(ev->timedout){
 			log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
 			event_h2c->conf->connection_mem_time_out(ev);
 
@@ -875,7 +873,7 @@ static void jhd_http2_window_update_frame_handler(jhd_event_t *ev) {
 	log_assert_worker();
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	if ((ev)->timedout == 1) {
+	if (ev->timedout == 1) {
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
 		event_h2c->conf->connection_read_timeout(ev);
 	} else {
@@ -1001,12 +999,13 @@ void jhd_http2_connection_default_protocol_error_handler(jhd_event_t *ev){
 void jhd_http2_frame_header_read(jhd_event_t *ev){
 	ssize_t ret;
 	ssize_t len;
+	u_char frame_type;
 	log_notice("==>%s",__FUNCTION__);
 	log_assert_worker();
 	event_c = ev->data;
 	event_h2c = event_c->data;
 
-	if(ev->timedout ==1){
+	if(ev->timedout){
 		log_http2_err(JHD_HTTP2_ENHANCE_YOUR_CALM_READ_FRAME_HEADER);
 		log_err("timeout");
 		event_h2c->conf->connection_read_timeout(ev);
@@ -1029,18 +1028,18 @@ void jhd_http2_frame_header_read(jhd_event_t *ev){
 				log_notice("<==%s with timedout",__FUNCTION__);
 				return;
 			}
-			event_h2c->recv.frame_type = event_h2c->recv.buffer[3];
+			frame_type= event_h2c->recv.buffer[3];
 			if(event_h2c->recv.frame_type > JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME){
 
 				log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_FRAME_TYPE);
-				log_err("invalid frame type[0X%02X]",event_h2c->recv.buffer[3]);
+				log_err("invalid frame type[0X%02X]",frame_type);
 				event_h2c->conf->connection_protocol_error(ev);
 				log_notice("<==%s with timedout",__FUNCTION__);
 				return;
 			}
 			event_h2c->recv.frame_flag = event_h2c->recv.buffer[4];
 			event_h2c->recv.state = 0;
-			event_h2c->conf->frame_payload_handler_pts[event_h2c->recv.frame_type](ev);
+			ev->handler=event_h2c->conf->frame_payload_handler_pts[frame_type];
 			ev->handler(ev);
 			log_notice("<==%s with timedout",__FUNCTION__);
 		}else{
@@ -1078,7 +1077,7 @@ void jhd_http2_send_setting_frame(jhd_event_t *ev){
 	jhd_http2_frame *frame;
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_err("timeout");
 		event_h2c->recv.state_param = NULL;
 		event_h2c->conf->connection_read_timeout(ev);
@@ -1143,7 +1142,7 @@ void jhd_http2_send_setting_frame_ack(jhd_event_t *ev){
 	event_c = ev->data;
 	event_h2c = event_c->data;
 
-	if((ev)->timedout){
+	if(ev->timedout){
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
 		event_h2c->conf->connection_mem_time_out(ev);
 		log_notice("<==%s with timedout",__FUNCTION__);
@@ -1240,7 +1239,7 @@ void jhd_http2_send_setting_frame_ack(jhd_event_t *ev){
 //
 //	frame = event_h2c->recv.state_param;
 //
-//	if((ev)->timedout){
+//	if(ev->timedout){
 //		log_err("timeout");
 //		event_h2c->recv.state_param = NULL;
 //		event_h2c->conf->connection_read_timeout(ev);
@@ -1305,7 +1304,7 @@ static jhd_inline void jhd_http2_send_event_handler(jhd_event_t *ev){
 		c = ev->data;
 		h2c = c->data;
 		frame = h2c->send.head;
-		if((ev)->timedout){
+		if(ev->timedout){
 				log_err("timeout");
 				h2c->conf->connection_send_timeout(ev);
 				log_notice("<==%s with timedout",__FUNCTION__);

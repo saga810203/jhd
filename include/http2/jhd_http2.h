@@ -42,17 +42,6 @@
 #define JHD_HTTP2_STREAM_STATE_OPEN               0x00
 
 
-#define JHD_HTTP2_CONNECTION_HANDLE_READ_TIMEOUT(ev) \
-	if((ev)->timedout ==1){\
-		log_err("timeout");\
-		event_h2c->conf->connection_read_timeout(ev);\
-		log_notice("<==%s with timedout",__FUNCTION__);\
-		return;\
-	}
-
-#define JHD_HTTP2_CONNECTION_ADD_READ_TIMEOUT(ev) jhd_event_add_timer(ev,event_h2c->conf->read_timeout)
-#define JHD_HTTP2_CONNECTION_ADD_IDLE_TIMEOUT(ev) jhd_event_add_timer(ev,event_h2c->conf->idle_timeout)
-#define JHD_HTTP2_CONNECTION_ADD_MEM_TIMEOUT(ev) jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout)
 
 
 #define JHD_HTTP2_RECV_PART_BUFFER_LEN  16
@@ -72,18 +61,20 @@ typedef  jhd_http_data jhd_http2_frame;
 
 typedef struct {
 	unsigned server_side:1;
-
-
+	unsigned ssl:1;
 	uint32_t idle_timeout;
 	uint32_t read_timeout;
 	uint32_t write_timeout;
 	uint32_t wait_mem_timeout;
+
+
 	uint32_t initial_window_size;
 	uint32_t max_header_table_size;
 	uint32_t max_streams;
     uint32_t recv_window_size_threshold; // if(connection->recv.window_size <  recv_window_size_threshold then send window_update
 
 	// http2 connection begin idle triger   can add idle timer(server) or send ping frame(client)
+    // only in frame header read with readed ==0
     jhd_event_handler_pt connection_idle;
     // in read event triger timeout (readtimeout or idle_timeout or mem_timeout)
     jhd_event_handler_pt connection_read_timeout;
@@ -245,6 +236,24 @@ extern jhd_http2_frame jhd_http2_empty_end_stream_stream;
 
 
 
+static jhd_inline void jhd_http2_reset_all_stream(jhd_event_t *ev,jhd_http2_connection *h2c){
+	u_char i;
+	jhd_queue_t *head,*q;
+	jhd_http2_stream *stream;
+	for(i = 0, head = &h2c->streams;i < 32 ;++i, ++head){
+		while(jhd_queue_has_item(head)){
+			q = jhd_queue_next(head);
+			jhd_queue_only_remove(q);
+			stream = jhd_queue_data(q,jhd_http2_stream,queue);
+			h2c->recv.stream = stream;
+			stream->listener->reset(ev);
+			jhd_free_with_size(stream,sizeof(jhd_http2_stream));
+		}
+	}
+	h2c->recv.stream = &jhd_http2_invalid_stream;
+	jhd_queue_init(&h2c->flow_control);
+}
+
 
 
 
@@ -278,6 +287,10 @@ static jhd_inline int jhd_http2_parse_int(uint32_t *value,u_char prefix,u_char *
     }
     return p - start;
 }
+
+
+
+
 
 int jhd_http2_huff_decode(u_char *src, uint16_t src_len, u_char *dst,uint16_t dst_len);
 
@@ -334,28 +347,34 @@ static jhd_inline void jhd_http2_set_stream_id(u_char *p,uint32_t sid){
 
 
 
-static jhd_inline void jhd_http2_send_queue_frame(jhd_http2_frame *frame){
-	if(event_h2c->send.tail != NULL){
-		event_h2c->send.tail->next = frame;
-		event_h2c->send.tail = frame;
+static jhd_inline void jhd_http2_send_queue_frame(jhd_connection_t *c,jhd_http2_connection* h2c,jhd_http2_frame *frame){
+	if(h2c->send.tail != NULL){
+		h2c->send.tail->next = frame;
+		h2c->send.tail = frame;
 	}else{
-		event_h2c->send.head = event_h2c->send.tail = frame;
-		if(event_c->write.queue.next == NULL){
-			jhd_post_event(&event_c->write,&jhd_posted_events);
-		}
+		h2c->send.head = h2c->send.tail = frame;
+		jhd_post_event(&c->write,&jhd_posted_events);
 	}
 }
 
-static jhd_inline void jhd_http2_send_headers_frame(jhd_http2_frame *begin_headers,jhd_http2_frame * end_headers){
-	if(event_h2c->send.tail != NULL){
-		event_h2c->send.tail->next = begin_headers;
-		event_h2c->send.tail = end_headers;
+static jhd_inline void jhd_http2_send_headers_frame(jhd_connection_t *c,jhd_http2_connection* h2c,jhd_http2_frame *begin_headers,jhd_http2_frame * end_headers){
+	if(h2c->send.tail != NULL){
+		h2c->send.tail->next = begin_headers;
+		h2c->send.tail = end_headers;
 	}else{
-		event_h2c->send.head =begin_headers;
-		event_h2c->send.tail = end_headers;
-		jhd_post_event(&event_c->write,&jhd_posted_events);
-
+		h2c->send.head =begin_headers;
+		h2c->send.tail = end_headers;
+		jhd_post_event(&c->write,&jhd_posted_events);
 	}
+}
+
+
+static jhd_inline void jhd_http2_send_data_frame(jhd_connection_t *c,jhd_http2_connection* h2c,jhd_http2_frame *frame){
+	log_assert(frame->type == JHD_HTTP2_FRAME_TYPE_DATA_FRAME);
+	log_assert()
+
+
+
 }
 
 
@@ -426,27 +445,23 @@ static jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void (*free_h
 #define jhd_http2_do_recv_buffer(E,H2C,HAND) (H2C)->recv.state_param = HAND;(E)->handler = jhd_http2_recv_buffer;jhd_unshift_event(E,&jhd_posted_events)
 
 
-#define jhd_http2_send_queue_frame(F) \
-	if(event_h2c->send.tail != NULL){\
-		event_h2c->send.tail->next = F;\
-		event_h2c->send.tail = F;\
+#define jhd_http2_send_queue_frame(C,H,F) \
+	if(H->send.tail != NULL){\
+		H->send.tail->next = F;\
+		H->send.tail = F;\
 	}else{\
-		event_h2c->send.head = event_h2c->send.tail = F;\
-		if(event_c->write.queue.next == NULL){\
-			jhd_post_event(&event_c->write,&jhd_posted_events);\
-		}\
+		H->send.head = H->send.tail = F;\
+		jhd_post_event(&C->write,&jhd_posted_events);\
 	}
 
-#define jhd_http2_send_headers_frame(WEV,B,E) \
-	if(event_h2c->send.tail != NULL){\
-		event_h2c->send.tail->next = B;\
-		event_h2c->send.tail = E;\
+#define jhd_http2_send_headers_frame(C,H,B,E) \
+	if(H->send.tail != NULL){\
+		H->send.tail->next = B;\
+		H->send.tail = E;\
 	}else{\
-		event_h2c->send.head =B;\
-		event_h2c->send.tail = E;\
-		if(event_c->write.queue.next == NULL){\
-			jhd_post_event(&event_c->write,&jhd_posted_events);\
-		}\
+		H->send.head =B;\
+		H->send.tail = E;\
+		jhd_post_event(&C->write,&jhd_posted_events);\
 	}
 
 #define jhd_http2_stream_init(S) memset(S,0,sizeof(jhd_http2_stream))
@@ -454,6 +469,12 @@ static jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void (*free_h
 #define jhd_http2_set_stream_id(P,SID) P[0] = (u_char)((SID) >> 24);P[1] = (u_char)((SID) >> 16);P[2] = (u_char)((SID) >> 8);P[3] = (u_char)(sid)
 
 #endif
+
+
+
+
+
+
 static jhd_inline void jhd_http2_send_ping_ack(jhd_http2_frame *frame){
 	jhd_http2_frame *prev,*next_frame;
 	if(event_h2c->send.head != NULL){
@@ -522,6 +543,35 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev);
 void jhd_http2_send_setting_frame(jhd_event_t *ev);
 void jhd_http2_send_setting_frame_ack(jhd_event_t *ev);
 void jhd_http2_send_ping_frame(jhd_event_t *ev);
+
+
+
+
+
+
+
+#define  jhd_http2_build_goaway_frame(F_V,P_V,SID,EC) \
+	F_V = jhd_alloc(sizeof(jhd_http2_frame)+ 17);\
+	if(F_V != NULL){\
+		jhd_http2_single_frame_init(F_V,sizeof(jhd_http2_frame)+17);\
+		F_V->type = JHD_HTTP2_FRAME_TYPE_GOAWAY_FRAME;\
+		P_V = F_V->pos;\
+		*((uint32_t*)P_V) = 0x07080000;\
+		P_V[4] = 0;\
+		P_V += 5;\
+		*((uint32_t*)P_V) = 0x0;\
+		P_V += 4;\
+		jhd_http2_set_stream_id(P_V,SID);\
+		P_V += 4;\
+		*((uint32_t*)P_V) = EC;
+
+
+
+
+
+
+
+
 
 
 
