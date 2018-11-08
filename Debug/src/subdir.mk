@@ -15,9 +15,10 @@ C_SRCS += \
 ../src/jhd_process.c \
 ../src/jhd_rbtree.c \
 ../src/jhd_shm.c \
-../src/jhd_ssl.c \
 ../src/jhd_string.c \
 ../src/jhd_time.c \
+../src/jhd_tls_connection.c \
+../src/jhd_util.c \
 ../src/jhttpd.c 
 
 OBJS += \
@@ -32,9 +33,10 @@ OBJS += \
 ./src/jhd_process.o \
 ./src/jhd_rbtree.o \
 ./src/jhd_shm.o \
-./src/jhd_ssl.o \
 ./src/jhd_string.o \
 ./src/jhd_time.o \
+./src/jhd_tls_connection.o \
+./src/jhd_util.o \
 ./src/jhttpd.o 
 
 C_DEPS += \
@@ -49,9 +51,10 @@ C_DEPS += \
 ./src/jhd_process.d \
 ./src/jhd_rbtree.d \
 ./src/jhd_shm.d \
-./src/jhd_ssl.d \
 ./src/jhd_string.d \
 ./src/jhd_time.d \
+./src/jhd_tls_connection.d \
+./src/jhd_util.d \
 ./src/jhttpd.d 
 
 
@@ -59,7 +62,7 @@ C_DEPS += \
 src/%.o: ../src/%.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C Compiler'
-	gcc -I"/eclipse/workspace3/jhttpd/include" -O0 -march=x86-64  -c -pipe  -O -W -Wall -Wpointer-arith -Wno-unused-parameter -Werror -g -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	gcc -I"/udata/cWorkSpace/eclipseWS/jhd/include" -O0 -c -pipe  -O -W -Wall -Wpointer-arith -Wno-unused-parameter -Werror -g -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
