@@ -1410,30 +1410,7 @@ ssize_t jhd_tls_ssl_read(jhd_connection_t *c, unsigned char *buf, size_t len) {
 }
 
 
-int jhd_tls_ssl_flush(jhd_connection_t *c,jhd_tls_ssl_context *ssl){
-	int err;
-	ssize_t n;
-	log_assert(c->ssl == ssl);
-	for(;;){
-		n = send(c->fd, ssl->out_offt, ssl->out_msglen, 0);
-		if (n >= 0) {
-			ssl->out_msglen -= n;
-			ssl->out_offt +=n;
-			if(ssl->out_msglen){
-				return JHD_AGAIN;
-			}
-			return JHD_OK;
-		} else {
-			err = errno;
-			if (err == EAGAIN) {
-				return JHD_AGAIN;
-			} else if (err != EINTR) {
-				c->send = jhd_connection_error_send;
-				return JHD_ERROR;
-			}
-		}
-	}
-}
+
 
 
 
