@@ -155,7 +155,9 @@ typedef struct{
 		uint32_t window_size;
 		uint32_t initial_window_size;
 
+		jhd_http2_hpack hpack;
 
+        uint16_t max_fragmentation;
 }jhd_http2_conneciton_send_part;
 
 
@@ -169,7 +171,6 @@ typedef struct {
 	unsigned goaway_recved :1;
 	unsigned send_error :1;
 	unsigned goaway_sent :1;
-
 
 	jhd_connection_close_pt  close_pt;
 	uint32_t max_streams;
@@ -235,24 +236,6 @@ extern jhd_http2_frame jhd_http2_empty_end_stream_stream;
 
 
 
-
-static jhd_inline void jhd_http2_reset_all_stream(jhd_event_t *ev,jhd_http2_connection *h2c){
-	u_char i;
-	jhd_queue_t *head,*q;
-	jhd_http2_stream *stream;
-	for(i = 0, head = &h2c->streams;i < 32 ;++i, ++head){
-		while(jhd_queue_has_item(head)){
-			q = jhd_queue_next(head);
-			jhd_queue_only_remove(q);
-			stream = jhd_queue_data(q,jhd_http2_stream,queue);
-			h2c->recv.stream = stream;
-			stream->listener->reset(ev);
-			jhd_free_with_size(stream,sizeof(jhd_http2_stream));
-		}
-	}
-	h2c->recv.stream = &jhd_http2_invalid_stream;
-	jhd_queue_init(&h2c->flow_control);
-}
 
 
 
