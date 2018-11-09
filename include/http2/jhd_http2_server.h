@@ -19,6 +19,10 @@ typedef struct{
 
 
 
+void jhd_http2_server_send_event_handler_with_ssl_clean_force(jhd_event_t *ev);
+void jhd_http2_server_send_event_handler_with_ssl_clean_by_timer(jhd_event_t *ev);
+void jhd_http2_server_send_event_handler_with_ssl_clean_by_trigger(jhd_event_t *ev);
+
 
 
 void jhd_http2_only_by_clean_server_connection_start(jhd_connection_t *c);
@@ -27,6 +31,26 @@ void jhd_http2_with_alpn_server_connection_start(jhd_connection_t *c);
 
 
 void jhd_http2_server_connection_conf_init(jhd_http2_connection_conf *conf);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
