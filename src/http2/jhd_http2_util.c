@@ -5,9 +5,6 @@
 #include <jhd_time.h>
 
 
-extern jhd_http2_frame jhd_http2_empty_end_stream_stream;
-
-
  void jhd_http2_frame_free_by_direct(void *data){
 	jhd_http2_frame *frame = data;
 	log_assert(data != NULL);
@@ -26,7 +23,6 @@ extern jhd_http2_frame jhd_http2_empty_end_stream_stream;
  }
  void jhd_http2_recv_skip(jhd_event_t *ev){
  	ssize_t rc;
- 	size_t len;
  	log_notice("==>%s",__FUNCTION__);
  	log_assert_worker();
  	event_c = ev->data;
@@ -40,25 +36,23 @@ extern jhd_http2_frame jhd_http2_empty_end_stream_stream;
  		log_notice("<==%s",__FUNCTION__);
  		return;
  	}
-	len = event_h2c->recv.state;
-	rc = event_c->recv(event_c,jhd_calc_buffer,len);
+ 	log_assert(event_h2c->recv.state >0);
+	rc = event_c->recv(event_c,jhd_calc_buffer,event_h2c->recv.state);
 	if(rc > 0){
 		event_h2c->recv.state-=rc;
-		if(((size_t)rc) < len){
-			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
-			break;
-		}else if(event_h2c->recv.state == 0){
+		if(((size_t)rc) == event_h2c->recv.state){
+			event_h2c->recv.state = 0;
 			ev->handler = event_h2c->recv.state_param;
 			ev->handler(ev);
-			break;
+		}else{
+			event_h2c->recv.state-=rc;
+			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
 		}
 	}else if (rc == JHD_AGAIN){
 		jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
-		break;
 	}else{
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
 		event_h2c->conf->connection_read_error(ev);
-		break;
 	}
  	log_notice("<==%s",__FUNCTION__);
  }
@@ -118,26 +112,19 @@ extern jhd_http2_frame jhd_http2_empty_end_stream_stream;
  void jhd_http2_recv_buffer(jhd_event_t *ev){
  	ssize_t rc;
  	size_t len;
- 	u_char *p;
-
  	log_assert_worker();
  	event_c = ev->data;
  	event_h2c = event_c->data;
 
- 	p = event_h2c->recv.buffer;
  	if(ev->timedout){
  		ev->timedout = 0;
  		log_err("timeout");
  		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
  		event_h2c->conf->connection_read_timeout(ev);
  	}else{
-		p += event_h2c->recv.state;
-
 		len = event_h2c->recv.payload_len - event_h2c->recv.state;
-
 		log_assert(len >0 && len < sizeof(event_h2c->recv.buffer));
-
-		rc = event_c->recv(event_c,p,len);
+		rc = event_c->recv(event_c,event_h2c->recv.buffer+event_h2c->recv.state,len);
 		if(rc > 0){
 			if(((size_t)rc) == len){
 				event_h2c->recv.state = 0;
@@ -150,7 +137,6 @@ extern jhd_http2_frame jhd_http2_empty_end_stream_stream;
 		}else if(rc == JHD_AGAIN){
 			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
 		}else{
-
 			log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
 			event_h2c->conf->connection_read_error(ev);
 		}
@@ -199,7 +185,6 @@ extern jhd_http2_frame jhd_http2_empty_end_stream_stream;
 		} else if (rc == JHD_AGAIN) {
 			jhd_event_add_timer(ev, event_h2c->conf->read_timeout);
 		} else {
-
 			log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
 			event_h2c->conf->connection_read_error(ev);
 		}

@@ -389,7 +389,7 @@ jhd_inline static int http2_get_indexed_header(uint32_t idx,jhd_http_header *hea
 		}
 	}
 #endif
-	if(jhd_http2_hpack_is_dyncmic(idx)){
+	if((jhd_http2_hpack_is_dyncmic(idx)) && (header->value_len)){
 	   if(header->name_alloced == 0){
 		   header->name_alloced = header->name_len +1;
 		   idx_name = jhd_alloc(header->name_alloced);
@@ -401,22 +401,15 @@ jhd_inline static int http2_get_indexed_header(uint32_t idx,jhd_http_header *hea
 		   memcpy(idx_name,header->name,header->name_len+1);
 		   header->name = idx_name;
 	   }
-	   if(header->value_len>0){
-		   if(0 == header->value_alloced){
-			   header->value_alloced= header->value_len + 1;
-			   idx_val = jhd_alloc(header->value_alloced);
-			   if(idx_val == NULL){
-				   *wait_mem_len = header->value_alloced;
-				   header->value_alloced = 0;
-				   return JHD_AGAIN;
-			   }
-			   memcpy(idx_val,header->value,header->value_len);
-			   header->value = idx_val;
-		   }
-	   }else{
-		  log_assert(header->value_alloced = 0);
-		  header->value = jhd_empty_string;
+	   header->value_alloced= header->value_len + 1;
+	   idx_val = jhd_alloc(header->value_alloced);
+	   if(idx_val == NULL){
+		   *wait_mem_len = header->value_alloced;
+		   header->value_alloced = 0;
+		   return JHD_AGAIN;
 	   }
+	   memcpy(idx_val,header->value,header->value_len);
+	   header->value = idx_val;
 	}
 	return JHD_OK;
 }
@@ -795,8 +788,11 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev){
 					jhd_event_add_timer(ev, event_h2c->conf->wait_mem_timeout);
 					return;
 				}
-				header = NULL;
-				event_h2c->recv.state_param = NULL;
+				if(header->value_len){
+					jhd_queue_insert_tail(&event_h2c->recv.headers,&header->queue);
+					header = NULL;
+					event_h2c->recv.state_param = NULL;
+				}
 			} else {
 				if(p == end){
 					goto next_frame;
@@ -818,7 +814,7 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev){
 					goto next_frame;
 				}
 				p+=rc;
-				if(header->name_alloced){
+				if(header->value_len){
 					jhd_queue_insert_tail(&event_h2c->recv.headers,&header->queue);
 					header = NULL;
 					event_h2c->recv.state_param = NULL;
@@ -892,7 +888,6 @@ next_frame:
 	}
 	return;
 func_error:
-	event_h2c->recv.state_param = NULL;
 	jhd_queue_move(&h,&event_h2c->recv.headers);
 	p = event_h2c->recv.alloc_buffer[0];
 	value = event_h2c->recv.payload_len;

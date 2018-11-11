@@ -42,6 +42,8 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_force(jhd_event_t *ev){
 					ssl->out_offt += rc;
 					if (ssl->out_msglen) {
 						return;
+					}else{
+						break;
 					}
 				} else {
 					err = errno;
@@ -65,7 +67,7 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_force(jhd_event_t *ev){
 				for(;;){
 					if(len >  h2c->send.head->len){
 						memcpy(ssl->out_msg+ssl->out_msglen,h2c->send.head->pos,  h2c->send.head->len);
-						len -=h2c->send.head->len;
+						len -= h2c->send.head->len;
 						ssl->out_msglen+=h2c->send.head->len;
 						frame->next = h2c->send.head;
 						frame = h2c->send.head;
@@ -74,9 +76,10 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_force(jhd_event_t *ev){
 							frame->next = NULL;
 						}else{
 							h2c->send.head = h2c->send.tail = NULL;
+							break;
 						}
 					}else if(len == h2c->send.head->len){
-						memcpy(ssl->out_msg+ssl->out_msglen,h2c->send.head->pos, len);
+						memcpy(ssl->out_msg+ ssl->out_msglen,h2c->send.head->pos, len);
 						ssl->out_msglen += len;
 						frame->next = h2c->send.head;
 						frame = h2c->send.head;
@@ -88,7 +91,7 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_force(jhd_event_t *ev){
 						}
 						break;
 					}else{
-						memcpy(ssl->out_msg+ssl->out_msglen,h2c->send.head->pos, len);
+						memcpy(ssl->out_msg + ssl->out_msglen,h2c->send.head->pos, len);
 						ssl->out_msglen += len;
 						h2c->send.head->pos +=len;
 						h2c->send.head->len-=len;
@@ -106,6 +109,8 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_force(jhd_event_t *ev){
 						ssl->out_offt += rc;
 						if (ssl->out_msglen) {
 							goto func_do_free;
+						}else{
+							break;
 						}
 					} else {
 						err = errno;
@@ -120,9 +125,8 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_force(jhd_event_t *ev){
 				}
 			}while(h2c->send.head != NULL);
 		}
-
-		if((h2c->send.head == NULL) && (h2c->processing ==0) && (c->read.timer.key ==0) && (jhd_queue_not_queued(&c->read.queue))){
-			jhd_post_event(&c->read,&jhd_posted_events);
+		if((h2c->processing ==0) && (c->read.timer.key == 0) && (jhd_queue_not_queued(&c->read.queue))){
+			jhd_unshift_event(&c->read);
 		}
 
 func_do_free:
@@ -154,7 +158,6 @@ func_error:
 				jhd_queue_only_remove(q);
 			}
 			if(ev->timer.key){
-				ev->timer.key = 0;
 				jhd_event_del_timer(ev);
 			}
 			ev->timedout = 1;
@@ -202,6 +205,8 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_by_timer(jhd_event_t *ev
 					ssl->out_offt += rc;
 					if (ssl->out_msglen) {
 						return;
+					}else{
+						break;
 					}
 				} else {
 					err = errno;
@@ -266,6 +271,8 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_by_timer(jhd_event_t *ev
 						ssl->out_offt += rc;
 						if (ssl->out_msglen) {
 							goto func_do_free;
+						}else{
+							break;
 						}
 					} else {
 						err = errno;
@@ -280,10 +287,17 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_by_timer(jhd_event_t *ev
 				}
 			}while(h2c->send.head != NULL);
 		}
-
-
-		if((h2c->send.head == NULL) && (h2c->processing ==0) && (c->read.timer.key ==0) && (jhd_queue_not_queued(&c->read.queue))){
-			jhd_post_event(&c->read,&jhd_posted_events);
+		if(h2c->processing ==0){
+			if(h2c->recv_error){
+				if(c->read.timer.key){
+					jhd_event_del_timer(&c->read);
+				}
+				if(jhd_queue_not_queued(&c->read.queue)){
+					jhd_unshift_event(&c->read);
+				}
+			}else if((c->read.timer.key == 0) && (jhd_queue_not_queued(&c->read.queue))){
+				jhd_unshift_event(&c->read);
+			}
 		}
 
 func_do_free:
@@ -308,6 +322,17 @@ func_error:
 		}
 		if(h2c->recv_error){
 			jhd_unshift_event(&c->read,&jhd_posted_events);
+		}else{
+			ev = &c->read;
+			q = &c->read.queue;
+			if(jhd_queue_queued(q)){
+				jhd_queue_only_remove(q);
+			}
+			if(ev->timer.key){
+				jhd_event_del_timer(ev);
+			}
+			ev->timedout = 1;
+			jhd_unshift_event(&c->read,&jhd_posted_events);
 		}
 }
 
@@ -327,7 +352,6 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_by_trigger(jhd_event_t *
 		jhd_tls_ssl_context *ssl;
 		u_char *p;
 		void (*frame_free_func)(void*);
-
 
 		log_notice("==>%s",__FUNCTION__);
 		log_assert_worker();
@@ -351,6 +375,8 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_by_trigger(jhd_event_t *
 					ssl->out_offt += rc;
 					if (ssl->out_msglen) {
 						return;
+					}else{
+						break;
 					}
 				} else {
 					err = errno;
@@ -415,6 +441,8 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_by_trigger(jhd_event_t *
 						ssl->out_offt += rc;
 						if (ssl->out_msglen) {
 							goto func_do_free;
+						}else{
+							break;
 						}
 					} else {
 						err = errno;
@@ -429,17 +457,17 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_by_trigger(jhd_event_t *
 				}
 			}while(h2c->send.head != NULL);
 		}
-
-
-
-		if((h2c->send.head == NULL) && (h2c->processing ==0) && (c->read.timer.key ==0) && (jhd_queue_not_queued(&c->read.queue))){
-			jhd_post_event(&c->read,&jhd_posted_events);
+		if(h2c->recv_error){
+			if(c->read.timer.key){
+				jhd_event_del_timer(&c->read);
+			}
+			if(jhd_queue_not_queued(&c->read.queue)){
+				jhd_unshift_event(&c->read);
+			}
+		}else if((h2c->processing ==0) && (c->read.timer.key == 0) && (jhd_queue_not_queued(&c->read.queue))){
+			jhd_unshift_event(&c->read);
 		}
-
 func_do_free:
-		if(h2c->send.head == NULL && h2c->recv_error){
-			jhd_unshift_event(&c->read,&jhd_posted_events);
-		}
 		frame = free_frame.next;
 		while(frame != NULL){
 			p = frame;
@@ -460,6 +488,18 @@ func_error:
 			frame_free_func(p);
 		}
 		if(h2c->recv_error){
+			jhd_unshift_event(&c->read,&jhd_posted_events);
+		}else{
+			ev = &c->read;
+			q = &c->read.queue;
+			if(jhd_queue_queued(q)){
+				jhd_queue_only_remove(q);
+			}
+			if(ev->timer.key){
+				ev->timer.key = 0;
+				jhd_event_del_timer(ev);
+			}
+			ev->timedout = 1;
 			jhd_unshift_event(&c->read,&jhd_posted_events);
 		}
 }

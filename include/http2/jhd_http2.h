@@ -59,6 +59,13 @@
 
 typedef  jhd_http_data jhd_http2_frame;
 
+typedef enum {
+	JHD_HTTP2_ERROR_CLOSE_BY_FORCE,
+	JHD_HTTP2_ERROR_CLOSE_BY_TIMER,
+	JHD_HTTP2_ERROR_CLOSE_BY_TRIGGER,
+} jhd_http2_error_handler_type;
+
+
 typedef struct {
 	unsigned server_side:1;
 	unsigned ssl:1;
@@ -136,9 +143,11 @@ typedef struct{
 
 
         jhd_queue_t headers;
-
         u_char *pos;
+        union{
         u_char *end;
+        uint32_t sid;
+        };
 
 
         jhd_event_handler_pt connection_frame_header_read;
@@ -150,10 +159,8 @@ typedef struct{
 typedef struct{
 		jhd_http2_frame *head;
 		jhd_http2_frame *tail;
-
-		uint16_t frame_szie;
-		uint32_t window_size;
-		uint32_t initial_window_size;
+		int window_size;
+		int initial_window_size;
 
 		jhd_http2_hpack hpack;
 
@@ -163,7 +170,6 @@ typedef struct{
 
 typedef struct {
 	jhd_http2_connection_conf *conf;
-	void *data;
 	jhd_http2_conneciton_recv_part recv;
 	jhd_http2_conneciton_send_part send;
 	uint32_t processing;
@@ -171,11 +177,13 @@ typedef struct {
 	unsigned goaway_recved :1;
 	unsigned send_error :1;
 	unsigned goaway_sent :1;
+	unsigned empty_write_cache:1;
+
+log_assert_code(unsigned first_frame_header_read:1;)
 
 	jhd_connection_close_pt  close_pt;
 	uint32_t max_streams;
 	jhd_queue_t flow_control;
-	jhd_queue_t wait_close;
 	jhd_queue_t streams[32];
 }jhd_http2_connection;
 
@@ -183,13 +191,13 @@ typedef struct {
 typedef struct{
 		//notify
 		jhd_event_handler_pt remote_close;
-		//handler  set  ev->handler
+		//notify
 		jhd_event_handler_pt remote_data;
-		//handler  set  ev->handler;
+		//notify
 		jhd_event_handler_pt remote_empty_data;
 		//notify
 		jhd_event_handler_pt reset;
-		//handler do send frame but disable block  not set ev->handler
+		//notify  //handler do send frame but disable block  not set ev->handler
 		jhd_event_handler_pt remote_recv;
 		//notify   change stream->recv_window_size   ==  return value(event_h2c->recv.state);
 		jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
@@ -354,7 +362,7 @@ static jhd_inline void jhd_http2_send_headers_frame(jhd_connection_t *c,jhd_http
 
 static jhd_inline void jhd_http2_send_data_frame(jhd_connection_t *c,jhd_http2_connection* h2c,jhd_http2_frame *frame){
 	log_assert(frame->type == JHD_HTTP2_FRAME_TYPE_DATA_FRAME);
-	log_assert()
+
 
 
 
@@ -501,13 +509,13 @@ static jhd_inline void jhd_http2_send_ping_ack(jhd_http2_frame *frame){
 }
 
 
-static jhd_inline jhd_http2_stream * jhd_http2_stream_get(jhd_http2_connection *h2c,uint32_t sid){
+static jhd_inline jhd_http2_stream * jhd_http2_stream_get(jhd_http2_connection *h2c){
 	jhd_http2_stream *stream;
 	jhd_queue_t *q,*head;
-	head = &(event_h2c->streams[(sid >1) & 0x1F]);
+	head = &(event_h2c->streams[(h2c->recv.sid >> 1) & 0x1F]);
 	for(q = head->next; q != head ; q = q->next){
 		stream = jhd_queue_data(q,jhd_http2_stream,queue);
-		if(stream->id == sid){
+		if(stream->id == h2c->recv.sid){
 			log_assert(stream->state  != JHD_HTTP2_STREAM_STATE_CLOSE_BOTH);
 			return stream;
 		}

@@ -1063,19 +1063,19 @@ int jhd_tls_ssl_context_alloc(jhd_tls_ssl_context **pssl,const jhd_tls_ssl_confi
 		}
 		ssl->out_msg =ssl->out_iv = ssl->out_hdr + 5;
 	}
-	if(NULL == ssl->handshake){
-		ssl->handshake = jhd_tls_alloc(sizeof(jhd_tls_ssl_handshake_params));
-		if (ssl->handshake == NULL) {
-			jhd_tls_wait_mem(ev,sizeof(jhd_tls_ssl_handshake_params));
-			return JHD_AGAIN;
-		}
-		jhd_tls_platform_zeroize(ssl->handshake,sizeof(jhd_tls_ssl_handshake_params));
-		jhd_tls_md5_starts_ret(&ssl->handshake->fin_md5);
-		jhd_tls_sha1_starts_ret(&ssl->handshake->fin_sha1);
-		jhd_tls_sha256_starts_ret_with_256(&ssl->handshake->fin_sha256);
-		jhd_tls_sha512_starts_ret_with_384(&ssl->handshake->fin_sha512);
-		ssl->handshake->update_checksum = ssl_update_checksum_start;
+
+	ssl->handshake = jhd_tls_alloc(sizeof(jhd_tls_ssl_handshake_params));
+	if (ssl->handshake == NULL) {
+		jhd_tls_wait_mem(ev,sizeof(jhd_tls_ssl_handshake_params));
+		return JHD_AGAIN;
 	}
+	jhd_tls_platform_zeroize(ssl->handshake,sizeof(jhd_tls_ssl_handshake_params));
+	jhd_tls_md5_starts_ret(&ssl->handshake->fin_md5);
+	jhd_tls_sha1_starts_ret(&ssl->handshake->fin_sha1);
+	jhd_tls_sha256_starts_ret_with_256(&ssl->handshake->fin_sha256);
+	jhd_tls_sha512_starts_ret_with_384(&ssl->handshake->fin_sha512);
+	ssl->handshake->update_checksum = ssl_update_checksum_start;
+
 	return JHD_OK;
 }
 
