@@ -40,7 +40,6 @@
 
 #define JHD_HTTP2_PROTOCOL_ERROR_INVALID_FIRST_FRAME				0x01A00000
 
-
 /******************************************/
 #define JHD_HTTP2_INTERNAL_ERROR               						0x02000000
 
@@ -103,6 +102,7 @@
 
 #define JHD_HTTP2_ENHANCE_YOUR_CALM_HEADER_NAME_TO_LAGER   		 	0x0bF10000
 #define JHD_HTTP2_ENHANCE_YOUR_CALM_HEADER_VALUE_TO_LAGER	      	0x0bF20000
+#define JHD_HTTP2_ENHANCE_YOUR_CALM_HPACK_VALUE_TO_LAGER	      	0x0bF30000
 
 /******************************************/
 

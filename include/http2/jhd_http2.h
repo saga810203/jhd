@@ -73,42 +73,15 @@ typedef struct {
 	uint32_t read_timeout;
 	uint32_t write_timeout;
 	uint32_t wait_mem_timeout;
-
     uint32_t recv_window_size_threshold; // if(connection->recv.window_size <  recv_window_size_threshold then send window_update
-
 	// http2 connection begin idle triger   can add idle timer(server) or send ping frame(client)
     // only in frame header read with readed ==0
     jhd_event_handler_pt connection_idle;
-    // in read event triger timeout (readtimeout or idle_timeout or mem_timeout)
-    jhd_event_handler_pt connection_read_timeout;
     // in read event triger error (do del timer,hand..)
     jhd_event_handler_pt connection_read_error;
-
-    // in read event triger error (do del timer,hand..)
-    jhd_event_handler_pt connection_send_error;
-
-    //
-    jhd_event_handler_pt connection_send_timeout;
-
-    // in read event read connection data invalid
-    jhd_event_handler_pt connection_protocol_error;
-
-
-
-    //
-    jhd_event_handler_pt connection_mem_time_out;
-
-    //  too long  max_header_size  too long header name   too long header val
-    jhd_event_handler_pt connection_unsupported_error;
-
     jhd_event_handler_pt *frame_payload_handler_pts;
     jhd_event_handler_pt connection_write;
     jhd_event_handler_pt connection_frame_header_read_after_goaway;
-
-
-    // in server is frame_header read  or in client handler queued idle stream
-    jhd_event_handler_pt connection_after_setting_ack;
-
 	void *extend_param;
 }jhd_http2_connection_conf;
 
@@ -261,7 +234,6 @@ static jhd_inline int jhd_http2_parse_int(uint32_t *value,u_char prefix,u_char *
 				return JHD_AGAIN;
 			}
 			if(shift > shift_limit){
-				jhd_err = JHD_HTTP2_ENHANCE_YOUR_CALM;
 				return JHD_ERROR;
 			}
 			octet = *p;

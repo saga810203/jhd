@@ -66,46 +66,39 @@
 	log_assert_worker();
 	event_c = ev->data;
 	event_h2c = event_c->data;
-
 	p = event_h2c->recv.alloc_buffer[0];
 	len = event_h2c->recv.payload_len;
-
 	if(ev->timedout){
 		ev->timedout = 0;
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
-		event_h2c->conf->connection_read_timeout(ev);
+		event_h2c->conf->connection_read_error(ev);
 		jhd_free_with_size(p,len);
-		goto func_return;
+	}else{
+		p += event_h2c->recv.state;
+		len = event_h2c->recv.payload_len - event_h2c->recv.state;
+		log_assert(len >0);
+		rc = event_c->recv(event_c,p,len);
+		if(rc > 0){
+			if(((size_t)rc) == len){
+				event_h2c->recv.state = 0;
+				ev->handler = event_h2c->recv.state_param;
+				event_h2c->recv.state_param = NULL;
+				jhd_unshift_event(ev,&jhd_posted_events);
+			}else{
+				event_h2c->recv.state += rc;
+				jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
+			}
+		}else if(rc == JHD_AGAIN){
+			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
+		}else{
+			p = event_h2c->recv.alloc_buffer[0];
+			len =  event_h2c->recv.payload_len;
+			log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
+			event_h2c->conf->connection_read_error(ev);
+			jhd_free_with_size(p,len);
+		}
 	}
-
- 	p += event_h2c->recv.state;
-
- 	len = event_h2c->recv.payload_len - event_h2c->recv.state;
-
- 	log_assert(len >0);
-
- 	rc = event_c->recv(event_c,p,len);
- 	if(rc > 0){
- 		if(((size_t)rc) == len){
- 			event_h2c->recv.state = 0;
- 			ev->handler = event_h2c->recv.state_param;
- 			event_h2c->recv.state_param = NULL;
- 			jhd_unshift_event(ev,&jhd_posted_events);
- 		}else{
- 			event_h2c->recv.state += rc;
- 			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
- 		}
- 	}else if(rc == JHD_AGAIN){
- 		jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
- 	}else{
- 		p = event_h2c->recv.alloc_buffer[0];
- 		len =  event_h2c->recv.payload_len;
- 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
- 		event_h2c->conf->connection_read_error(ev);
- 		jhd_free_with_size(p,len);
- 	}
- func_return:
- 	 log_notice("<==%s",__FUNCTION__);
+ 	log_notice("<==%s",__FUNCTION__);
 
  }
 

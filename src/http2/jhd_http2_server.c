@@ -533,19 +533,19 @@ static void server_connection_read_event_error_with_writer_clean(jhd_event_t *ev
 static void server_headers_frame_header_check(jhd_event_t *ev){
 	log_assert(event_c  = ev->data);
 	log_assert(event_h2c = event_c->data);
+	log_assert(jhd_queue_empty(&event_h2c->recv.headers));
 #if !defined(JHD_LOG_ASSERT_ENABLE)
 	(void*) ev;
 #endif
 	if(event_h2c->recv.payload_len == 0){
 		log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_HEADERS_PAYLOAD);
-		event_h2c->conf->connection_protocol_error(ev);
-		return;
-	}
-	log_assert(jhd_queue_empty(&event_h2c->recv.headers));
-	if((event_h2c->recv.sid & 0X80000001) != 1){
-		event_h2c->conf->connection_protocol_error(ev);
+		event_h2c->conf->connection_read_error(ev);
+	}else if((event_h2c->recv.sid & 0X80000001) != 1){
+		log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_STREAM_ID);
+		event_h2c->conf->connection_read_error(ev);
 	}else if(event_h2c->recv.sid <= event_h2c->recv.last_stream_id){
-		event_h2c->conf->connection_protocol_error(ev);
+		log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_STREAM_ID);
+		event_h2c->conf->connection_read_error(ev);
 	}else{
 		event_h2c->recv.last_stream_id = event_h2c->recv.sid;
 		ev->handler = jhd_http2_headers_frame_payload_handler;
@@ -1002,17 +1002,18 @@ static void server_recv_first_setting_frame(jhd_event_t *ev){
 			if(event_h2c->recv.state > 4){
 				if(event_h2c->recv.buffer[3] == JHD_HTTP2_FRAME_TYPE_SETTINGS_FRAME){
 					if(event_h2c->recv.buffer[4] == 0x0){
+						rc = event_h2c->recv.buffer[0] <<16 ||  event_h2c->recv.buffer[1] <<8 || event_h2c->recv.buffer[2];
+						if(rc % 6 == 0){
+							log_assert_code(event_h2c->first_frame_header_read = 1;)
+							ev->handler = event_h2c->recv.connection_frame_header_read = jhd_http2_frame_header_read;
+							event_c->write.handler = event_h2c->conf->connection_write;
+							jhd_unshift_event(&event_c->write,&jhd_posted_events);
+							jhd_unshift_event(ev,&jhd_posted_events);
+							return;
+						}
 
-					rc = event_h2c->recv.buffer[0] <<16 ||  event_h2c->recv.buffer[1] <<8 || event_h2c->recv.buffer[2];
-					if(rc % 6 == 0){
-						ev->handler = event_h2c->recv.connection_frame_header_read = jhd_http2_frame_header_read;
-						event_c->write.handler = event_h2c->conf->connection_write;
-						jhd_unshift_event(&event_c->write,&jhd_posted_events);
-						jhd_unshift_event(ev,&jhd_posted_events);
-						return;
 					}
-
-				}}
+				}
 				log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_FIRST_FRAME);
 				jhd_free_with_size(event_h2c->send.head, sizeof(jhd_http2_frame) + 9 + 12);
 				event_c->close(event_c);
@@ -1073,8 +1074,6 @@ static void server_send_setting_frame(jhd_event_t *ev){
 		server_recv_first_setting_frame(ev);
 	}
 }
-
-
 
 void jhd_http2_read_preface(jhd_event_t *ev){
 		u_char preface[24];
@@ -1258,12 +1257,6 @@ void jhd_http2_server_connection_conf_init(jhd_http2_connection_conf *conf,jhd_h
 	}
 	conf->extend_param = service = malloc(sizeof(jhd_http2_servcer_service));
 	service->servcie = server_service;
-
-
-
-
-
-	///TEST
 
 }
 
