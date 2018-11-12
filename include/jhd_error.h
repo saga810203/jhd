@@ -38,6 +38,8 @@
 
 #define JHD_HTTP2_PROTOCOL_ERROR_INVALID_INITAIL_WINDOW				0x01900000
 
+#define JHD_HTTP2_PROTOCOL_ERROR_INVALID_FIRST_FRAME				0x01A00000
+
 
 /******************************************/
 #define JHD_HTTP2_INTERNAL_ERROR               						0x02000000

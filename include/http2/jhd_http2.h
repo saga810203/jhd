@@ -74,10 +74,6 @@ typedef struct {
 	uint32_t write_timeout;
 	uint32_t wait_mem_timeout;
 
-
-	uint32_t initial_window_size;
-	uint32_t max_header_table_size;
-	uint32_t max_streams;
     uint32_t recv_window_size_threshold; // if(connection->recv.window_size <  recv_window_size_threshold then send window_update
 
 	// http2 connection begin idle triger   can add idle timer(server) or send ping frame(client)
@@ -106,6 +102,8 @@ typedef struct {
     jhd_event_handler_pt connection_unsupported_error;
 
     jhd_event_handler_pt *frame_payload_handler_pts;
+    jhd_event_handler_pt connection_write;
+    jhd_event_handler_pt connection_frame_header_read_after_goaway;
 
 
     // in server is frame_header read  or in client handler queued idle stream
@@ -149,7 +147,6 @@ typedef struct{
         uint32_t sid;
         };
 
-
         jhd_event_handler_pt connection_frame_header_read;
         jhd_event_handler_pt connection_end_headers_handler;
 
@@ -181,7 +178,7 @@ typedef struct {
 
 log_assert_code(unsigned first_frame_header_read:1;)
 
-	jhd_connection_close_pt  close_pt;
+
 	uint32_t max_streams;
 	jhd_queue_t flow_control;
 	jhd_queue_t streams[32];
@@ -394,6 +391,7 @@ static jhd_inline void jhd_http2_single_frame_init(jhd_http2_frame *frame,uint32
 	frame->data_len = len;
 	frame->len = len - sizeof(jhd_http2_frame);
 	frame->free_func = jhd_http2_frame_free_by_single;
+	frame->next = NULL;
 }
 #ifdef JHD_LOG_ASSERT_ENABLE
 
@@ -531,7 +529,6 @@ void jhd_http2_frame_header_read(jhd_event_t *ev);
 
 void jhd_http2_headers_frame_parse_item(jhd_event_t *ev);
 
-void jhd_http2_send_setting_frame(jhd_event_t *ev);
 void jhd_http2_send_setting_frame_ack(jhd_event_t *ev);
 void jhd_http2_send_ping_frame(jhd_event_t *ev);
 

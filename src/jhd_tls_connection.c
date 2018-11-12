@@ -113,7 +113,8 @@ void jhd_connection_tls_empty_write(jhd_event_t * ev) {
 
 void jhd_connection_tls_close(jhd_connection_t *c){
 	log_assert_worker();
-	log_assert(c->ssl != NULL);
-	jhd_tls_ssl_context_free((jhd_tls_ssl_context**)&(c->ssl));
+	if(c->ssl){
+		jhd_tls_ssl_context_free((jhd_tls_ssl_context**)&(c->ssl));
+	}
 	jhd_connection_close(c);
 }

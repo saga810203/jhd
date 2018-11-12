@@ -74,7 +74,7 @@
 		ev->timedout = 0;
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
 		event_h2c->conf->connection_read_timeout(ev);
-		jhd_free_with(p,len);
+		jhd_free_with_size(p,len);
 		goto func_return;
 	}
 
@@ -174,7 +174,7 @@
 				if (event_h2c->recv.state < 8) {
 					p = event_h2c->recv.buffer + event_h2c->recv.state;
 					len = 8 - event_h2c->recv.state;
-					if (len > rc) {
+					if (len > ((size_t)rc)) {
 						len = (size_t) rc;
 					}
 					memcpy(p, jhd_calc_buffer, len);

@@ -447,7 +447,7 @@ int jhd_tls_ssl_is_server_side(jhd_tls_ssl_context * ssl);
 #endif
 
 
-int jhd_tls_ssl_context_alloc(jhd_tls_ssl_context **pssl,const jhd_tls_ssl_config *conf,jhd_event_t *ev);
+int jhd_tls_ssl_context_alloc(jhd_event_t *ev);
 
 #if !defined(JHD_TLS_INLINE)
 /**

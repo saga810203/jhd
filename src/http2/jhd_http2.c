@@ -520,7 +520,7 @@ static void jhd_http2_setting_frame_handler(jhd_event_t *ev){
 							}
 							event_h2c->max_streams = val;
 						}else if(val > event_h2c->max_streams){
-							 event_h2c->max_streams = val <= event_h2c->conf->max_streams?val:event_h2c->conf->max_streams;
+							 event_h2c->max_streams = val <= 255?val:255;
 						}
 					}
 				}else if(idx == 0x04){
@@ -959,71 +959,6 @@ void jhd_http2_connection_default_protocol_error_handler(jhd_event_t *ev){
 
 
 
-void jhd_http2_send_setting_frame(jhd_event_t *ev){
-	u_char *p;
-	jhd_http2_frame *frame;
-	event_c = ev->data;
-	event_h2c = event_c->data;
-	if(ev->timedout){
-		ev->timedout = 0;
-		log_err("timeout");
-		event_h2c->recv.state_param = NULL;
-		event_h2c->conf->connection_read_timeout(ev);
-		log_notice("<==%s with timedout",__FUNCTION__);
-		return;
-	}
-	frame = jhd_alloc(sizeof(jhd_http2_frame)+9+18);
-	if(frame == NULL){
-		jhd_wait_mem(ev,sizeof(jhd_http2_frame)+9+18);
-		jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
-		return;
-	}
-	jhd_http2_single_frame_init(frame,sizeof(jhd_http2_frame)+9+18);
-    frame->type = JHD_HTTP2_FRAME_TYPE_SETTINGS_FRAME;
-    p = frame->pos;
-    //000018  len  type 04
-    *((uint32_t*)p) = 0x04120000;
-    p[4] = 0;
-    p+=5;
-    *((uint32_t*)p) = 0;
-	p+=4;
-	//SETTINGS_ENABLE_PUSH (0x2)
-	*p= 0;
-	++p;
-	*p = 0x02;
-	++p;
-    *((uint32_t*)p) = 0;
-	p+=4;
-	//SETTINGS_MAX_CONCURRENT_STREAMS (0x3)
-	*p= 0;
-	++p;
-	*p = 0x03;
-	++p;
-	*p = (u_char)(event_h2c->conf->max_streams >> 24);
-	++p;
-	*p = (u_char) (event_h2c->conf->max_streams >> 16);
-	++p;
-	*p = (u_char) (event_h2c->conf->max_streams >> 8);
-	++p;
-	*p = (u_char) (event_h2c->conf->max_streams);
-
-	//SETTINGS_INITIAL_WINDOW_SIZE (0x4)
-	++p;
-	*p= 0;
-	++p;
-	*p = 0x03;
-	++p;
-	*p = (u_char)(event_h2c->conf->initial_window_size >> 24);
-	++p;
-	*p = (u_char) (event_h2c->conf->initial_window_size >> 16);
-	++p;
-	*p = (u_char) (event_h2c->conf->initial_window_size >> 8);
-	++p;
-	*p = (u_char) (event_h2c->conf->initial_window_size);
-	jhd_http2_send_queue_frame(event_c,event_h2c,frame);
-	ev->handler = event_h2c->recv.connection_frame_header_read;
-	jhd_unshift_event(ev,&jhd_posted_events);
-}
 void jhd_http2_send_setting_frame_ack(jhd_event_t *ev){
 	jhd_http2_frame *frame;
 	u_char *p;

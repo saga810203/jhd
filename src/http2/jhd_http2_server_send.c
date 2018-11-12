@@ -126,13 +126,13 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_force(jhd_event_t *ev){
 			}while(h2c->send.head != NULL);
 		}
 		if((h2c->processing ==0) && (c->read.timer.key == 0) && (jhd_queue_not_queued(&c->read.queue))){
-			jhd_unshift_event(&c->read);
+			jhd_unshift_event(&c->read,&jhd_posted_events);
 		}
 
 func_do_free:
 		frame = free_frame.next;
 		while(frame != NULL){
-			p = frame;
+			p = (u_char*)frame;
 			frame_free_func = frame->free_func;
 			frame = frame->next;
 			frame_free_func(p);
@@ -144,7 +144,7 @@ func_error:
 		frame = free_frame.next;
 
 		while(frame != NULL){
-			p = frame;
+			p = (u_char*)frame;
 			frame_free_func = frame->free_func;
 			frame = frame->next;
 			frame_free_func(p);
@@ -293,17 +293,17 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_by_timer(jhd_event_t *ev
 					jhd_event_del_timer(&c->read);
 				}
 				if(jhd_queue_not_queued(&c->read.queue)){
-					jhd_unshift_event(&c->read);
+					jhd_unshift_event(&c->read,&jhd_posted_events);
 				}
 			}else if((c->read.timer.key == 0) && (jhd_queue_not_queued(&c->read.queue))){
-				jhd_unshift_event(&c->read);
+				jhd_unshift_event(&c->read,&jhd_posted_events);
 			}
 		}
 
 func_do_free:
 		frame = free_frame.next;
 		while(frame != NULL){
-			p = frame;
+			p = (u_char*)frame;
 			frame_free_func = frame->free_func;
 			frame = frame->next;
 			frame_free_func(p);
@@ -315,7 +315,7 @@ func_error:
 		frame = free_frame.next;
 
 		while(frame != NULL){
-			p = frame;
+			p = (u_char*)frame;
 			frame_free_func = frame->free_func;
 			frame = frame->next;
 			frame_free_func(p);
@@ -462,15 +462,15 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_by_trigger(jhd_event_t *
 				jhd_event_del_timer(&c->read);
 			}
 			if(jhd_queue_not_queued(&c->read.queue)){
-				jhd_unshift_event(&c->read);
+				jhd_unshift_event(&c->read,&jhd_posted_events);
 			}
 		}else if((h2c->processing ==0) && (c->read.timer.key == 0) && (jhd_queue_not_queued(&c->read.queue))){
-			jhd_unshift_event(&c->read);
+			jhd_unshift_event(&c->read,&jhd_posted_events);
 		}
 func_do_free:
 		frame = free_frame.next;
 		while(frame != NULL){
-			p = frame;
+			p = (u_char*)frame;
 			frame_free_func = frame->free_func;
 			frame = frame->next;
 			frame_free_func(p);
@@ -482,7 +482,7 @@ func_error:
 		frame = free_frame.next;
 
 		while(frame != NULL){
-			p = frame;
+			p = (u_char*)frame;
 			frame_free_func = frame->free_func;
 			frame = frame->next;
 			frame_free_func(p);

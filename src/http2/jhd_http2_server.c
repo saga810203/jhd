@@ -133,7 +133,7 @@ static void server_end_headers_handler(jhd_event_t *ev){
 		}
 		return;
 	}
-	if(event_h2c->processing == event_h2c->conf->max_streams){
+	if(event_h2c->processing == 255){
 		log_assert(event_h2c->recv.state_param == NULL);
 		ev->handler = server_rst_stream;
 		server_rst_stream(ev);
@@ -172,6 +172,9 @@ static void server_connection_read_event_error_with_clean_force(jhd_event_t *ev)
 	u_char i;
 	u_char *p;
 	void (*frame_free_func)(void*);
+
+	c = ev->data;
+	h2c = c->data;
 	h2c->recv_error = 1;
 	if(h2c->processing){
 		for(i = 0, head = h2c->streams; i < 32 ; ++i,++head){
@@ -186,11 +189,7 @@ static void server_connection_read_event_error_with_clean_force(jhd_event_t *ev)
 	}
 	frame = h2c->send.head;
 	h2c->send.head = h2c->send.tail;
-
-	//FIXME
-	//free http2_connection;
-
-	h2c->close_pt(c);
+	c->close(c);
 	while(frame != NULL){
 		p = (u_char*)frame;
 		frame_free_func = frame->free_func;
@@ -290,9 +289,7 @@ static void server_connection_cleanup_with_timer(jhd_event_t *ev){
 	}
 	log_assert(h2c->processing ==0);
 	log_assert(h2c->send.head == NULL);
-	//FIXME
-	//free http2_connection;
-	h2c->close_pt(c);
+	c->close(c);
 }
 
 
@@ -377,9 +374,7 @@ static void server_connection_read_event_error_with_timer_clean(jhd_event_t *ev)
 	}
 	log_assert(h2c->processing ==0);
 	log_assert(h2c->send.head = NULL);
-	//FIXME
-	//free http2_connection;
-	h2c->close_pt(c);
+	c->close(c);
 }
 
 
@@ -433,9 +428,7 @@ static void server_connection_cleanup_with_write_tigger(jhd_event_t *ev){
 	}
 	log_assert(h2c->processing ==0);
 	log_assert(h2c->send.head == NULL);
-	//FIXME
-	//free http2_connection;
-	h2c->close_pt(c);
+	c->close(c);
 }
 
 
@@ -523,9 +516,7 @@ static void server_connection_read_event_error_with_writer_clean(jhd_event_t *ev
 	}
 	log_assert(h2c->processing ==0);
 	log_assert(h2c->send.head = NULL);
-	//FIXME
-	//free http2_connection;
-	h2c->close_pt(c);
+	c->close(c);
 }
 
 
@@ -564,21 +555,20 @@ static void server_headers_frame_header_check(jhd_event_t *ev){
 
 
 
-jhd_inline static jhd_bool server_send_all_over(jhd_connection_t *c,jhd_http2_connection *h2c){
+jhd_inline static jhd_bool server_send_all_over_with_ssl(jhd_connection_t *c,jhd_http2_connection *h2c){
 	if(h2c->processing){
 		return jhd_false;
 	}else if(h2c->send.head != NULL){
 		return jhd_false;
-	}else if(c->ssl != NULL &&  (((jhd_tls_ssl_context*)(c->ssl))->out_msglen)){
+	}else if((((jhd_tls_ssl_context*)(c->ssl))->out_msglen)){
 		return jhd_false;
 	}
 	return jhd_true;
-
 }
 
 
 
-void server_frame_header_read_after_goaway(jhd_event_t *ev){
+void server_frame_header_read_after_goaway_with_ssl(jhd_event_t *ev){
 	ssize_t ret;
 	ssize_t len;
 	u_char frame_type;
@@ -620,7 +610,7 @@ void server_frame_header_read_after_goaway(jhd_event_t *ev){
 			event_h2c->recv.state = 0;
 
 			if(frame_type == JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME  || frame_type == JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME){
-				jhd_http2_do_recv_skip(ev,event_h2c,event_h2c->recv.payload_len,server_frame_header_read_after_goaway);
+				jhd_http2_do_recv_skip(ev,event_h2c,event_h2c->recv.payload_len,server_frame_header_read_after_goaway_with_ssl);
 			}else{
 				ev->handler = event_h2c->conf->frame_payload_handler_pts[frame_type];
 				ev->handler(ev);
@@ -633,9 +623,8 @@ void server_frame_header_read_after_goaway(jhd_event_t *ev){
 		}
 	}else if(ret == JHD_AGAIN){
 		if(event_h2c->recv.state==0 ){
-			if(server_send_all_over(event_c,event_h2c)){
-				//FIXME free h2c
-				event_h2c->close_pt(event_c);
+			if(server_send_all_over_with_ssl(event_c,event_h2c)){
+				event_c->close(event_c);
 			}else if(event_h2c->send_error){
 				server_connection_read_event_error_with_clean_force(ev);
 			}else if(ev->timer.key){
@@ -694,8 +683,8 @@ void server_goaway_frame_handler(jhd_event_t *ev){
 			*((uint32_t*)p) = 0x0;
 			jhd_http2_send_queue_frame(event_c,event_h2c,frame);
 			event_h2c->goaway_sent = 1;
-			event_h2c->recv.connection_frame_header_read = server_frame_header_read_after_goaway;
-			server_frame_header_read_after_goaway(ev);
+			event_h2c->recv.connection_frame_header_read = event_h2c->conf->connection_frame_header_read_after_goaway;
+			event_h2c->recv.connection_frame_header_read(ev);
 		}else{
 			jhd_wait_mem(ev,sizeof(jhd_http2_frame)+17);
 			jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
@@ -737,8 +726,8 @@ static void server_send_goaway_in_idle_handler(jhd_event_t *ev){
 		jhd_http2_build_goaway_frame(frame,p,event_h2c->recv.last_stream_id,JHD_HTTP2_NO_ERROR)
 			jhd_http2_send_queue_frame(event_c,event_h2c,frame);
 			event_h2c->goaway_sent = 1;
-			event_h2c->recv.connection_frame_header_read = server_frame_header_read_after_goaway;
-			server_frame_header_read_after_goaway(ev);
+			event_h2c->recv.connection_frame_header_read = event_h2c->conf->connection_frame_header_read_after_goaway;
+			event_h2c->recv.connection_frame_header_read(ev);
 		}else{
 			jhd_wait_mem(ev,sizeof(jhd_http2_frame)+17);
 			jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
@@ -897,19 +886,19 @@ void jhd_http2_only_by_tls_server_connection_start(jhd_connection_t *c){
 
 static char *jhd_http_alpn_list[]={"h2","http/1.1",NULL};
 
-static void jhd_http2_server_connection_close_with_ssl(jhd_connection_t *c){
-	jhd_http2_connection *h2c;
 
-	h2c = c->data;
-	h2c->close_pt(c);
-	if(h2c->recv.hpack.capacity){
-		jhd_http2_hpack_free(&h2c->recv.hpack);
+static void jhd_http2_server_connection_close_with_ssl(jhd_connection_t *c){
+		jhd_http2_connection *h2c;
+		h2c = c->data;
+		jhd_connection_tls_close(c);
+		if(h2c->recv.hpack.capacity){
+			jhd_http2_hpack_free(&h2c->recv.hpack);
+		}
+		if(h2c->send.hpack.capacity){
+			jhd_http2_hpack_free(&h2c->send.hpack);
+		}
+		jhd_free_with_size(h2c,sizeof(jhd_http2_connection));
 	}
-	if(h2c->send.hpack.capacity){
-		jhd_http2_hpack_free(&h2c->send.hpack);
-	}
-	jhd_free_with_size(h2c,sizeof(jhd_http2_connection));
-}
 
 static int jhd_http2_server_connection_alloc_with_ssl(jhd_event_t *ev){
 	u_char i;
@@ -919,12 +908,11 @@ static int jhd_http2_server_connection_alloc_with_ssl(jhd_event_t *ev){
 	log_notice("==>%s",__FUNCTION__);
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	conf = event_c->listening
+	conf = &((jhd_http_listenning_ctx*)(event_c->listening->lis_ctx))->h2_conf;
 	if(event_h2c == NULL){
 		event_c->data = event_h2c = jhd_alloc(sizeof(jhd_http2_connection));
 		if(event_h2c == NULL){
 			jhd_wait_mem(ev,sizeof(jhd_http2_connection));
-			jhd_event_add_timer(ev,conf->wait_mem_timeout);
 			return JHD_AGAIN;
 		}else{
 			memset(event_h2c,0,sizeof(jhd_http2_connection));
@@ -953,10 +941,20 @@ static int jhd_http2_server_connection_alloc_with_ssl(jhd_event_t *ev){
 			}
 			event_h2c->recv.connection_frame_header_read = jhd_http2_frame_header_read;
 			event_h2c->recv.connection_end_headers_handler = server_end_headers_handler;
-
 			event_h2c->conf = conf;
-			event_h2c->close_pt = event_c->close;
 			event_c->close = jhd_http2_server_connection_close_with_ssl;
+		}
+	}
+	if(event_h2c->recv.hpack.capacity ==0){
+		if(JHD_OK !=jhd_http2_hpack_init(&event_h2c->recv.hpack,4096)){
+			jhd_wait_mem(ev,4096);
+			return JHD_AGAIN;
+		}
+	}
+	if(event_h2c->send.hpack.capacity ==0){
+		if(JHD_OK !=jhd_http2_hpack_init(&event_h2c->send.hpack,4096)){
+			jhd_wait_mem(ev,4096);
+			return JHD_AGAIN;
 		}
 	}
 	return JHD_OK;
@@ -988,6 +986,95 @@ void jhd_http11_init_with_alpn(jhd_event_t *ev){
 
 }
 
+static void server_recv_first_setting_frame(jhd_event_t *ev){
+	ssize_t rc;
+	event_c = ev->data;
+	event_h2c = event_c->data;
+	if (ev->timedout) {
+		ev->timedout = 0;
+		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
+		jhd_free_with_size(event_h2c->send.head, sizeof(jhd_http2_frame) + 9 + 12);
+		event_c->close(event_c);
+	} else {
+		rc = event_c->recv(event_c,event_h2c->recv.buffer+ event_h2c->recv.state,8 - event_h2c->recv.state);
+		if(rc >0){
+			event_h2c->recv.state +=rc;
+			if(event_h2c->recv.state > 4){
+				if(event_h2c->recv.buffer[3] == JHD_HTTP2_FRAME_TYPE_SETTINGS_FRAME){
+					if(event_h2c->recv.buffer[4] == 0x0){
+
+					rc = event_h2c->recv.buffer[0] <<16 ||  event_h2c->recv.buffer[1] <<8 || event_h2c->recv.buffer[2];
+					if(rc % 6 == 0){
+						ev->handler = event_h2c->recv.connection_frame_header_read = jhd_http2_frame_header_read;
+						event_c->write.handler = event_h2c->conf->connection_write;
+						jhd_unshift_event(&event_c->write,&jhd_posted_events);
+						jhd_unshift_event(ev,&jhd_posted_events);
+						return;
+					}
+
+				}}
+				log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_FIRST_FRAME);
+				jhd_free_with_size(event_h2c->send.head, sizeof(jhd_http2_frame) + 9 + 12);
+				event_c->close(event_c);
+			}else{
+				jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
+			}
+		}else if(rc == JHD_AGAIN){
+			jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
+		}else{
+			log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_IO);
+			jhd_free_with_size(event_h2c->send.head, sizeof(jhd_http2_frame) + 9 + 12);
+			event_c->close(event_c);
+		}
+	}
+}
+
+static void server_send_setting_frame(jhd_event_t *ev){
+	u_char *p;
+	jhd_http2_frame *frame;
+	event_c = ev->data;
+	event_h2c = event_c->data;
+	if(ev->timedout){
+		ev->timedout = 0;
+		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
+		event_c->close(event_c);
+	}else{
+		frame = jhd_alloc(sizeof(jhd_http2_frame)+9+12);
+		if(frame == NULL){
+			jhd_wait_mem(ev,sizeof(jhd_http2_frame)+9+12);
+			jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
+			return;
+		}
+		jhd_http2_single_frame_init(frame,sizeof(jhd_http2_frame)+9+12);
+		frame->type = JHD_HTTP2_FRAME_TYPE_SETTINGS_FRAME;
+		p = frame->pos;
+		//000018  len  type 04
+		*((uint32_t*)p) = 0x040C0000;
+		p[4] = 0;
+		p+=5;
+		*((uint32_t*)p) = 0;
+		p+=4;
+		//SETTINGS_MAX_CONCURRENT_STREAMS (0x3)
+		*p= 0;
+		++p;
+		*p = 0x03;
+		++p;
+		*((uint32_t*)p) = 0x0FF00000;
+		p+=4;
+		//SETTINGS_INITIAL_WINDOW_SIZE (0x4)
+		*p= 0;
+		++p;
+		*p = 0x04;
+		++p;
+		*((uint32_t*)p) = 0x00400000; //16384
+		event_h2c->send.head = frame;
+		event_h2c->send.tail = frame;
+		ev->handler = server_recv_first_setting_frame;
+		server_recv_first_setting_frame(ev);
+	}
+}
+
+
 
 void jhd_http2_read_preface(jhd_event_t *ev){
 		u_char preface[24];
@@ -1017,8 +1104,8 @@ void jhd_http2_read_preface(jhd_event_t *ev){
 			if(event_h2c->recv.state == 24){
 				log_info("read http2 preface success");
 				event_h2c->recv.state = 0;
-				ev->handler = event_h2c->recv.connection_frame_header_read;
-				ev->handler(ev);
+				ev->handler =server_send_setting_frame;
+				server_send_setting_frame(ev);
 			}else{
 				jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
 			}
@@ -1031,19 +1118,17 @@ void jhd_http2_read_preface(jhd_event_t *ev){
 }
 
 void jhd_http2_init_with_alpn(jhd_event_t *ev){
-
-	jhd_http2_connection_conf *conf;
 	log_assert_worker();
 	event_c = ev->data;
-
 	if(ev->timedout){
 		ev->timedout = 0;
 		event_c->close(event_c);
 	}else{
-		conf = &((jhd_http_listenning_ctx*)(event_c->listening->lis_ctx))->h2_conf;
-		if(JHD_OK ==jhd_http2_server_connection_alloc_with_ssl(&event_c->data,ev,conf)){
+		if(JHD_OK ==jhd_http2_server_connection_alloc_with_ssl(ev)){
 			ev->handler = jhd_http2_read_preface;
 			jhd_http2_read_preface(ev);
+		}else{
+			jhd_event_add_timer(ev,((jhd_http_listenning_ctx*)(event_c->listening->lis_ctx))->h2_conf.wait_mem_timeout);
 		}
 	}
 }
@@ -1054,32 +1139,22 @@ void jhd_http2_alpn_handshake(jhd_event_t *ev){
 	int ret;
 	log_assert_worker();
 	c = ev->data;
-
 	if(ev->timedout){
 		ev->timedout = 0;
 		c->close(c);
-		return;
-	}
-
-	jhd_event_with_timeout(ev){
-		c->close(c);
-		return;
-	}
-
-	ret = jhd_connection_tls_handshark(c);
-	if(ret == JHD_OK){
-		if(((jhd_tls_ssl_context*)(c->ssl))->alpn_chosen ==jhd_http_alpn_list[0]){
-			ev->handler = jhd_http2_init_with_alpn;
-			jhd_http2_init_with_alpn(ev);
-		}else{
-			ev->handler = jhd_http11_init_with_alpn;
-			jhd_http11_init_with_alpn(ev);
+	}else{
+		ret = jhd_connection_tls_handshark(c);
+		if(ret == JHD_OK){
+			if(((jhd_tls_ssl_context*)(c->ssl))->alpn_chosen ==jhd_http_alpn_list[0]){
+				ev->handler = jhd_http2_init_with_alpn;
+				jhd_http2_init_with_alpn(ev);
+			}else{
+				ev->handler = jhd_http11_init_with_alpn;
+				jhd_http11_init_with_alpn(ev);
+			}
+		}else if(ret != JHD_AGAIN){
+			c->close(c);
 		}
-	}else if(ret != JHD_AGAIN){
-		if(c->write.queue.next){
-			jhd_queue_remove(&c->write.queue);
-		}
-		c->close(c);
 	}
 }
 
@@ -1087,18 +1162,16 @@ void jhd_http2_alpn_recv_start(jhd_event_t *ev){
 	int ret;
 	log_assert_worker();
 	event_c = ev->data;
-
 	if(ev->timedout){
 		ev->timedout = 0;
 		event_c->close(event_c);
 		return;
 	}
 	if(event_c->ssl == NULL){
-		if(JHD_OK != jhd_tls_ssl_context_alloc((jhd_tls_ssl_context**)(&event_c->ssl),(jhd_tls_ssl_config*)(event_c->listening->ssl),ev)){
+		if(JHD_OK != jhd_tls_ssl_context_alloc(ev)){
 			jhd_event_add_timer(ev,event_c->listening->wait_mem_timeout);
 			return;
 		}
-		event_c->close = jhd_connection_tls_close;
 	}
 	ret = jhd_connection_tls_handshark(event_c);
 	if(ret == JHD_AGAIN){
@@ -1119,12 +1192,12 @@ void jhd_http2_alpn_recv_start(jhd_event_t *ev){
 void jhd_http2_with_alpn_server_connection_start(jhd_connection_t *c){
 	log_assert_worker();
 	log_assert(((jhd_tls_ssl_config*) c->listening->ssl)->server_side == JHD_TLS_SSL_IS_SERVER);
-
 	c->write.handler = jhd_connection_tls_empty_write;
 	c->read.handler = jhd_http2_alpn_recv_start;
 	c->read.queue.next = NULL;
 	c->write.queue.next = NULL;
     c->ssl = NULL;
+    c->close = jhd_connection_tls_close;
 	jhd_post_event(&c->read,&jhd_posted_events);
 }
 
@@ -1172,12 +1245,16 @@ void jhd_http2_server_connection_conf_init(jhd_http2_connection_conf *conf,jhd_h
 	conf->frame_payload_handler_pts =server_frame_handlers;
 	conf->connection_idle = server_idle_handler;
 	conf->connection_after_setting_ack = jhd_http2_frame_header_read;
+	conf->connection_frame_header_read_after_goaway = server_frame_header_read_after_goaway_with_ssl;
 	if(type == JHD_HTTP2_ERROR_CLOSE_BY_FORCE){
 		conf->connection_read_error = server_connection_read_event_error_with_clean_force;
+		conf->connection_write = jhd_http2_server_send_event_handler_with_ssl_clean_force;
 	}else if(type == JHD_HTTP2_ERROR_CLOSE_BY_TIMER){
 		conf->connection_read_error = server_connection_read_event_error_with_timer_clean;
+		conf->connection_write = jhd_http2_server_send_event_handler_with_ssl_clean_by_timer;
 	}else{
 		conf->connection_read_error = server_connection_read_event_error_with_writer_clean;
+		conf->connection_write = jhd_http2_server_send_event_handler_with_ssl_clean_by_trigger;
 	}
 	conf->extend_param = service = malloc(sizeof(jhd_http2_servcer_service));
 	service->servcie = server_service;

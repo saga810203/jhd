@@ -1034,16 +1034,20 @@ void jhd_tls_ssl_init(jhd_tls_ssl_context *ssl) {
 
 //MAX IN_HDR = 5+16 +16384 +48
 
-int jhd_tls_ssl_context_alloc(jhd_tls_ssl_context **pssl,const jhd_tls_ssl_config *conf,jhd_event_t *ev){
-	jhd_tls_ssl_context *ssl =*pssl;
+int jhd_tls_ssl_context_alloc(jhd_event_t *ev){
+	jhd_tls_ssl_context *ssl;
+	jhd_connection_t *c;
+	jhd_tls_ssl_config *conf;
 	log_assert_worker();
+	c = ev->data;
+	ssl  = c->ssl;
+	conf = c->listening->ssl;
 	if(ssl == NULL){
-		ssl = jhd_tls_alloc(sizeof(jhd_tls_ssl_context));
+		c->ssl = ssl = jhd_tls_alloc(sizeof(jhd_tls_ssl_context));
 		if(ssl  == NULL){
 			jhd_tls_wait_mem(ev,sizeof(jhd_tls_ssl_context));
 			return JHD_AGAIN;
 		}
-		*pssl = ssl;
 		jhd_tls_platform_zeroize(ssl,sizeof(jhd_tls_ssl_context));
 		ssl->conf = conf;
 	}
@@ -1075,7 +1079,6 @@ int jhd_tls_ssl_context_alloc(jhd_tls_ssl_context **pssl,const jhd_tls_ssl_confi
 	jhd_tls_sha256_starts_ret_with_256(&ssl->handshake->fin_sha256);
 	jhd_tls_sha512_starts_ret_with_384(&ssl->handshake->fin_sha512);
 	ssl->handshake->update_checksum = ssl_update_checksum_start;
-
 	return JHD_OK;
 }
 
