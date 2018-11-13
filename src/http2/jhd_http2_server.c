@@ -32,7 +32,7 @@ static void server_rst_stream(jhd_event_t *ev){
 		ev->timedout = 0;
 		log_err("timeout");
 		jhd_queue_move(&h,&event_h2c->recv.headers);
-		event_h2c->conf->connection_read_timeout(ev);
+		event_h2c->conf->connection_read_error(ev);
 		goto func_free;
 	}
 	frame = jhd_alloc(sizeof(jhd_http2_frame)+13);
@@ -124,7 +124,7 @@ static void server_end_headers_handler(jhd_event_t *ev){
 		ev->timedout = 0;
 		log_err("timeout");
 		jhd_queue_move(&h,&event_h2c->recv.headers);
-		event_h2c->conf->connection_read_timeout(ev);
+		event_h2c->conf->connection_read_error(ev);
 		for(q = h.next; q!= &h; q= q->next){
 				jhd_queue_only_remove(q);
 				header = jhd_queue_data(q,jhd_http_header,queue);
@@ -581,7 +581,7 @@ void server_frame_header_read_after_goaway_with_ssl(jhd_event_t *ev){
 		ev->timedout = 0;
 		log_http2_err(JHD_HTTP2_ENHANCE_YOUR_CALM_READ_FRAME_HEADER);
 		log_err("timeout");
-		event_h2c->conf->connection_read_timeout(ev);
+		event_h2c->conf->connection_read_error(ev);
 		log_notice("<==%s with timedout",__FUNCTION__);
 		return;
 	}
@@ -594,7 +594,7 @@ void server_frame_header_read_after_goaway_with_ssl(jhd_event_t *ev){
 			if(event_h2c->recv.payload_len> 16384){
 				log_http2_err(JHD_HTTP2_FRAME_MAX_SIZE_ERROR);
 				log_err("invalid frame payload length[%u]",event_h2c->recv.payload_len);
-				event_h2c->conf->connection_protocol_error(ev);
+				event_h2c->conf->connection_read_error(ev);
 				log_notice("<==%s with timedout",__FUNCTION__);
 				return;
 			}
@@ -602,7 +602,7 @@ void server_frame_header_read_after_goaway_with_ssl(jhd_event_t *ev){
 			if(frame_type > JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME){
 				log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_FRAME_TYPE);
 				log_err("invalid frame type[0X%02X]",frame_type);
-				event_h2c->conf->connection_protocol_error(ev);
+				event_h2c->conf->connection_read_error(ev);
 				log_notice("<==%s with timedout",__FUNCTION__);
 				return;
 			}
@@ -666,7 +666,7 @@ void server_goaway_frame_handler(jhd_event_t *ev){
 	if (ev->timedout) {
 		ev->timedout = 0;
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
-		event_h2c->conf->connection_mem_time_out(ev);
+		event_h2c->conf->connection_read_error(ev);
 	}else if(event_h2c->goaway_sent==0){
 		frame = jhd_alloc(sizeof(jhd_http2_frame)+ 17);
 		if(frame != ((void *)0)){
@@ -703,7 +703,7 @@ void server_goaway_frame_header_check(jhd_event_t *ev){
 	event_h2c->goaway_recved = 1;
 	if(event_h2c->recv.payload_len <8){
 		log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_GOAWAY_PAYLOAD);
-		event_h2c->conf->connection_protocol_error(ev);
+		event_h2c->conf->connection_read_error(ev);
 	}else{
 		event_h2c->recv.state_param = server_goaway_frame_handler;
 		jhd_http2_goaway_payload_recv(ev);
@@ -721,7 +721,7 @@ static void server_send_goaway_in_idle_handler(jhd_event_t *ev){
 	if (ev->timedout) {
 		ev->timedout = 0;
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
-		event_h2c->conf->connection_mem_time_out(ev);
+		event_h2c->conf->connection_read_error(ev);
 	} else {
 		jhd_http2_build_goaway_frame(frame,p,event_h2c->recv.last_stream_id,JHD_HTTP2_NO_ERROR)
 			jhd_http2_send_queue_frame(event_c,event_h2c,frame);
@@ -1243,7 +1243,6 @@ void jhd_http2_server_connection_conf_init(jhd_http2_connection_conf *conf,jhd_h
 	conf->recv_window_size_threshold = 50*1024*1024;
 	conf->frame_payload_handler_pts =server_frame_handlers;
 	conf->connection_idle = server_idle_handler;
-	conf->connection_after_setting_ack = jhd_http2_frame_header_read;
 	conf->connection_frame_header_read_after_goaway = server_frame_header_read_after_goaway_with_ssl;
 	if(type == JHD_HTTP2_ERROR_CLOSE_BY_FORCE){
 		conf->connection_read_error = server_connection_read_event_error_with_clean_force;

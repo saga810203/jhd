@@ -32,7 +32,7 @@
  	if(ev->timedout){
  		ev->timedout = 0;
  		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
- 		event_h2c->conf->connection_read_timeout(ev);
+ 		event_h2c->conf->connection_read_error(ev);
  		log_notice("<==%s",__FUNCTION__);
  		return;
  	}
@@ -113,7 +113,7 @@
  		ev->timedout = 0;
  		log_err("timeout");
  		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
- 		event_h2c->conf->connection_read_timeout(ev);
+ 		event_h2c->conf->connection_read_error(ev);
  	}else{
 		len = event_h2c->recv.payload_len - event_h2c->recv.state;
 		log_assert(len >0 && len < sizeof(event_h2c->recv.buffer));
@@ -149,7 +149,7 @@
 	if (ev->timedout) {
 		ev->timedout = 0;
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
-		event_h2c->conf->connection_read_timeout(ev);
+		event_h2c->conf->connection_read_error(ev);
 	} else {
 		len = event_h2c->recv.payload_len - event_h2c->recv.state;
 		log_assert(len > 0);
