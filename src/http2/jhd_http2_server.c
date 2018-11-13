@@ -658,11 +658,9 @@ void server_frame_header_read_after_goaway_with_ssl(jhd_event_t *ev){
 void server_goaway_frame_handler(jhd_event_t *ev){
 	jhd_http2_frame *frame;
 	u_char *p;
-
 	log_assert_worker();
 	event_c = ev->data;
 	event_h2c = event_c->data;
-
 	if (ev->timedout) {
 		ev->timedout = 0;
 		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
@@ -689,6 +687,9 @@ void server_goaway_frame_handler(jhd_event_t *ev){
 			jhd_wait_mem(ev,sizeof(jhd_http2_frame)+17);
 			jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
 		}
+	}else{
+		ev->handler= event_h2c->recv.connection_frame_header_read;
+		ev->handler(ev);
 	}
 }
 
