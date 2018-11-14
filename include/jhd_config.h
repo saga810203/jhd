@@ -146,7 +146,7 @@ static jhd_inline u_char * jhd_strlchr(u_char *p, u_char *last, u_char c)
 }
 
 
-
+void jhd_config_check();
 
 
 #endif

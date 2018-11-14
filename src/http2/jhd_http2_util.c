@@ -16,10 +16,9 @@
 }
 
  void jhd_http2_frame_free_by_single(void *data){
-	 jhd_http2_frame *frame = data;
 	 log_assert(data != NULL);
-	 log_assert(frame->free_func == jhd_http2_frame_free_by_single);
-	 jhd_free_with_size(frame,frame->data_len);
+	 log_assert(((jhd_http2_frame*)data)->free_func == jhd_http2_frame_free_by_single);
+	 jhd_free_with_size(data,((jhd_http2_frame*)data)->data_len);
  }
  void jhd_http2_recv_skip(jhd_event_t *ev){
  	ssize_t rc;
@@ -122,6 +121,7 @@
 			if(((size_t)rc) == len){
 				event_h2c->recv.state = 0;
 				ev->handler = event_h2c->recv.state_param;
+				event_h2c->recv.state = NULL;
 				ev->handler(ev);
 			}else{
 				event_h2c->recv.state += rc;

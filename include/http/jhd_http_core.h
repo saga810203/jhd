@@ -24,7 +24,6 @@ typedef enum {
 
 
 typedef struct {
-log_assert_code(void *tag;)
 	unsigned type:4;
 	union{
 		unsigned ack:1;

@@ -36,12 +36,6 @@
 #define JHD_HTTP2_FRAME_TYPE_WINDOW_UPDATE_FRAME  0x8
 #define JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME   0x9
 
-#define JHD_HTTP2_STREAM_STATE_CLOSE_BOTH         0x03
-#define JHD_HTTP2_STREAM_STATE_CLOSE_LOCAL        0x01
-#define JHD_HTTP2_STREAM_STATE_CLOSE_REMOTE       0x02
-#define JHD_HTTP2_STREAM_STATE_OPEN               0x00
-
-
 
 
 #define JHD_HTTP2_RECV_PART_BUFFER_LEN  16
@@ -136,8 +130,6 @@ typedef struct{
 
         uint16_t max_fragmentation;
 }jhd_http2_conneciton_send_part;
-
-
 typedef struct {
 	jhd_http2_connection_conf *conf;
 	jhd_http2_conneciton_recv_part recv;
@@ -182,7 +174,8 @@ struct jhd_http2_stream_s{
 	jhd_http2_stream_listener *listener;
 	void *lis_ctx;
 	uint32_t id;
-	u_char state;
+	unsigned in_close:1;
+	unsigned out_close:1;
 	int recv_window_size;
 	int send_window_size;
 	jhd_queue_t queue;
@@ -359,7 +352,7 @@ static jhd_inline void jhd_http2_do_recv_buffer(jhd_event_t *ev,jhd_http2_connec
 }
 
 static jhd_inline void jhd_http2_single_frame_init(jhd_http2_frame *frame,uint32_t len){
-	frame->pos=frame->data = (u_char*)(((u_char*)frame)+sizeof(jhd_http2_frame));
+	frame->pos=(u_char*)(((u_char*)frame)+sizeof(jhd_http2_frame));
 	frame->data_len = len;
 	frame->len = len - sizeof(jhd_http2_frame);
 	frame->free_func = jhd_http2_frame_free_by_single;
@@ -372,6 +365,9 @@ static jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void *tag,voi
 	frame->tag = tag;
 	frame->free_func = free_handler;
 }
+
+
+
 
 #else
 static jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void (*free_handler)(void *)){
@@ -527,6 +523,30 @@ void jhd_http2_send_ping_frame(jhd_event_t *ev);
 
 
 
+
+
+#define jhd_http2_do_reset_stream(EV,EC,H2C,P,FRAME,ENO) \
+	log_assert((H2C)->recv.stream->id == (H2C)->recv.sid); \
+	FRAME = (jhd_http2_frame*)((H2C)->recv.stream);\
+	((H2C)->recv.stream)->listener->reset(EV);\
+	jhd_queue_only_remove(&((H2C)->recv.stream->queue));\
+	jhd_queue_only_remove(&((H2C)->recv.stream->flow_control));\
+	--(H2C)->processing;\
+	(H2C)->recv.stream = &jhd_http2_invalid_stream;\
+	P = FRAME->pos = (u_char*)(((u_char*)FRAME)+sizeof(jhd_http2_frame));\
+	FRAME->data_len = sizeof(jhd_http2_stream);\
+	FRAME->len = 13;\
+	FRAME->free_func = jhd_http2_frame_free_by_single;\
+	FRAME->next = NULL;\
+	*((uint32_t*)P) =0x03040000;\
+	P[4] = 0;\
+	P[5] = (u_char)(((H2C)->recv.sid) >> 24);\
+	P[6] = (u_char)(((H2C)->recv.sid) >> 16);\
+	P[7] = (u_char)(((H2C)->recv.sid) >> 8);\
+	P[8] = (u_char)(((H2C)->recv.sid));\
+	P += 9;\
+	*((uint32_t*)P) = ENO;\
+	jhd_http2_send_queue_frame(EC,H2C,FRAME)
 
 
 
