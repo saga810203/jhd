@@ -95,8 +95,7 @@ jhd_inline static  void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 
 	if (ev->timer.key) {
 		diff = (int64_t) (key - ev->timer.key);
-
-		if (diff > 999 || diff > (-999)) {
+		if (diff > 999 || diff < (-999)) {
 			jhd_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
 		} else {
 			return;

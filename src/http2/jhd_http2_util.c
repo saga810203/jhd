@@ -121,7 +121,7 @@
 			if(((size_t)rc) == len){
 				event_h2c->recv.state = 0;
 				ev->handler = event_h2c->recv.state_param;
-				event_h2c->recv.state = NULL;
+				event_h2c->recv.state_param = NULL;
 				ev->handler(ev);
 			}else{
 				event_h2c->recv.state += rc;

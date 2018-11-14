@@ -170,7 +170,7 @@ loop_begin:
 	rc = event_c->recv(event_c, event_h2c->recv.buffer + event_h2c->recv.state, 9 - event_h2c->recv.state);
 	if (rc > 0) {
 		event_h2c->recv.state +=rc;
-		if(event_h2c->recv.state  <9){
+		if(event_h2c->recv.state  < 9){
 			jhd_event_add_timer(ev, event_h2c->conf->read_timeout);
 			return;
 		}

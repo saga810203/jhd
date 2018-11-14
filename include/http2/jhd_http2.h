@@ -358,41 +358,19 @@ static jhd_inline void jhd_http2_single_frame_init(jhd_http2_frame *frame,uint32
 	frame->free_func = jhd_http2_frame_free_by_single;
 	frame->next = NULL;
 }
-#ifdef JHD_LOG_ASSERT_ENABLE
 
-static jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void *tag,void (*free_handler)(void *)){
-	frame->data = NULL;
-	frame->tag = tag;
-	frame->free_func = free_handler;
-}
-
-
-
-
-#else
-static jhd_inline void jhd_http2_frame_init(jhd_http2_frame *frame,void (*free_handler)(void *)){
-	frame->data = NULL;
-	frame->free_func = free_handler;
-}
-
-#endif
 
 #else
 
 #define void jhd_http2_single_frame_init(F,L) \
-	(F)->pos = (F)->data = (u_char*)(((u_char*)(F))+sizeof(jhd_http2_frame));\
+	(F)->pos = (u_char*)(((u_char*)(F))+sizeof(jhd_http2_frame));\
 	(F)->data_len =  L;\
 	(F)->len = L - sizeof(jhd_http2_frame);\
-	(F)->free_func = jhd_http2_frame_free_by_single
+	(F)->free_func = jhd_http2_frame_free_by_single;\
+	(F)->next = NULL
 }
 
-#ifdef JHD_LOG_ASSERT_ENABLE
-#define jhd_http2_frame_init(F,T,H) (F)->data = NULL;(F)->tag = T;(F)->free_func = H
 
-#else
-#define jhd_http2_frame_init(F,H) (F)->data = NULL;(F)->free_func = H
-
-#endif
 
 
 #define jhd_http2_do_recv_skip(E,H2C,SIZE,HAND) (H2C)->recv.state = SIZE;(H2C)->recv.state_param = HAND;(E)->handler = jhd_http2_recv_skip;jhd_unshift_event(E,&jhd_posted_events)
@@ -482,7 +460,7 @@ static jhd_inline jhd_http2_stream * jhd_http2_stream_get(jhd_http2_connection *
 	for(q = head->next; q != head ; q = q->next){
 		stream = jhd_queue_data(q,jhd_http2_stream,queue);
 		if(stream->id == h2c->recv.sid){
-			log_assert(stream->state  != JHD_HTTP2_STREAM_STATE_CLOSE_BOTH);
+			log_assert(stream->in_close ==0 || stream->out_close ==0);
 			return stream;
 		}
 	}
@@ -503,23 +481,6 @@ void jhd_http2_send_ping_frame(jhd_event_t *ev);
 
 
 
-
-
-
-#define  jhd_http2_build_goaway_frame(F_V,P_V,SID,EC) \
-	F_V = jhd_alloc(sizeof(jhd_http2_frame)+ 17);\
-	if(F_V != NULL){\
-		jhd_http2_single_frame_init(F_V,sizeof(jhd_http2_frame)+17);\
-		F_V->type = JHD_HTTP2_FRAME_TYPE_GOAWAY_FRAME;\
-		P_V = F_V->pos;\
-		*((uint32_t*)P_V) = 0x07080000;\
-		P_V[4] = 0;\
-		P_V += 5;\
-		*((uint32_t*)P_V) = 0x0;\
-		P_V += 4;\
-		jhd_http2_set_stream_id(P_V,SID);\
-		P_V += 4;\
-		*((uint32_t*)P_V) = EC;
 
 
 
