@@ -213,6 +213,9 @@ loop_begin:
 			if((len == 0) && jhd_queue_has_item(&event_h2c->recv.headers)){
 				event_h2c->recv.state = 0;
 				event_h2c->recv.state_param = NULL;
+				event_h2c->recv.method_header = NULL;
+				event_h2c->recv.uri_header = NULL;
+				event_h2c->recv.host_header = NULL;
 				ev->handler = event_h2c->recv.connection_end_headers_handler;
 				jhd_unshift_event(ev,&jhd_posted_events);
 				if(header!= NULL){
@@ -815,6 +818,9 @@ next_frame:
 				goto func_error;
 			}
 			event_h2c->recv.state_param = NULL;
+			event_h2c->recv.method_header = NULL;
+			event_h2c->recv.uri_header = NULL;
+			event_h2c->recv.host_header = NULL;
 			ev->handler= event_h2c->recv.connection_end_headers_handler;
 			if(header != NULL){
 				log_assert(header->name == NULL);

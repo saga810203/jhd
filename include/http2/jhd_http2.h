@@ -91,8 +91,10 @@ typedef struct jhd_http2_stream_s jhd_http2_stream;
 typedef struct{
 		uint32_t state;
 		union{
-		u_char   buffer[JHD_HTTP2_RECV_PART_BUFFER_LEN];
-		u_char * alloc_buffer[2];
+			u_char   buffer[JHD_HTTP2_RECV_PART_BUFFER_LEN];
+			u_char * alloc_buffer[2];
+			jhd_http_header *method_header;
+			jhd_http_header *status_header;
 		};
 		u_char frame_type;
 		u_char frame_flag;
@@ -108,16 +110,17 @@ typedef struct{
 
 
         jhd_queue_t headers;
-        u_char *pos;
         union{
-        u_char *end;
-        uint32_t sid;
+			u_char *pos;
+			jhd_http_header *host_header;
         };
-
+        union{
+			u_char *end;
+			uint32_t sid;
+			jhd_http_header *uri_header;
+        };
         jhd_event_handler_pt connection_frame_header_read;
         jhd_event_handler_pt connection_end_headers_handler;
-
-
         void *state_param;
 }jhd_http2_conneciton_recv_part;
 typedef struct{
@@ -178,6 +181,7 @@ struct jhd_http2_stream_s{
 	unsigned out_close:1;
 	int recv_window_size;
 	int send_window_size;
+	jhd_http2_connection *connection;
 	jhd_queue_t queue;
 	jhd_queue_t flow_control;
 };

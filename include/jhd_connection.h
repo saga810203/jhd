@@ -45,6 +45,7 @@ struct jhd_listening_s {
 	jhd_queue_t queue;
 	void *lis_ctx;
 	void (*lis_ctx_close)(void *lis_ctx);
+	void *lis_handler;
 	uint32_t accept_timeout;
 	uint32_t read_timeout;
 	uint32_t write_timeout;
@@ -61,7 +62,10 @@ struct jhd_connection_s {
 	jhd_connection_recv_pt recv;
 	jhd_connection_send_pt send;
 	jhd_connection_close_pt close;
+	union{
 	jhd_listening_t *listening;
+	void *client_config;
+	};
 	jhd_sockaddr_t sockaddr;
 	socklen_t socklen;
 	void *ssl;

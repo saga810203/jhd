@@ -12,9 +12,7 @@
 
 
 
-typedef struct{
-	jhd_event_handler_pt servcie;
-}jhd_http2_servcer_service;
+
 
 
 

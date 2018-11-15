@@ -89,14 +89,20 @@ struct jhd_http_header_s{
 };
 
 struct jhd_http_request_s{
+	jhd_queue_t queue;
 	jhd_queue_t  headers;
 	u_char *uri;
+	uint16_t uri_len;
+	u_char *host;
+	uint16_t host_len;
 	jhd_http_method method;
 
+	void *data;
 
 
-	void *extend_data;
-
+	unsigned is_http2:1;
+	unsigned uri_alloced:1;
+	unsigned host_alloced:1;
 };
 
 struct jhd_http_request_info_s{
@@ -108,16 +114,27 @@ struct jhd_http_request_info_s{
 
 
 
+typedef struct{
+	jhd_queue_t queue; //in all (all in config)
+	u_char *listening_addr_text;
+	u_char listening_addr_text_len;
 
 
 
+    jhd_queue_t services;
+    u_char *host;
+    uint16_t host_len;
+}jhd_http_server;
 
 
 
-
-
-
-
+typedef struct{
+	jhd_queue_t queue;
+	void *service_ctx;
+	jhd_bool (*match)(void *uri_pattern,u_char * uri,uint16_t uri_len);
+	void (*server_ctx_free_func)(void *);
+	int (*service_func)(void *service_ctx,jhd_http_request *request); // return  0 aync handler other handler 400 badrequest
+}jhd_http_service;
 
 
 
@@ -178,5 +195,8 @@ void jhd_http11_init(jhd_event_t *ev);
 
 
 extern jhd_http_request_info  jhd_http11_info;
+
+
+extern jhd_queue_t  jhd_http_serveres;
 
 #endif /* HTTP_JHD_HTTP_CORE_H_ */

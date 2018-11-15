@@ -52,7 +52,7 @@ static void server_rst_stream(jhd_event_t *ev){
 	sid = event_h2c->recv.last_stream_id ;
 	jhd_http2_set_stream_id(p,sid);
 	p+=4;
-	*((uint32_t*)p) = JHD_HTTP2_REFUSED_STREAM_MAX_STREAM;
+	*((uint32_t*)p) = event_h2c->recv.state;
 	jhd_http2_send_queue_frame(event_c,event_h2c,frame);
 	event_h2c->recv.state = 0;
 	ev->handler = event_h2c->recv.connection_frame_header_read;
@@ -110,53 +110,171 @@ static void server_service(jhd_event_t *ev){
 	jhd_unshift_event(ev,&jhd_posted_events);
 }
 
+static void server_create_request(jhd_event_t *ev){
+	jhd_queue_t h,*head,*q;
+	jhd_http_header *header;
+
+	event_c = ev->data;
+	event_h2c = event_c->data;
+
+
+	event_h2c->recv.state_param =server_service= event_h2c->conf->extend_param;
+
+	if(ev->timedout){
+		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
+		jhd_queue_move(&h, &event_h2c->recv.headers);
+
+		if (event_h2c->recv.uri_header) {
+			jhd_queue_insert(&h, &event_h2c->recv.uri_header->queue);
+			event_h2c->recv.uri_header = NULL;
+		}
+		if (event_h2c->recv.host_header) {
+			jhd_queue_insert(&h, &event_h2c->recv.host_header->queue);
+			event_h2c->recv.host_header = NULL;
+		}
+		if (event_h2c->recv.method_header) {
+			jhd_queue_insert(&h, &event_h2c->recv.method_header->queue);
+			event_h2c->recv.method_header = NULL;
+		}
+		event_h2c->conf->connection_read_error(ev);
+		for (q = h.next; q != &h; q = q->next) {
+			jhd_queue_only_remove(q);
+			header = jhd_queue_data(q, jhd_http_header, queue);
+			jhd_http_free_header(header);
+		}
+	}else{
+
+
+
+
+
+
+
+
+	}
+
+
+}
+
 static void server_end_headers_handler(jhd_event_t *ev){
 	event_h2c = ((jhd_connection_t*)ev->data)->data;
 	jhd_http2_stream *stream ;
 	jhd_http_header *header;
-	jhd_queue_t h,*q;
-	jhd_http2_servcer_service *server_service;
+	jhd_queue_t h,*head,*q;
+
+	event_c = ev->data;
+	event_h2c = event_c->data;
 
 	if(ev->timedout){
 		ev->timedout = 0;
-		log_err("timeout");
-		jhd_queue_move(&h,&event_h2c->recv.headers);
-		event_h2c->conf->connection_read_error(ev);
-		for(q = h.next; q!= &h; q= q->next){
-				jhd_queue_only_remove(q);
-				header = jhd_queue_data(q,jhd_http_header,queue);
-				jhd_http_free_header(header);
+		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
+		jhd_queue_move(&h, &event_h2c->recv.headers);
+
+		if (event_h2c->recv.uri_header) {
+			jhd_queue_insert(&h, &event_h2c->recv.uri_header->queue);
+			event_h2c->recv.uri_header = NULL;
 		}
+		if (event_h2c->recv.host_header) {
+			jhd_queue_insert(&h, &event_h2c->recv.host_header->queue);
+			event_h2c->recv.host_header = NULL;
+		}
+		if (event_h2c->recv.method_header) {
+			jhd_queue_insert(&h, &event_h2c->recv.method_header->queue);
+			event_h2c->recv.method_header = NULL;
+		}
+		event_h2c->conf->connection_read_error(ev);
+		for (q = h.next; q != &h; q = q->next) {
+			jhd_queue_only_remove(q);
+			header = jhd_queue_data(q, jhd_http_header, queue);
+			jhd_http_free_header(header);
+		}
+
+
 	}else{
 		if(event_h2c->processing == 255){
 			log_assert(event_h2c->recv.state_param == NULL);
+			event_h2c->recv.state = JHD_HTTP2_REFUSED_STREAM_MAX_STREAM;
 			ev->handler = server_rst_stream;
 			server_rst_stream(ev);
 		}else{
+            if(event_h2c->recv.method_header == NULL){
+            	head = &event_h2c->recv.headers;
+            	for(q = jhd_queue_next(head);q != head;){
+            		header = jhd_queue_data(q,jhd_http_header,queue);
+            		q = jhd_queue_next(q);
+            		if(header->name_len == 7 &&(0 == memcmp(header->name,":method"))){
+            			if(event_h2c->recv.method_header){
+            				log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_HEADERS_PAYLOAD);
+            				goto func_error;
+            			}
+            			jhd_queue_only_remove(&header->queue);
+            			event_h2c->recv.method_header = header;
+            		}else if(header->name_len == 5 &&(0 == memcmp(header->name,":path"))){
+            			if(event_h2c->recv.uri_header){
+            				log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_HEADERS_PAYLOAD);
+            				goto func_error;
+            			}
+            			jhd_queue_only_remove(&header->queue);
+            			event_h2c->recv.uri_header = header;
+            		}else  if(header->name_len == 10 &&(0 == memcmp(header->name,":authority"))){
+            			if(event_h2c->recv.host_header){
+            				log_http2_err(JHD_HTTP2_PROTOCOL_ERROR_INVALID_HEADERS_PAYLOAD);
+            				goto func_error;
+            			}
+            			jhd_queue_only_remove(&header->queue);
+            			event_h2c->recv.host_header = header;
+            		}
+            	}
+            }
 			stream = jhd_alloc(sizeof(jhd_http2_stream));
 			if(stream== NULL){
 				jhd_wait_mem(ev,sizeof(jhd_http2_stream));
 				jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout);
-				return;
-			}
-			//memset(stream,0,sizeof(jhd_http2_stream));
-			stream->id = event_h2c->recv.last_stream_id;
-			stream->recv_window_size = event_h2c->recv.init_window_size;
-			stream->send_window_size = event_h2c->send.initial_window_size;
+			}else{
+				//memset(stream,0,sizeof(jhd_http2_stream));
+				stream->id = event_h2c->recv.last_stream_id;
+				stream->recv_window_size = event_h2c->recv.init_window_size;
+				stream->send_window_size = event_h2c->send.initial_window_size;
 
-			if(event_h2c->recv.frame_flag & JHD_HTTP2_END_STREAM_FLAG){
-				stream->in_close = 1;
+				if(event_h2c->recv.frame_flag & JHD_HTTP2_END_STREAM_FLAG){
+					stream->in_close = 1;
+				}
+				stream->connection = event_h2c;
+				jhd_queue_init(&stream->flow_control);
+				q = &event_h2c->streams[(stream->id >> 1) & 0x1F/*31*/];
+				jhd_queue_insert_tail(q,&stream->queue);
+				++event_h2c->processing;
+				event_h2c->recv.stream = stream;
+				event_h2c->recv.state_param = stream;
+
+				ev->handler =server_create_request;
+				ev->handler(ev);
 			}
-			jhd_queue_init(&stream->flow_control);
-			q = &event_h2c->streams[(stream->id >> 1) & 0x1F/*31*/];
-			jhd_queue_insert_tail(q,&stream->queue);
-			++event_h2c->processing;
-			event_h2c->recv.stream = stream;
-			event_h2c->recv.state_param =server_service= event_h2c->conf->extend_param;
-			ev->handler = server_service->servcie;
-			ev->handler(ev);
 		}
 	}
+
+
+
+
+func_invalid_headers:
+		if (event_h2c->recv.uri_header) {
+			jhd_queue_insert(&event_h2c->recv.headers, &event_h2c->recv.uri_header->queue);
+			event_h2c->recv.uri_header = NULL;
+		}
+		if (event_h2c->recv.host_header) {
+			jhd_queue_insert(&event_h2c->recv.headers, &event_h2c->recv.host_header->queue);
+			event_h2c->recv.host_header = NULL;
+		}
+		if (event_h2c->recv.method_header) {
+			jhd_queue_insert(&event_h2c->recv.headers, &event_h2c->recv.method_header->queue);
+			event_h2c->recv.method_header = NULL;
+		}
+
+
+
+
+
+
 }
 
 
