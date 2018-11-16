@@ -246,7 +246,7 @@ static jhd_inline int jhd_http2_parse_int(uint32_t *value,u_char prefix,u_char *
 }
 
 
-
+void jhd_http2_connection_free(jhd_event_t *rev);
 
 
 int jhd_http2_huff_decode(u_char *src, uint16_t src_len, u_char *dst,uint16_t dst_len);

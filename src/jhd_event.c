@@ -173,12 +173,11 @@ void jhd_event_expire_timers(void) {
 
 		ev->timer.key = 0;
 
-		ev->timedout = 1;
 		if (ev->queue.next) {
 			jhd_queue_remove(&ev->queue);
 		}
 
-		ev->handler(ev);
+		ev->timeout(ev);
 	}
 
 }
@@ -195,11 +194,10 @@ void jhd_event_expire_all() {
 		ev = (jhd_event_t *) ((char *) node - offsetof(jhd_event_t, timer));
 		jhd_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
 		ev->timer.key = 0;
-		ev->timedout = 1;
 		if (ev->queue.next) {
 			jhd_queue_remove(&ev->queue);
 		}
-		ev->handler(ev);
+		ev->timeout(ev);
 	}
 }
 

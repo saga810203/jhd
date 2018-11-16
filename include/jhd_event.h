@@ -22,13 +22,9 @@ typedef int (*jhd_listener_handler_pt)(jhd_listener_t *lis);
 struct jhd_event_s {
 	void *data;
 	jhd_event_handler_pt handler;
+	jhd_event_handler_pt timeout;
 	jhd_queue_t queue;
 	jhd_rbtree_node_t timer;
-	unsigned write :1;
-	unsigned error :1;
-	/* to test on worker exit */
-	unsigned channel :1;
-	unsigned timedout :1;
 };
 
 struct jhd_listener_s {
@@ -88,13 +84,16 @@ jhd_bool  jhd_event_add_connection(void  *c);
 jhd_bool  jhd_event_del_connection(void  *c);
 
 
-jhd_inline static  void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
+jhd_inline static  void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer,jhd_event_handler_pt handler) {
 	uint64_t key;
 	int64_t diff;
 	key = jhd_current_msec + timer;
 
+	ev->timeout = handler;
 	if (ev->timer.key) {
 		diff = (int64_t) (key - ev->timer.key);
+
+		//FIXME  999  small????????
 		if (diff > 999 || diff < (-999)) {
 			jhd_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
 		} else {
@@ -129,6 +128,7 @@ jhd_inline static  void jhd_event_add_timer(jhd_event_t *ev, uint64_t timer) {
 static jhd_inline void jhd_event_del_timer(jhd_event_t *event) {
 	jhd_rbtree_delete(&jhd_event_timer_rbtree, &event->timer);
 	event->timer.key = 0;
+	event->timeout = NULL;
 }
 
 static jhd_inline void jhd_post_event(jhd_event_t *EVENT,jhd_queue_t *QUEUE){

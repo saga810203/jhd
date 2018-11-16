@@ -333,7 +333,9 @@ void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,u_char *name,uint16_t na
 	for(static_item = jhd_http2_headers_static,i = 0 ; i < 61; ++i,++static_item){
 		if(static_item->name.len == name_len){
 			if(memcmp(static_item->name.data,name,name_len)==0){
-				result->name_idx = i+1;
+				if(result->name_idx == 0){
+					result->name_idx = i+1;
+				}
 				if(static_item->val.len == val_len){
 					if(memcmp(static_item->val.data,val,val_len)==0){
 						result->val_idx = i+i;
@@ -348,7 +350,9 @@ void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,u_char *name,uint16_t na
 		if(name_len ==(*((uint16_t*)p))){
 			p+=sizeof(uint16_t);
 			if(memcmp(p,name,name_len)==0){
-				result->name_idx = i+62;
+				if(result->name_idx == 0){
+					result->name_idx = i+62;
+				}
 				++p;
 				p+=name_len;
 				if(val_len ==(*((uint16_t*)p))){

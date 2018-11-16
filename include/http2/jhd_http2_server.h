@@ -32,11 +32,11 @@ void jhd_http2_with_alpn_server_connection_start(jhd_connection_t *c);
 
 
 
+void jhd_http2_server_connection_read_event_error_with_clean_force(jhd_event_t *ev);
 
+void jhd_http2_server_ssl_connection_read_event_error_with_timer_clean(jhd_event_t *ev);
 
-
-
-
+void jhd_http2_server_ssl_connection_read_event_error_with_writer_clean(jhd_event_t *ev);
 
 
 
