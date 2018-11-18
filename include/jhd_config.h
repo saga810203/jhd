@@ -104,7 +104,8 @@
 #define NULL ((void*)0)
 #endif
 
-
+#define INT64_MAX 9223372036854775807LL
+#define INT64_MAX_STRING "9223372036854775807"
 
 
 #define JHD_OK			0

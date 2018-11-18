@@ -30,6 +30,11 @@ int listening_count;
 int connection_count;
 int free_connection_count;
 
+static void connection_accept_timeout(jhd_event_t *ev){
+	event_c = ev->data;
+	event_c->close(event_c);
+}
+
 in_addr_t jhd_inet_addr(u_char *text, size_t len)
 {
     u_char      *p, c;
@@ -790,7 +795,7 @@ static int jhd_connection_worker_close_listening(jhd_listener_t* listener) {
 			if (ev->timer.key) {
 				jhd_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
 				ev->timer.key = 0;
-				ev->timedout = 1;
+				ev->timeout = NULL;
 			}
 			if (ev->queue.next) {
 				jhd_queue_only_remove(&ev->queue);
@@ -802,7 +807,7 @@ static int jhd_connection_worker_close_listening(jhd_listener_t* listener) {
 			if (ev->timer.key) {
 				jhd_rbtree_delete(&jhd_event_timer_rbtree, &ev->timer);
 				ev->timer.key = 0;
-				ev->timedout = 1;
+				ev->timeout = NULL;
 			}
 			if (ev->queue.next) {
 				jhd_queue_only_remove(&ev->queue);
@@ -1038,8 +1043,8 @@ void jhd_connection_close(jhd_connection_t *c) {
 	if(c->write.timer.key != 0){
 			jhd_event_del_timer(&c->write);
 	}
-	c->read.timedout = 0;
-	c->write.timedout = 0;
+	c->read.timeout = NULL;
+	c->write.timeout = NULL;
 	op = EPOLL_CTL_DEL;
 	ee.events = 0;
 	ee.data.ptr = NULL;
@@ -1126,7 +1131,7 @@ void jhd_connection_close(jhd_connection_t *c) {
 		if(jhd_event_add_connection(c)){\
 			c->close = jhd_connection_close;\
 			c->listening = sc->listening;\
-			jhd_event_add_timer(&c->read,lis->accept_timeout);\
+			jhd_event_add_timer(&c->read,lis->accept_timeout,connection_accept_timeout);\
 			sc->listening->connection_start(c);\
 		}else{\
 			close(fd);\

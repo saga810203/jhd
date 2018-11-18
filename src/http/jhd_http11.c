@@ -12,10 +12,7 @@ void jhd_http11_init(jhd_event_t *ev){
 	log_assert_worker();
 	c = ev->data;
 
-	jhd_event_with_timeout(ev){
-		c->close(c);
-		return;
-	}
+
 
 	//TODO impl
 

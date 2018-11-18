@@ -39,54 +39,57 @@ void jhd_http_free_all_http_server(){
 
 
 
-int jhd_http_single_server_handler(void *svr,jhd_http_request *request){
+int jhd_http_single_server_handler(void *svr,jhd_http_request *r){
 	jhd_queue_t *head,*q;
 	jhd_http_service *svs;
 	head  = &((jhd_http_server*)svr)->services;
 	for(q = jhd_queue_next(head); q!= head; q = jhd_queue_next(q)){
 		svs = jhd_queue_data(q,jhd_http_service,queue);
-		if(svs->match(svs->service_ctx,request)){
-			return svs->service_func(svs->service_ctx,request);
+		if(svs->match(svs->service_ctx,r->uri,r->uri_len)){
+			return svs->service_func(svs->service_ctx,r);
 		}
 	}
-	svs = head->prev;
-	return svs->service_func(svs->service_ctx,request);
+	q = head->prev;
+	svs =jhd_queue_data(q,jhd_http_service,queue);
+	return svs->service_func(svs->service_ctx,r);
 }
 
 
-int jhd_http_mulitple_server_handler(void *lis_ctx,jhd_http_request *request){
+int jhd_http_mulitple_server_handler(void *lis_ctx,jhd_http_request *r){
 	jhd_queue_t *head,*q;
 	jhd_http_service *svs;
 	jhd_http_server  **svr;
 
 	svr = lis_ctx;
 	do{
-		if(request->host_len == (*svr)->host_len && memcmp(request->host,(*svr)->host,request->host_len)==0){
+		if(r->host_len == (*svr)->host_len && memcmp(r->host,(*svr)->host,r->host_len)==0){
 				head  = &((*svr)->services);
 				for(q = jhd_queue_next(head); q!= head; q = jhd_queue_next(q)){
 					svs = jhd_queue_data(q,jhd_http_service,queue);
-					if(svs->match(svs->service_ctx,request)){
-						return svs->service_func(svs->service_ctx,request);
+					if(svs->match(svs->service_ctx,r->uri,r->uri_len)){
+						return svs->service_func(svs->service_ctx,r);
 					}
 				}
-				svs = head->prev;
-				return svs->service_func(svs->service_ctx,request);
+				q = head->prev;
+				svs =jhd_queue_data(q,jhd_http_service,queue);
+				return svs->service_func(svs->service_ctx,r);
 		}
+		++svr;
 	}while(*svr != NULL);
-
+	svr = lis_ctx;
 
 	head  = &((*svr)->services);
 	for(q = jhd_queue_next(head); q!= head; q = jhd_queue_next(q)){
 		svs = jhd_queue_data(q,jhd_http_service,queue);
-		if(svs->match(svs->service_ctx,request)){
-			return svs->service_func(svs->service_ctx,request);
+		if(svs->match(svs->service_ctx,r->uri,r->uri_len)){
+			return svs->service_func(svs->service_ctx,r);
 		}
 	}
-	svs = head->prev;
-	return svs->service_func(svs->service_ctx,request);
+	q = head->prev;
+	svs =jhd_queue_data(q,jhd_http_service,queue);
+	return svs->service_func(svs->service_ctx,r);
 }
 
 
 
-
-
+void jhd_http_request_init_by_http11(jhd_http_request *r,jhd_event_t *ev){}

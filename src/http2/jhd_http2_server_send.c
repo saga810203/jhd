@@ -13,6 +13,9 @@ void jhd_http2_server_send_event_handler_error_force(jhd_event_t *ev){
 	jhd_event_handler_pt timeout;
 	void (*frame_free_func)(void*);
 
+	c= ev->data;
+	h2c = c->data;
+
 	free_frame.next = h2c->send.head;
 	h2c->send.head = h2c->send.tail = NULL;
 
@@ -42,7 +45,6 @@ void jhd_http2_server_send_event_handler_error_force(jhd_event_t *ev){
 void jhd_http2_server_send_event_handler_with_ssl_clean_force(jhd_event_t *ev){
 		jhd_connection_t *c;
 		jhd_http2_connection *h2c;
-		jhd_queue_t *q;
 		ssize_t rc;
 		int err;
 		uint16_t len;
@@ -178,6 +180,9 @@ void jhd_http2_server_send_event_handler_error_timer(jhd_event_t *ev){
 	jhd_event_handler_pt timeout;
 	void (*frame_free_func)(void*);
 
+	c = ev->data;
+	h2c = c->data;
+
 	free_frame.next = h2c->send.head;
 	h2c->send.head = h2c->send.tail = NULL;
 
@@ -213,7 +218,6 @@ void jhd_http2_server_send_event_handler_error_timer(jhd_event_t *ev){
 void jhd_http2_server_send_event_handler_with_ssl_clean_by_timer(jhd_event_t *ev){
 		jhd_connection_t *c;
 		jhd_http2_connection *h2c;
-		jhd_queue_t *q;
 		ssize_t rc;
 		int err;
 		uint16_t len;
@@ -221,7 +225,7 @@ void jhd_http2_server_send_event_handler_with_ssl_clean_by_timer(jhd_event_t *ev
 		jhd_tls_ssl_context *ssl;
 		u_char *p;
 		void (*frame_free_func)(void*);
-		jhd_event_handler_pt timeout;
+
 
 
 		log_notice("==>%s",__FUNCTION__);
@@ -380,7 +384,6 @@ void jhd_http2_server_send_event_handler_error_trigger(jhd_event_t *ev){
 void jhd_http2_server_send_event_handler_with_ssl_clean_by_trigger(jhd_event_t *ev){
 		jhd_connection_t *c;
 		jhd_http2_connection *h2c;
-		jhd_queue_t *q;
 		ssize_t rc;
 		int err;
 		uint16_t len;

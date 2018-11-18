@@ -51,9 +51,6 @@ static void server_ssl_connection_cleanup_with_timer(jhd_event_t *ev){
 	jhd_http2_stream *stream;
 	jhd_queue_t *head,*q,free_queue;
 	jhd_tls_ssl_context *ssl;
-	u_char i;
-	u_char *p;
-	void (*frame_free_func)(void*);
 
 	jhd_queue_init(&free_queue);
 
@@ -113,12 +110,9 @@ static void server_ssl_connection_read_event_error_with_timer_clean_after_goaway
 	jhd_http2_connection *h2c;
 	jhd_http2_stream *stream;
 	jhd_queue_t *head,*q,free_queue;
-	jhd_tls_ssl_context *ssl;
-	u_char i;
-	u_char *p;
-	void (*frame_free_func)(void*);
-
+	int i;
 	jhd_queue_init(&free_queue);
+
 
 
 	ev->handler = server_check_quit_and_send_error_with_timer_clean;
@@ -207,7 +201,7 @@ static void server_send_goaway_with_read_error_by_timer_clean(jhd_event_t *ev){
 		ev->handler(ev);
 	}else{
 		jhd_wait_mem(ev,sizeof(jhd_http2_frame)+17);
-		jhd_event_add_timer(ev,0xFFFFFFFFFFFFFFFFUUL,jhd_http2_server_connection_read_event_error_with_clean_force);
+		jhd_event_add_timer(ev,0xFFFFFFFFFFFFFFFFULL,jhd_http2_server_connection_read_event_error_with_clean_force);
 	}
 }
 
@@ -240,7 +234,6 @@ static void server_ssl_connection_cleanup_with_write_tigger(jhd_event_t *ev){
 	jhd_http2_stream *stream;
 	jhd_queue_t *head,*q,free_queue;
 	jhd_http2_frame *frame;
-	u_char i;
 	u_char *p;
 	jhd_tls_ssl_context *ssl;
 	void (*frame_free_func)(void*);
@@ -349,7 +342,7 @@ static void server_ssl_connection_read_event_error_with_writer_clean_after_goawa
 		ssl = c->ssl;
 		if((h2c->processing) || (h2c->send.head != NULL) || (ssl->out_msglen) ){
 			ev->handler = server_ssl_connection_cleanup_with_write_tigger;
-			jhd_event_add_timer(ev,0xFFFFFFFFFFFFFFFFUUL,jhd_http2_server_connection_read_event_error_with_clean_force);
+			jhd_event_add_timer(ev,0xFFFFFFFFFFFFFFFFULL,jhd_http2_server_connection_read_event_error_with_clean_force);
 			goto func_free;
 		}
 

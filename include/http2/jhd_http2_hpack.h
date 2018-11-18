@@ -55,8 +55,12 @@ void jhd_http2_hpack_get_index_header_name(jhd_http2_hpack *hpack,uint32_t idx,u
 
 uint32_t jhd_http2_hpack_find_item(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len);
 uint32_t jhd_http2_hpack_find_name(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len);
+uint32_t jhd_http2_hpack_find_static_name(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len);
+
 
 void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len,jhd_http2_hpack_search_result *result);
+
+void jhd_http2_hpack_search_dynamic_item(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len,jhd_http2_hpack_search_result *result);
 
 
 

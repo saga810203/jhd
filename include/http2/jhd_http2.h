@@ -245,6 +245,8 @@ static jhd_inline int jhd_http2_parse_int(uint32_t *value,u_char prefix,u_char *
     return p - start;
 }
 
+void jhd_http2_common_mem_timeout(jhd_event_t *ev) ;
+void jhd_http2_common_read_timeout(jhd_event_t *ev);
 
 void jhd_http2_connection_free(jhd_event_t *rev);
 

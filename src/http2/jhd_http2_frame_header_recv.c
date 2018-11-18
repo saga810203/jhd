@@ -8,12 +8,7 @@ void jhd_http2_frame_header_read(jhd_event_t *ev){
 	log_assert_worker();
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	if(ev->timedout){
-		ev->timedout = 0;
-		log_http2_err(JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT);
-		event_h2c->conf->connection_read_error(ev);
-		log_notice("<==%s with timedout",__FUNCTION__);
-	}else{
+
 #ifdef JHD_LOG_ASSERT_ENABLE
 		if(event_h2c->first_frame_header_read == 0){
 			log_assert(event_h2c->recv.state == 0);
@@ -53,7 +48,7 @@ void jhd_http2_frame_header_read(jhd_event_t *ev){
 				log_notice("<==%s with timedout",__FUNCTION__);
 			}else{
 				event_h2c->recv.state += ret;
-				jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
+				jhd_event_add_timer(ev,event_h2c->conf->read_timeout,jhd_http2_common_read_timeout);
 				log_notice("<==%s EAGAIN",__FUNCTION__);
 			}
 		}else if(ret == JHD_AGAIN){
@@ -68,7 +63,7 @@ void jhd_http2_frame_header_read(jhd_event_t *ev){
 					log_notice("<==%s ",__FUNCTION__);
 				}
 			}else{
-				jhd_event_add_timer(ev,event_h2c->conf->read_timeout);
+				jhd_event_add_timer(ev,event_h2c->conf->read_timeout,jhd_http2_common_read_timeout);
 				log_notice("<==%s EAGAIN",__FUNCTION__);
 			}
 		}else{
@@ -76,5 +71,5 @@ void jhd_http2_frame_header_read(jhd_event_t *ev){
 			event_h2c->conf->connection_read_error(ev);
 			log_notice("<==%s error",__FUNCTION__);
 		}
-	}
+
 }

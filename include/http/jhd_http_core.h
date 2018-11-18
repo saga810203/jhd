@@ -88,21 +88,51 @@ struct jhd_http_header_s{
      };
 };
 
+typedef struct{
+	u_char *data;
+	uint16_t len;
+	uint16_t alloced;
+}http_named_header;
 struct jhd_http_request_s{
+	jhd_event_t event;
 	jhd_queue_t queue;
+
 	jhd_queue_t  headers;
-	u_char *uri;
-	uint16_t uri_len;
-	u_char *host;
-	uint16_t host_len;
+
+
+	uint32_t state;
+	union{
+		void *state_param;
+		jhd_http2_frame *headers_frame;
+	};
+
+	union{
+		http_named_header   user_agent;
+		http_named_header   response_unuse;
+	};
+	http_named_header content_type;
+	ssize_t   content_length;
+	union{
+		http_named_header  path;
+		http_named_header  date;
+	};
+	union{
+		http_named_header host;
+		http_named_header server;
+	};
+	union{
 	jhd_http_method method;
-
-	void *data;
-
-
+	uint16_t status;
+	};
+	union{
+	jhd_http2_stream *stream;
+	void *http11_connection;
+	};
 	unsigned is_http2:1;
-	unsigned uri_alloced:1;
-	unsigned host_alloced:1;
+	union{
+		jhd_http2_frame *data_frame;
+		jhd_http_data 	*http_data;
+	};
 };
 
 struct jhd_http_request_info_s{
@@ -131,7 +161,7 @@ typedef struct{
 typedef struct{
 	jhd_queue_t queue;
 	void *service_ctx;
-	jhd_bool (*match)(void *uri_pattern,u_char * uri,uint16_t uri_len);
+	jhd_bool (*match)(void *service_ctx,u_char * uri,uint16_t uri_len);
 	void (*server_ctx_free_func)(void *);
 	int (*service_func)(void *service_ctx,jhd_http_request *request); // return  0 aync handler other handler 400 badrequest
 }jhd_http_service;
@@ -193,6 +223,8 @@ int jhd_http11_server_connection_alloc(void **pcon,jhd_event_t *ev,jhd_http11_co
 
 void jhd_http11_init(jhd_event_t *ev);
 
+void jhd_http_request_init_by_http2(jhd_http_request *r,jhd_event_t *ev);
+void jhd_http_request_init_by_http11(jhd_http_request *r,jhd_event_t *ev);
 
 extern jhd_http_request_info  jhd_http11_info;
 
