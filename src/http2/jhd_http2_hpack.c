@@ -7,7 +7,7 @@
 
 
 
-static jhd_http2_hpack_header_item jhd_http2_headers_static[]={
+jhd_http2_hpack_header_item jhd_http2_headers_static[]={
 	{ jhd_http2_hpack_string(":authority"), {jhd_empty_string,0} },
 	{ jhd_http2_hpack_string(":method"), jhd_http2_hpack_string("GET") },
 	{ jhd_http2_hpack_string(":method"), jhd_http2_hpack_string("POST") },
@@ -399,7 +399,7 @@ void jhd_http2_hpack_search_dynamic_item(jhd_http2_hpack *hpack,u_char *name,uin
 }
 
 
-uint32_t jhd_http2_hpack_find_static_name(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len){
+uint32_t jhd_http2_hpack_find_static_name(u_char *name,uint16_t name_len){
 	uint32_t i;
 	u_char *p;
 	jhd_http2_hpack_header_item *static_item = jhd_http2_headers_static;

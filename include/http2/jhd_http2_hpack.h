@@ -40,8 +40,19 @@ typedef struct {
 }jhd_http2_hpack;
 
 
+extern jhd_http2_hpack_header_item jhd_http2_headers_static[];
+
+
 #define jhd_http2_hpack_string(str)     {  (u_char *) str,(uint16_t)(sizeof(str) - 1)}
 
+
+jhd_inline u_char* jhd_http2_hpack_static_name(u_char idx){
+	return jhd_http2_headers_static[idx-1].name.data;
+}
+
+jhd_inline uint16_t* jhd_http2_hpack_static_name_len(u_char idx){
+	return jhd_http2_headers_static[idx-1].name.len;
+}
 
 
 int jhd_http2_hpack_init(jhd_http2_hpack *hpack,uint16_t size);
@@ -55,7 +66,7 @@ void jhd_http2_hpack_get_index_header_name(jhd_http2_hpack *hpack,uint32_t idx,u
 
 uint32_t jhd_http2_hpack_find_item(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len);
 uint32_t jhd_http2_hpack_find_name(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len);
-uint32_t jhd_http2_hpack_find_static_name(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len);
+uint32_t jhd_http2_hpack_find_static_name(u_char *name,uint16_t name_len);
 
 
 void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len,jhd_http2_hpack_search_result *result);

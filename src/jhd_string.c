@@ -123,3 +123,11 @@ u_char* jhd_u64_to_hex(u_char* last,uint64_t val){
 	} while (val >>= 4);
 	return last;
 }
+
+u_char* jhd_u64_to_string(u_char *last,uint64_t val){
+	do {
+		--last;
+		*last = val % 10 + '0';
+	} while (val /=10 );
+	return last;
+}

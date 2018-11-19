@@ -38,7 +38,7 @@ typedef struct {
 	u_char   *pos;
 	uint16_t len;
 	void (*free_func)(void* data);
-	void * next;
+	void *next;
 }jhd_http_data;
 
 
