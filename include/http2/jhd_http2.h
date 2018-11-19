@@ -181,7 +181,7 @@ struct jhd_http2_stream_s{
 	unsigned out_close:1;
 	int recv_window_size;
 	int send_window_size;
-	jhd_http2_connection *connection;
+	jhd_connection_t *connection;
 	jhd_queue_t queue;
 	jhd_queue_t flow_control;
 };

@@ -128,11 +128,14 @@ struct jhd_http_request_s{
 	jhd_http2_stream *stream;
 	void *http11_connection;
 	};
-	unsigned is_http2:1;
 	union{
 		jhd_http2_frame *data_frame;
 		jhd_http_data 	*http_data;
 	};
+
+	unsigned is_http2:1;
+	unsigned in_close:1;
+	unsigned out_colse:1;
 };
 
 struct jhd_http_request_info_s{

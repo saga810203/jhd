@@ -142,11 +142,17 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 	uint16_t len,slen;
 	jhd_queue_t h, *head,*q;
 	jhd_http_header *header;
+	jhd_connection_t *c;
+	jhd_http2_connection *h2c;
 
 
 	u_char *p,*begin,*end;
 
 	jhd_http_request *r = ev->data;
+
+	c = r->stream->connection;
+	h2c = c->data;
+
 	frame = r->state_param;
 
 	log_assert(frame->len > 9);
@@ -273,10 +279,17 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 					frame->pos[0] = 0;
 					frame->pos[1] = (u_char)(slen >> 8);
 					frame->pos[2] = (u_char)(slen);
+					if(frame == r->headers_frame){
+						frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
+					}else{
+						frame->pos[3] = JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME;
+					}
+					frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG;
 					frame->pos[5] = (u_char)(r->stream->id >> 24);
 					frame->pos[6] = (u_char)(r->stream->id >> 16);
 					frame->pos[7] = (u_char)(r->stream->id >> 8);
 					frame->pos[8] = (u_char)(r->stream->id);
+
 					p = (u_char*)(frame->next);
 					frame->next = NULL;
 					break;
@@ -293,11 +306,19 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 				frame->pos[7] = (u_char)(r->stream->id >> 8);
 				frame->pos[8] = (u_char)(r->stream->id);
 
+				if(frame == r->headers_frame){
+					frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
+				}else{
+					frame->pos[3] = JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME;
+				}
+
 				if(jhd_queue_emtpy(head)){
+					frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG;
 					p = (u_char*)(frame->next);
 					frame->next = NULL;
 					break;
 				}
+				frame->pos[4] = 0;
 				log_assert(frame->next != NULL);
 				frame = frame->next;
 				p = frame->pos +9;
@@ -307,8 +328,6 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 
 				log_assert(frame->next!= NULL);
 				log_assert(((jhd_http2_frame)(frame->next))->len -9 > (slen - len));
-
-
 
 				p = ((jhd_http2_frame)(frame->next))->pos + 9;
 
@@ -324,11 +343,17 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 				frame->pos[1] = (u_char)(slen >> 8);
 				frame->pos[2] = (u_char)(slen);
 
+				if(frame == r->headers_frame){
+					frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
+				}else{
+					frame->pos[3] = JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME;
+				}
+				frame->pos[4] = 0;
+
 				frame->pos[5] = (u_char)(r->stream->id >> 24);
 				frame->pos[6] = (u_char)(r->stream->id >> 16);
 				frame->pos[7] = (u_char)(r->stream->id >> 8);
 				frame->pos[8] = (u_char)(r->stream->id);
-
 
 				frame = frame ->next;
 
@@ -340,6 +365,8 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 					frame->pos[0] = 0;
 					frame->pos[1] = (u_char)(slen >> 8);
 					frame->pos[2] = (u_char)(slen);
+					frame->pos[3] = JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME;
+					frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG;
 					frame->pos[5] = (u_char)(r->stream->id >> 24);
 					frame->pos[6] = (u_char)(r->stream->id >> 16);
 					frame->pos[7] = (u_char)(r->stream->id >> 8);
@@ -351,9 +378,28 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 			}
     	}
     }else{
-
-
+    	slen = p - frame->pos;
+    	frame->len = slen;
+		slen -= 9;
+		frame->pos[0] = 0;
+		frame->pos[1] = (u_char)(slen >> 8);
+		frame->pos[2] = (u_char)(slen);
+		frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
+		frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG;
+		frame->pos[5] = (u_char)(r->stream->id >> 24);
+		frame->pos[6] = (u_char)(r->stream->id >> 16);
+		frame->pos[7] = (u_char)(r->stream->id >> 8);
+		frame->pos[8] = (u_char)(r->stream->id);
+		p = (u_char*)(frame->next);
+		frame->next = NULL;
     }
+    if(r->in_close && r->data_frame == NULL){
+    	r->headers_frame->pos[4] = JHD_HTTP2_END_STREAM_FLAG;
+    }
+    jhd_http2_send_headers_frame(c,h2c,r->headers_frame,frame);
+
+
+
 
 
 
