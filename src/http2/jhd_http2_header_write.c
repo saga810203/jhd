@@ -8,6 +8,33 @@
 
 
 
+#ifdef JHD_LOG_ASSERT_ENABLE
+static void http2_check_headers_frame(jhd_http2_frame *begin,jhd_http2_frame *end,jhd_bool end_stream){
+    log_assert(begin->pos[3] == JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME);
+    if(begin == end){
+    	log_assert(begin->pos[4] & JHD_HTTP2_END_HEADERS_FLAG);
+    	if(end_stream){
+    		log_assert(begin->pos[4] & JHD_HTTP2_END_STREAM_FLAG);
+    	}
+    }else{
+    	log_assert(0==(begin->pos[4] & JHD_HTTP2_END_HEADERS_FLAG));
+    	if(end_stream){
+    		log_assert(begin->pos[4] & JHD_HTTP2_END_STREAM_FLAG);
+    	}
+    	log_assert(end->pos[4] & JHD_HTTP2_END_HEADERS_FLAG);
+    	log_assert(end->pos[3] == JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME);
+
+    	begin = begin->next;
+    	do{
+    		log_assert(begin->pos[3] == JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME);
+    		log_assert(begin->pos[4] == 0);
+    	}while(begin != end);
+    }
+}
+#endif
+
+
+
 static size_t jhd_http2_write_header(jhd_http_header *header){
 	u_char *p ;
 	uint16_t idx ;
@@ -69,6 +96,86 @@ static size_t jhd_http2_write_header(jhd_http_header *header){
 	}
 	memcpy(p,header->value,header->value_len);
 	return header->value_len + p - jhd_calc_buffer;
+}
+
+
+
+
+static size_t http2_calc_response_headers_size(jhd_http_request *r){
+	jhd_queue_t *head,*q;
+	jhd_http_header *header;
+	size_t ret;
+
+	log_assert(r->status >=100 &&(r->status <=999));
+	if(r->status == 200){
+		ret = 1;
+	}else if(r->status == 204){
+		ret = 1;
+	}else if(r->status == 206){
+		ret = 1;
+	}else if(r->status == 304){
+		ret = 1;
+	}else if(r->status == 400){
+		ret = 1;
+	}else if(r->status == 404){
+		ret = 1;
+	}else if(r->status == 500){
+		ret = 1;
+	}else{
+		ret =  5; //  jhd_http2_literal_size("100");
+	}
+	log_assert(r->server.len < 127);
+    ret += (2/*static hapck idx = 00001111 (54-15 )*/+1/* server.len */+r->server.len);
+    ret += (2/*static hapck idx = 00001111 (41-15 )*/+1/* content_type.len */+r->content_type.len);
+    if(r->content_length>=0){
+    	ret += (2/*static hapck idx = 00001111 (38-15 )*/+1/* */+sizeof(INT64_MAX_STRING)-1);
+    }
+    //
+    ret += (2/*static hapck idx = 00001111 (31-15 )*/+1/* content_type.len */+sizeof("Wed, 31 Dec 1986 18:00:00 GMT")-1);
+
+    head = &r->headers;
+    q = jhd_queue_next(head);
+    while(q != head){
+    	header = jhd_queue_data(q,jhd_http_header,queue);
+    	q = jhd_queue_next(q);
+    	ret += (1/*0x00*/ + 1/*1~126*/ +header->name_len + 4 + header->value_len);
+    }
+    return ret;
+}
+
+/**
+ * return 0 is ok  other require memory size
+ */
+static uint16_t http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len){
+	uint16_t mlen,flen,blen;
+
+	while(*frame){
+		*frame = &((*frame)->next);
+	}
+	do{
+		blen = 16384  - sizeof(jhd_http2_frame);
+		if(*len  < blen ){
+			blen = *len;
+		}
+		flen = blen+ 9;
+		mlen = flen +  sizeof(jhd_http2_frame);
+
+
+		*frame = jhd_alloc(mlen);
+		if(*frame == NULL){
+			return mlen;
+		}
+
+		(*frame)->pos=(u_char*)(((u_char*)(*frame))+sizeof(jhd_http2_frame));
+		(*frame)->data_len = mlen;
+		(*frame)->len = flen;
+		(*frame)->free_func = jhd_http2_frame_free_by_single;
+		(*frame)->next = NULL;
+
+		*len -= len;
+		frame = &((*frame)->next);
+	}while(*len >0);
+	return 0;
 }
 
 
@@ -136,24 +243,24 @@ int jhd_http2_write_request_headers_frame(jhd_event_t *ev){
 
 
 
-
-static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
+/**
+ * return with frame_head unused frame  NULL or single_frame
+ */
+static void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame **frame_head,jhd_bool end_stream){
 	jhd_http2_frame *frame;
 	uint16_t len,slen;
-	jhd_queue_t h, *head,*q;
+	jhd_queue_t  *head,*q;
 	jhd_http_header *header;
 	jhd_connection_t *c;
 	jhd_http2_connection *h2c;
-
-
+	jhd_http2_stream *stream;
 	u_char *p,*begin,*end;
 
-	jhd_http_request *r = ev->data;
-
-	c = r->stream->connection;
+	stream = r->stream;
+	c = stream->connection;
 	h2c = c->data;
 
-	frame = r->state_param;
+	frame = *frame_head;
 
 	log_assert(frame->len > 9);
 
@@ -224,8 +331,6 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 	len -= (2+1+r->server.len);
 	p += (2+1+r->server.len);
 
-
-
 	*p = 15;
 	++p;
 	*p = 44 - 15;
@@ -256,39 +361,35 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 		p += (2+1+slen);
 	}
 
-	jhd_queue_init(&h);
     head = &r->headers;
 
     if(jhd_queue_has_item(head)){
+    	q = jhd_queue_next(head);
     	for(;;){
-    		q = jhd_queue_next(head);
-			jhd_queue_only_remove(q);
-			jhd_queue_insert_tial(&h,q);
-			header = jhd_queue_data(q,jhd_http_header,queue);
-
+ 			header = jhd_queue_data(q,jhd_http_header,queue);
+ 			q = jhd_queue_next(q);
 			slen = jhd_http2_write_header(header);
-
 			if(slen < len){
 				memcpy(p,jhd_calc_buffer,slen);
 				len -=slen;
 				p+=slen;
-				if(jhd_queue_emtpy(head)){
+				if(q == head){
 					slen = p - frame->pos;
 					frame->len = slen;
 					slen -= 9;
 					frame->pos[0] = 0;
 					frame->pos[1] = (u_char)(slen >> 8);
 					frame->pos[2] = (u_char)(slen);
-					if(frame == r->headers_frame){
+					if(frame == *frame_head){
 						frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
 					}else{
 						frame->pos[3] = JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME;
 					}
 					frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG;
-					frame->pos[5] = (u_char)(r->stream->id >> 24);
-					frame->pos[6] = (u_char)(r->stream->id >> 16);
-					frame->pos[7] = (u_char)(r->stream->id >> 8);
-					frame->pos[8] = (u_char)(r->stream->id);
+					frame->pos[5] = (u_char)(stream->id >> 24);
+					frame->pos[6] = (u_char)(stream->id >> 16);
+					frame->pos[7] = (u_char)(stream->id >> 8);
+					frame->pos[8] = (u_char)(stream->id);
 
 					p = (u_char*)(frame->next);
 					frame->next = NULL;
@@ -301,18 +402,18 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 				frame->pos[1] = (u_char)(slen >> 8);
 				frame->pos[2] = (u_char)(slen);
 
-				frame->pos[5] = (u_char)(r->stream->id >> 24);
-				frame->pos[6] = (u_char)(r->stream->id >> 16);
-				frame->pos[7] = (u_char)(r->stream->id >> 8);
-				frame->pos[8] = (u_char)(r->stream->id);
+				frame->pos[5] = (u_char)(stream->id >> 24);
+				frame->pos[6] = (u_char)(stream->id >> 16);
+				frame->pos[7] = (u_char)(stream->id >> 8);
+				frame->pos[8] = (u_char)(stream->id);
 
-				if(frame == r->headers_frame){
+				if(frame == *frame_head){
 					frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
 				}else{
 					frame->pos[3] = JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME;
 				}
 
-				if(jhd_queue_emtpy(head)){
+				if(q == head){
 					frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG;
 					p = (u_char*)(frame->next);
 					frame->next = NULL;
@@ -343,22 +444,22 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 				frame->pos[1] = (u_char)(slen >> 8);
 				frame->pos[2] = (u_char)(slen);
 
-				if(frame == r->headers_frame){
+				if(frame == *frame_head){
 					frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
 				}else{
 					frame->pos[3] = JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME;
 				}
 				frame->pos[4] = 0;
 
-				frame->pos[5] = (u_char)(r->stream->id >> 24);
-				frame->pos[6] = (u_char)(r->stream->id >> 16);
-				frame->pos[7] = (u_char)(r->stream->id >> 8);
-				frame->pos[8] = (u_char)(r->stream->id);
+				frame->pos[5] = (u_char)(stream->id >> 24);
+				frame->pos[6] = (u_char)(stream->id >> 16);
+				frame->pos[7] = (u_char)(stream->id >> 8);
+				frame->pos[8] = (u_char)(stream->id);
 
 				frame = frame ->next;
 
 
-				if(jhd_queue_emtpy(head)){
+				if(q == head){
 					slen = p - frame->pos;
 					frame->len = slen;
 					slen -= 9;
@@ -367,10 +468,10 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 					frame->pos[2] = (u_char)(slen);
 					frame->pos[3] = JHD_HTTP2_FRAME_TYPE_CONTINUATION_FRAME;
 					frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG;
-					frame->pos[5] = (u_char)(r->stream->id >> 24);
-					frame->pos[6] = (u_char)(r->stream->id >> 16);
-					frame->pos[7] = (u_char)(r->stream->id >> 8);
-					frame->pos[8] = (u_char)(r->stream->id);
+					frame->pos[5] = (u_char)(stream->id >> 24);
+					frame->pos[6] = (u_char)(stream->id >> 16);
+					frame->pos[7] = (u_char)(stream->id >> 8);
+					frame->pos[8] = (u_char)(stream->id);
 					p = (u_char*)(frame->next);
 					frame->next = NULL;
 					break;
@@ -386,118 +487,22 @@ static void jhd_http2_send_response_headers_frmae(jhd_event_t * ev){
 		frame->pos[2] = (u_char)(slen);
 		frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
 		frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG;
-		frame->pos[5] = (u_char)(r->stream->id >> 24);
-		frame->pos[6] = (u_char)(r->stream->id >> 16);
-		frame->pos[7] = (u_char)(r->stream->id >> 8);
-		frame->pos[8] = (u_char)(r->stream->id);
+		frame->pos[5] = (u_char)(stream->id >> 24);
+		frame->pos[6] = (u_char)(stream->id >> 16);
+		frame->pos[7] = (u_char)(stream->id >> 8);
+		frame->pos[8] = (u_char)(stream->id);
 		p = (u_char*)(frame->next);
 		frame->next = NULL;
     }
-    if(r->in_close && r->data_frame == NULL){
-    	r->headers_frame->pos[4] = JHD_HTTP2_END_STREAM_FLAG;
+    if(end_stream){
+    	(*frame_head)->pos[4] |=JHD_HTTP2_END_STREAM_FLAG;;
     }
-    jhd_http2_send_headers_frame(c,h2c,r->headers_frame,frame);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}
-static void jhd_http2_alloc_response_headers_frame(jhd_event_t *ev){
-	jhd_http2_frame **frame;
-	uint16_t len;
-	jhd_http_request *r = ev->data;
-	frame = &r->headers_frame;
-	while((*frame)->next){
-		*frame = (*frame)->next;
-	}
-	do{
-		if(r->state > (16384  - sizeof(jhd_http2_frame))){
-			len = (16384  - sizeof(jhd_http2_frame));
-		}else{
-			len = r->state;
-		}
-		*frame = jhd_alloc(len+ 9 +sizeof(jhd_http2_frame));
-		if(*frame == NULL){
-			jhd_wait_mem(ev,len + 9+sizeof(jhd_http2_frame));
-			jhd_event_add_timer(ev,0xFFFFFFFFFFFFFFFFULL,jhd_http2_alloc_headers_frame_timeout);
-			return;
-		}
-
-		(*frame)->pos=(u_char*)(((u_char*)(*frame))+sizeof(jhd_http2_frame));
-		(*frame)->data_len = len + 9 + sizeof(jhd_http2_frame);
-		(*frame)->len = len + 9 ;
-		(*frame)->free_func = jhd_http2_frame_free_by_single;
-		(*frame)->next = NULL;
-
-		r->state -= len;
-		frame = &((*frame)->next);
-	}while(r->state >0);
-	if(ev->timer.key){
-		jhd_event_del_timer(ev);
-		ev->timeout = jhd_event_noop;
-	}
-
-
-
+    log_assert_code(http2_check_headers_frame(*frame_head,frame,end_stream);)
+    jhd_http2_send_headers_frame(c,h2c,*frame_head,frame);
+    *frame_head = (jhd_http2_frame*)p;
 }
 
-void jhd_http2_write_response_headers_frame(jhd_event_t *ev){
-	jhd_queue_t *head,*q;
-	jhd_http_header *header;
-	jhd_http_request *r = ev->data;
 
-	log_assert(r->status >=100 &&(r->status <=999));
-	if(r->status == 200){
-		r->state = 1;
-	}else if(r->status == 204){
-		r->state = 1;
-	}else if(r->status == 206){
-		r->state = 1;
-	}else if(r->status == 304){
-		r->state = 1;
-	}else if(r->status == 400){
-		r->state = 1;
-	}else if(r->status == 404){
-		r->state = 1;
-	}else if(r->status == 500){
-		r->state = 1;
-	}else{
-		r->state =   5; //  jhd_http2_literal_size("100");
-	}
-	log_assert(r->server.len < 127);
-    r->state += (2/*static hapck idx = 00001111 (54-15 )*/+1/* server.len */+r->server.len);
-    r->state += (2/*static hapck idx = 00001111 (41-15 )*/+1/* content_type.len */+r->content_type.len);
-    if(r->content_length>=0){
-    	r->state += (2/*static hapck idx = 00001111 (38-15 )*/+1/* */+sizeof(INT64_MAX_STRING)-1);
-    }
-    //
-    r->state += (2/*static hapck idx = 00001111 (31-15 )*/+1/* content_type.len */+sizeof("Wed, 31 Dec 1986 18:00:00 GMT")-1);
 
-    head = &r->headers;
-    q = jhd_queue_next(head);
-    while(q != head){
-    	header = jhd_queue_data(q,jhd_http_header,queue);
-    	q = jhd_queue_next(q);
-    	r->state += (1/*0x00*/ + 1/*1~126*/ +header->name_len + 4 + header->value_len);
-    }
 
-    r->headers_frame = NULL;
-    ev->handler = jhd_http2_alloc_response_headers_frame;
-    jhd_http2_alloc_headers_frame(ev);
-}
+

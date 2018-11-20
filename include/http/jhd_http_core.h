@@ -101,10 +101,10 @@ struct jhd_http_request_s{
 
 
 	uint32_t state;
-	union{
+//	union{
 		void *state_param;
-		jhd_http2_frame *headers_frame;
-	};
+//		jhd_http2_frame *headers_frame;
+//	};
 
 	union{
 		http_named_header   user_agent;
@@ -129,13 +129,17 @@ struct jhd_http_request_s{
 	void *http11_connection;
 	};
 	union{
-		jhd_http2_frame *data_frame;
-		jhd_http_data 	*http_data;
+		jhd_http2_frame *in_data;
+		jhd_http_data 	*out_data;
 	};
+
+
+	jhd_http2_frame cache_frame;
 
 	unsigned is_http2:1;
 	unsigned in_close:1;
-	unsigned out_colse:1;
+	unsigned out_close:1;
+	unsigned out_headers_sent:1;
 };
 
 struct jhd_http_request_info_s{
