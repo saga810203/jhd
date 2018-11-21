@@ -47,7 +47,7 @@ void jhd_http2_server_ssl_connection_read_event_error_with_writer_clean(jhd_even
 
 
 
-
+jhd_http2_stream_listener server_stream_first_listener;
 
 
 #endif /* HTTP2_JHD_HTTP2_SERVER_H_ */

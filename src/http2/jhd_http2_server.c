@@ -121,14 +121,19 @@ static void server_create_request(jhd_event_t *ev){
 
 	if(r){
 		jhd_http_request_init_by_http2(r,ev);
-		//TODO: optimized code
-		jhd_unshift_event(&r->event,&jhd_posted_events);
-		jhd_unshift_event(ev,&jhd_posted_events);
+		r->event.queue.prev = &jhd_posted_events;
+		r->event.queue.next = &ev->queue;
+		ev->queue.prev = &r->event.queue;
+		ev->queue.next = jhd_posted_events.next;
+		jhd_posted_events.next->prev =&ev->queue;
+		jhd_posted_events.next = &r->event.queue;
 	}else{
 		jhd_wait_mem(ev,sizeof(jhd_http_request));
 		jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout,jhd_http2_common_mem_timeout);
 	}
 }
+
+
 
 
 
@@ -154,9 +159,13 @@ static void server_end_headers_handler(jhd_event_t *ev){
 			if(event_h2c->recv.frame_flag & JHD_HTTP2_END_STREAM_FLAG){
 				stream->in_close = 1;
 			}
-			stream->connection = event_h2c;
+			stream->out_close = 0;
+			stream->connection = event_c;
 			jhd_queue_init(&stream->flow_control);
 			jhd_queue_insert_tail(&event_h2c->streams[(stream->id >> 1) & 0x1F/*31*/],&stream->queue);
+
+			stream->lis_ctx = NULL;
+			stream->listener = server_stream_first_listener;
 			++event_h2c->processing;
 			event_h2c->recv.stream = stream;
 			event_h2c->recv.state_param = stream;
@@ -417,7 +426,7 @@ static int jhd_http2_server_connection_alloc_with_ssl(jhd_event_t *ev){
 	log_notice("==>%s",__FUNCTION__);
 	event_c = ev->data;
 	event_h2c = event_c->data;
-	conf = &((jhd_http_listenning_ctx*)(event_c->listening->lis_ctx))->h2_conf;
+	conf = &((jhd_http_listening_context*)(event_c->listening->lis_ctx))->h2_conf;
 	if(event_h2c == NULL){
 		event_c->data = event_h2c = jhd_alloc(sizeof(jhd_http2_connection));
 		if(event_h2c == NULL){
@@ -614,7 +623,7 @@ void jhd_http2_init_with_alpn(jhd_event_t *ev){
 		ev->handler = jhd_http2_read_preface;
 		jhd_http2_read_preface(ev);
 	}else{
-		jhd_event_add_timer(ev,((jhd_http_listenning_ctx*)(event_c->listening->lis_ctx))->h2_conf.wait_mem_timeout,server_common_close);
+		jhd_event_add_timer(ev,((jhd_http_listening_context*)(event_c->listening->lis_ctx))->h2_conf.wait_mem_timeout,server_common_close);
 	}
 }
 

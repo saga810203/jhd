@@ -19,6 +19,8 @@ typedef enum {
 	JHD_HTTP_METHOD_POST,
 	JHD_HTTP_METHOD_PUT,
 	JHD_HTTP_METHOD_DELETE,
+	JHD_HTTP_METHOD_HEAD,
+	JHD_HTTP_METHOD_OPTIONS,
 } jhd_http_method;
 
 
@@ -55,7 +57,24 @@ typedef struct {
 }jhd_http11_connection_conf;
 
 
-
+typedef struct {
+	unsigned server_side:1;
+	unsigned ssl:1;
+	uint32_t idle_timeout;
+	uint32_t read_timeout;
+	uint32_t write_timeout;
+	uint32_t wait_mem_timeout;
+    uint32_t recv_window_size_threshold; // if(connection->recv.window_size <  recv_window_size_threshold then send window_update
+	// http2 connection begin idle triger   can add idle timer(server) or send ping frame(client)
+    // only in frame header read with readed ==0
+    jhd_event_handler_pt connection_idle;
+    // in read event triger error (do del timer,hand..)
+    jhd_event_handler_pt connection_read_error;
+    jhd_event_handler_pt *frame_payload_handler_pts;
+    jhd_event_handler_pt connection_write;
+    jhd_event_handler_pt connection_frame_header_read_after_goaway;
+	void *extend_param;
+}jhd_http2_connection_conf;
 
 
 
@@ -64,9 +83,14 @@ typedef struct {
 
 
 struct jhd_http_listening_context_s{
+	jhd_http2_connection_conf   h2_conf;
+	jhd_http11_connection_conf  h11_conf;
+
 	uint8_t  size;
 	uint8_t  capcity;
 	void **  data;
+
+
 };
 
 
@@ -111,7 +135,9 @@ struct jhd_http_request_s{
 		http_named_header   response_unuse;
 	};
 	http_named_header content_type;
+
 	ssize_t   content_length;
+
 	union{
 		http_named_header  path;
 		http_named_header  date;
@@ -140,6 +166,16 @@ struct jhd_http_request_s{
 	unsigned in_close:1;
 	unsigned out_close:1;
 	unsigned out_headers_sent:1;
+
+
+
+
+
+
+
+
+
+	u_char count;
 };
 
 struct jhd_http_request_info_s{
@@ -237,5 +273,8 @@ extern jhd_http_request_info  jhd_http11_info;
 
 
 extern jhd_queue_t  jhd_http_serveres;
+
+extern char *jhd_http_bad_request_context;
+extern uint16_t jhd_http_bad_request_context_len;
 
 #endif /* HTTP_JHD_HTTP_CORE_H_ */

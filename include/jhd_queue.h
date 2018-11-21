@@ -77,6 +77,7 @@ struct jhd_queue_ptr_s{
 	(src)->next->prev = dst;(src)->prev->next = dst;\
 	(src)->prev = src;(src)->next = src;
 
+#define jhd_queue_merge(dst,src) (src)->next->prev = dst; (src)->prev->next = (dst)->next; (dst)->next->prev = (src)->prev; (dst)->next = (src)->next
 
 
 #else
@@ -109,6 +110,16 @@ static jhd_inline void jhd_queue_move(jhd_queue_t *dst,jhd_queue_t *src){
 	src->prev->next = dst;
 	src->prev = src;
 	src->next = src;
+}
+
+static jhd_inline void jhd_queue_merge(jhd_queue_t *dst,jhd_queue_t *src){
+	src->next->prev = dst;
+
+	src->prev->next = dst->next;
+
+	dst->next->prev = src->prev;
+
+	dst->next = src->next;
 }
 
 

@@ -101,7 +101,7 @@ static size_t jhd_http2_write_header(jhd_http_header *header){
 
 
 
-static size_t http2_calc_response_headers_size(jhd_http_request *r){
+size_t http2_calc_response_headers_size(jhd_http_request *r){
 	jhd_queue_t *head,*q;
 	jhd_http_header *header;
 	size_t ret;
@@ -146,7 +146,7 @@ static size_t http2_calc_response_headers_size(jhd_http_request *r){
 /**
  * return 0 is ok  other require memory size
  */
-static uint16_t http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len){
+uint16_t http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len){
 	uint16_t mlen,flen,blen;
 
 	while(*frame){
@@ -179,59 +179,6 @@ static uint16_t http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len)
 }
 
 
-static void jhd_http2_alloc_headers_frame_timeout(jhd_event_t *ev){
-	jhd_queue_t h,*q;
-	jhd_http_header *header;
-	jhd_http2_frame *frame;
-	u_char *p;
-	size_t len;
-	void (*frame_free_func)(void *);
-
-	http_named_header  date;
-	http_named_header  server;
-	http_named_header  content_type;
-
-	jhd_http_request *r = ev->data;
-
-	jhd_queue_move(&h,&r->headers);
-	frame = r->headers_frame;
-
-	date.data = r->date.data;
-	date.alloced = r->date.alloced;
-	server.data = r->server.data;
-	server.alloced = r->server.alloced;
-	content_type.data = r->content_type.data;
-	content_type.alloced = r->content_type.alloced;
-
-	if(date.alloced){
-		jhd_free_with_size(date.data,date.alloced);
-	}
-	if(server.alloced){
-		jhd_free_with_size(server.data,server.alloced);
-	}
-	if(content_type.alloced){
-		jhd_free_with_size(content_type.data,content_type.alloced);
-	}
-	while(frame){
-		p = (u_char*)frame;
-		frame_free_func = frame->free_func;
-		frame = frame->next;
-		frame_free_func(p);
-	}
-
-	while(jhd_queue_has_item(&h)){
-		q = jhd_queue_next(&h);
-		jhd_queue_only_remove(q);
-		header = jhd_queue_data(q,jhd_http_header,queue);
-		if(header->name_alloced){
-			jhd_free_with_size(header->name,header->name_alloced);
-		}
-		if(header->value_alloced){
-			jhd_free_with_size(header->value,header->value_alloced);
-		}
-		jhd_free_with_size(header,sizeof(jhd_http_header));
-	}
-}
 
 int jhd_http2_write_request_headers_frame(jhd_event_t *ev){
 
@@ -246,7 +193,7 @@ int jhd_http2_write_request_headers_frame(jhd_event_t *ev){
 /**
  * return with frame_head unused frame  NULL or single_frame
  */
-static void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame **frame_head,jhd_bool end_stream){
+void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame **frame_head,jhd_bool end_stream){
 	jhd_http2_frame *frame;
 	uint16_t len,slen;
 	jhd_queue_t  *head,*q;

@@ -60,24 +60,7 @@ typedef enum {
 } jhd_http2_error_handler_type;
 
 
-typedef struct {
-	unsigned server_side:1;
-	unsigned ssl:1;
-	uint32_t idle_timeout;
-	uint32_t read_timeout;
-	uint32_t write_timeout;
-	uint32_t wait_mem_timeout;
-    uint32_t recv_window_size_threshold; // if(connection->recv.window_size <  recv_window_size_threshold then send window_update
-	// http2 connection begin idle triger   can add idle timer(server) or send ping frame(client)
-    // only in frame header read with readed ==0
-    jhd_event_handler_pt connection_idle;
-    // in read event triger error (do del timer,hand..)
-    jhd_event_handler_pt connection_read_error;
-    jhd_event_handler_pt *frame_payload_handler_pts;
-    jhd_event_handler_pt connection_write;
-    jhd_event_handler_pt connection_frame_header_read_after_goaway;
-	void *extend_param;
-}jhd_http2_connection_conf;
+
 
 typedef struct {
 	jhd_http2_connection_conf   h2_conf;
@@ -153,22 +136,24 @@ log_assert_code(unsigned first_frame_header_read:1;)
 }jhd_http2_connection;
 
 
+typedef void (*jhd_http2_stream_event_pt)(jhd_http2_stream *stream);
+
 typedef struct{
 		//notify
-		jhd_event_handler_pt remote_close;
+		jhd_http2_stream_event_pt remote_close;
 		//notify
-		jhd_event_handler_pt remote_data;
+		void (*remote_data)(jhd_http2_stream *stream,jhd_http2_frame *frame);
 		//notify
-		jhd_event_handler_pt remote_empty_data;
+		jhd_http2_stream_event_pt remote_empty_data;
 		//notify
-		jhd_event_handler_pt reset;
+		jhd_http2_stream_event_pt reset;
 		//notify  //handler do send frame but disable block  not set ev->handler
-		jhd_event_handler_pt remote_recv;
+		jhd_http2_stream_event_pt remote_recv;
 		//notify   change stream->recv_window_size   ==  return value(event_h2c->recv.state);
-		jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_event_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
 
 		//notify  don't change connection state  can send data
-		jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_event_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
 }jhd_http2_stream_listener;
 
 
@@ -484,9 +469,9 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev);
 void jhd_http2_send_setting_frame_ack(jhd_event_t *ev);
 void jhd_http2_send_ping_frame(jhd_event_t *ev);
 
-
-
-
+uint16_t http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len);
+void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame **frame_head,jhd_bool end_stream);
+size_t http2_calc_response_headers_size(jhd_http_request *r);
 
 
 
