@@ -469,9 +469,9 @@ void jhd_http2_headers_frame_parse_item(jhd_event_t *ev);
 void jhd_http2_send_setting_frame_ack(jhd_event_t *ev);
 void jhd_http2_send_ping_frame(jhd_event_t *ev);
 
-uint16_t http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len);
+uint16_t jhd_http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len);
 void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame **frame_head,jhd_bool end_stream);
-size_t http2_calc_response_headers_size(jhd_http_request *r);
+uint32_t jhd_http2_calc_response_headers_size(jhd_http_request *r);
 
 
 

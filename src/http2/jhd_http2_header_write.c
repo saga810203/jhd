@@ -101,10 +101,10 @@ static size_t jhd_http2_write_header(jhd_http_header *header){
 
 
 
-size_t http2_calc_response_headers_size(jhd_http_request *r){
+uint32_t jhd_http2_calc_response_headers_size(jhd_http_request *r){
 	jhd_queue_t *head,*q;
 	jhd_http_header *header;
-	size_t ret;
+	uint32_t ret;
 
 	log_assert(r->status >=100 &&(r->status <=999));
 	if(r->status == 200){
@@ -146,7 +146,7 @@ size_t http2_calc_response_headers_size(jhd_http_request *r){
 /**
  * return 0 is ok  other require memory size
  */
-uint16_t http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len){
+uint16_t jhd_http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len){
 	uint16_t mlen,flen,blen;
 
 	while(*frame){

@@ -85,12 +85,10 @@ typedef struct {
 struct jhd_http_listening_context_s{
 	jhd_http2_connection_conf   h2_conf;
 	jhd_http11_connection_conf  h11_conf;
-
+	void (*handler)(void *data,jhd_http_request *r);
 	uint8_t  size;
 	uint8_t  capcity;
-	void **  data;
-
-
+	void 	 *data;
 };
 
 
@@ -123,12 +121,16 @@ struct jhd_http_request_s{
 
 	jhd_queue_t  headers;
 
-
-	uint32_t state;
-//	union{
+	union{
+		uint32_t state;
+		uint32_t payload_len;
+	};
+	union{
 		void *state_param;
 //		jhd_http2_frame *headers_frame;
-//	};
+
+		u_char *payload;
+	};
 
 	union{
 		http_named_header   user_agent;
@@ -204,9 +206,9 @@ typedef struct{
 typedef struct{
 	jhd_queue_t queue;
 	void *service_ctx;
-	jhd_bool (*match)(void *service_ctx,u_char * uri,uint16_t uri_len);
+	jhd_bool (*match)(void *service_ctx,jhd_http_request *request);
 	void (*server_ctx_free_func)(void *);
-	int (*service_func)(void *service_ctx,jhd_http_request *request); // return  0 aync handler other handler 400 badrequest
+	int (*service_func)(void *service_ctx,jhd_http_request *request);
 }jhd_http_service;
 
 
