@@ -477,12 +477,12 @@ uint32_t jhd_http2_calc_response_headers_size(jhd_http_request *r);
 
 
 
-#define jhd_http2_do_reset_stream(EV,EC,H2C,P,FRAME,ENO) \
-	log_assert((H2C)->recv.stream->id == (H2C)->recv.sid); \
-	FRAME = (jhd_http2_frame*)((H2C)->recv.stream);\
-	((H2C)->recv.stream)->listener->reset(EV);\
-	jhd_queue_only_remove(&((H2C)->recv.stream->queue));\
-	jhd_queue_only_remove(&((H2C)->recv.stream->flow_control));\
+#define jhd_http2_do_reset_stream(EV,EC,H2C,P,FRAME,ENO,STR) \
+	log_assert((STR)->id == (H2C)->recv.sid); \
+	FRAME = (jhd_http2_frame*)(STR);\
+	(STR)->listener->reset(STR);\
+	jhd_queue_only_remove(&((STR)->queue));\
+	jhd_queue_only_remove(&((STR)->flow_control));\
 	--(H2C)->processing;\
 	(H2C)->recv.stream = &jhd_http2_invalid_stream;\
 	P = FRAME->pos = (u_char*)(((u_char*)FRAME)+sizeof(jhd_http2_frame));\

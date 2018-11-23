@@ -153,16 +153,16 @@ struct jhd_http_request_s{
 	uint16_t status;
 	};
 	union{
-	jhd_http2_stream *stream;
+	void *stream;
 	void *http11_connection;
 	};
 	union{
-		jhd_http2_frame *in_data;
+		jhd_http_data *in_data;
 		jhd_http_data 	*out_data;
 	};
 
 
-	jhd_http2_frame cache_frame;
+	jhd_http_data cache_frame;
 
 	unsigned is_http2:1;
 	unsigned in_close:1;
@@ -276,7 +276,7 @@ extern jhd_http_request_info  jhd_http11_info;
 
 extern jhd_queue_t  jhd_http_serveres;
 
-extern char *jhd_http_bad_request_context;
+extern const char *jhd_http_bad_request_context;
 extern uint16_t jhd_http_bad_request_context_len;
 
 #endif /* HTTP_JHD_HTTP_CORE_H_ */

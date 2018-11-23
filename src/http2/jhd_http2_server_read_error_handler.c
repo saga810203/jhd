@@ -71,9 +71,7 @@ static void server_ssl_connection_cleanup_with_timer(jhd_event_t *ev){
 			jhd_queue_only_remove(q);
 			jhd_queue_insert_tail(&free_queue,&stream->queue);
 			--h2c->processing;
-
-			h2c->recv.stream = stream;
-			stream->listener->reset(ev);
+			stream->listener->reset(stream);
 			h2c->recv.stream = &jhd_http2_invalid_stream;
 		}
 	}
@@ -135,8 +133,7 @@ static void server_ssl_connection_read_event_error_with_timer_clean_after_goaway
 			jhd_queue_insert_tail(&free_queue,&stream->queue);
 			--h2c->processing;
 
-			h2c->recv.stream = stream;
-			stream->listener->reset(ev);
+			stream->listener->reset(stream);
 			h2c->recv.stream = &jhd_http2_invalid_stream;
 		}
 		if(h2c->processing){
@@ -149,9 +146,7 @@ static void server_ssl_connection_read_event_error_with_timer_clean_after_goaway
 						jhd_queue_only_remove(&stream->queue);
 						jhd_queue_insert_tail(&free_queue,&stream->queue);
 						--h2c->processing;
-
-						h2c->recv.stream = stream;
-						stream->listener->reset(ev);
+						stream->listener->reset(stream);
 						h2c->recv.stream = &jhd_http2_invalid_stream;
 					}
 				}
@@ -260,8 +255,7 @@ static void server_ssl_connection_cleanup_with_write_tigger(jhd_event_t *ev){
 			jhd_queue_insert_tail(&free_queue,&stream->queue);
 			--h2c->processing;
 
-			h2c->recv.stream = stream;
-			stream->listener->reset(ev);
+			stream->listener->reset(stream);
 			h2c->recv.stream = &jhd_http2_invalid_stream;
 		}
 	}
@@ -316,8 +310,8 @@ static void server_ssl_connection_read_event_error_with_writer_clean_after_goawa
 				jhd_queue_only_remove(&stream->queue);
 				jhd_queue_insert_tail(&free_queue,&stream->queue);
 				--h2c->processing;
-				h2c->recv.stream = stream;
-				stream->listener->reset(ev);
+
+				stream->listener->reset(stream);
 				h2c->recv.stream = &jhd_http2_invalid_stream;
 			}
 			if(h2c->processing){
@@ -330,8 +324,7 @@ static void server_ssl_connection_read_event_error_with_writer_clean_after_goawa
 							jhd_queue_insert_tail(&free_queue,&stream->queue);
 							jhd_queue_only_remove(&stream->flow_control);
 							--h2c->processing;
-							h2c->recv.stream = stream;
-							stream->listener->reset(ev);
+							stream->listener->reset(stream);
 							h2c->recv.stream = &jhd_http2_invalid_stream;
 						}
 					}

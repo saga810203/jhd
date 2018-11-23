@@ -2,6 +2,7 @@
 #include <jhd_log.h>
 #include <http/jhd_http_core.h>
 #include <http2/jhd_http2.h>
+#include <jhd_string.h>
 
 #define jhd_http2_integer_octets(v)  (1 + (v) / 127)
 #define jhd_http2_literal_size(h)  (jhd_http2_integer_octets(sizeof(h) - 1) + sizeof(h) - 1)
@@ -41,7 +42,7 @@ static size_t jhd_http2_write_header(jhd_http_header *header){
 
 	p = jhd_calc_buffer;
 	if(header->name_alloced){
-		log_assert(header->name <= 126);
+		log_assert(header->name_len <= 126);
 		*p = 0;
 		++p;
 		*p = header->name_len;
@@ -150,7 +151,7 @@ uint16_t jhd_http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len){
 	uint16_t mlen,flen,blen;
 
 	while(*frame){
-		*frame = &((*frame)->next);
+		frame = (jhd_http2_frame **)(&((*frame)->next));
 	}
 	do{
 		blen = 16384  - sizeof(jhd_http2_frame);
@@ -172,8 +173,8 @@ uint16_t jhd_http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len){
 		(*frame)->free_func = jhd_http2_frame_free_by_single;
 		(*frame)->next = NULL;
 
-		*len -= len;
-		frame = &((*frame)->next);
+		*len -= blen;
+		frame = (jhd_http2_frame **)(&((*frame)->next));
 	}while(*len >0);
 	return 0;
 }
@@ -182,7 +183,7 @@ uint16_t jhd_http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len){
 
 int jhd_http2_write_request_headers_frame(jhd_event_t *ev){
 
-
+	return 0;
 }
 
 
@@ -296,7 +297,7 @@ void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame *
 
 		end = jhd_calc_buffer + 100;
 
-		begin = jhd_u64_to_string(end,(uint64_t)r->content_length);
+		begin = jhd_u64_to_string(end,(uint64_t)((r->content_length)));
 
 		slen = end - begin;
 
@@ -375,15 +376,15 @@ void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame *
 				memcpy(p,jhd_calc_buffer,len);
 
 				log_assert(frame->next!= NULL);
-				log_assert(((jhd_http2_frame)(frame->next))->len -9 > (slen - len));
+				log_assert(((jhd_http2_frame*)(frame->next))->len -9 > (slen - len));
 
-				p = ((jhd_http2_frame)(frame->next))->pos + 9;
+				p = ((jhd_http2_frame*)(frame->next))->pos + 9;
 
 				memcpy(p,jhd_calc_buffer+len,slen - len);
 
 				p +=(slen-len);
 
-				len = ((jhd_http2_frame)(frame->next))->len -9 + len - slen /* -(slen - len)*/;
+				len = ((jhd_http2_frame*)(frame->next))->len -9 + len - slen /* -(slen - len)*/;
 
 				slen = frame->len - 9;
 

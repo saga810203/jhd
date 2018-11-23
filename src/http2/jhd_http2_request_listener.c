@@ -3,240 +3,52 @@
 #include <tls/jhd_tls_ssl_internal.h>
 #include <jhd_pool.h>
 #include <jhd_time.h>
+#include <http2/jhd_http2_stream_listener.h>
+#include <http2/jhd_http2_response_send.h>
 
-
-
-
-static void  invalid_stream_remote_close(jhd_http2_stream *stream){
-	log_stderr("invalid call[%s]",__FUNCTION__);
-	log_assert(1==2);
-}
-
-static void ignore_stream_remote_close(jhd_http2_stream *stream){
-	log_notice("exec %s",__FUNCTION__);
-};
-
-
-static void  invalid_stream_remote_data(jhd_http2_stream *stream,jhd_http2_frame *frame){
-	log_stderr("invalid call[%s]",__FUNCTION__);
-	log_assert(1==2);
-
-	frame->free_func(frame);
-}
-
-static void ignore_stream_remote_data(jhd_http2_stream *stream,jhd_http2_frame *frame){
-	log_notice("exec %s",__FUNCTION__);
-	frame->free_func(frame);
-}
-
-static void  invalid_stream_remote_empty_data(jhd_http2_stream *stream){
-	log_stderr("invalid call[%s]",__FUNCTION__);
-	log_assert(1==2);
-}
-
-static void ignore_stream_remote_empty_data(jhd_http2_stream *stream){
-	log_notice("exec %s",__FUNCTION__);
-}
-
-static void  invalid_stream_remote_recv(jhd_http2_stream *stream){
-	log_stderr("invalid call[%s]",__FUNCTION__);
-	log_assert(1==2);
-}
-static void ignore_stream_remote_recv(jhd_http2_stream *stream){
-	log_notice("exec %s",__FUNCTION__);
-}
-
-
-static void  invalid_stream_recv_window_change(jhd_http2_stream *stream){
-	log_stderr("invalid call[%s]",__FUNCTION__);
-	log_assert(1==2);
-}
-
-static void ignore_stream_recv_window_change(jhd_http2_stream *stream){
-	log_notice("exec %s",__FUNCTION__);
-}
-
-static void  invalid_stream_send_window_change(jhd_http2_stream *stream){
-	log_stderr("invalid call[%s]",__FUNCTION__);
-	log_assert(1==2);
-}
-static void ignore_stream_send_window_change(jhd_http2_stream *stream){
-	log_notice("exec %s",__FUNCTION__);
-}
-
-
-static void  stream_reset_without_request(jhd_http2_stream *stream){
-}
-
-
-
-static void stream_reset_with_direct_free_request(jhd_http2_stream *stream){
-	jhd_http_request *r;
-	r = stream->lis_ctx;
-	jhd_queue_only_remove(&r->event.queue);
-	jhd_free_with_size(r,sizeof(jhd_http_request));
-}
 
 
 
 jhd_http2_stream_listener server_stream_first_listener ={
-		invalid_stream_remote_close,	//	jhd_event_handler_pt remote_close;
-		invalid_stream_remote_data,//		jhd_event_handler_pt remote_data;
-		invalid_stream_remote_empty_data,
-		stream_reset_without_request,//		jhd_event_handler_pt reset;
-		invalid_stream_remote_recv,//		jhd_event_handler_pt remote_recv;
-		invalid_stream_recv_window_change,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
-		invalid_stream_send_window_change,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_invlid_listener,	//	jhd_event_handler_pt remote_close;
+		jhd_http2_stream_invalid_data_listener,//		jhd_event_handler_pt remote_data;
+		jhd_http2_stream_invlid_listener,
+
+		jhd_http2_stream_ignore_listener,//		    jhd_event_handler_pt reset;
+
+		jhd_http2_stream_invlid_listener,//		jhd_event_handler_pt remote_recv;
+		jhd_http2_stream_invlid_listener,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_invlid_listener,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
 };
 
 #ifdef JHD_LOG_ASSERT_ENABLE
-
-static void  invalid_stream_reset(jhd_http2_stream *stream){
-	log_stderr("invalid call[%s]",__FUNCTION__);
-	log_assert(1==2);
-}
 static jhd_http2_stream_listener server_stream_listener_after_request_alloced ={
-		invalid_stream_remote_close,	//	jhd_event_handler_pt remote_close;
-		invalid_stream_remote_data,//		jhd_event_handler_pt remote_data;
-		invalid_stream_remote_empty_data,
-		invalid_stream_reset,//		jhd_event_handler_pt reset;
-		invalid_stream_remote_recv,//		jhd_event_handler_pt remote_recv;
-		invalid_stream_recv_window_change,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
-		invalid_stream_send_window_change,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_invlid_listener,	//	jhd_event_handler_pt remote_close;
+		jhd_http2_stream_invalid_data_listener,//		jhd_event_handler_pt remote_data;
+		jhd_http2_stream_invlid_listener,
+
+		jhd_http2_stream_invlid_listener,//		    jhd_event_handler_pt reset;
+
+		jhd_http2_stream_invlid_listener,//		jhd_event_handler_pt remote_recv;
+		jhd_http2_stream_invlid_listener,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_invlid_listener,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
 };
 #endif
 
 
+jhd_http2_stream_listener server_stream_listener_with_bad_request_alloc_data_frame = {
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt remote_close;
+		jhd_http2_stream_ignore_data_listener,//		jhd_event_handler_pt remote_data;
+		jhd_http2_stream_ignore_listener,
 
+		jhd_http2_stream_listener_by_rest_with_direct_free_request,//		    jhd_event_handler_pt reset;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-static void  stream_remote_close(jhd_http2_stream *stream){
-	jhd_http_request *r;
-	r = stream->lis_ctx;
-	r->in_close = 1;
-}
-
-static void  stream_remote_data(jhd_http2_stream *stream,jhd_http2_frame *frame){
-	jhd_http_request *r;
-	jhd_http2_frame **pframe;
-
-	log_assert(frame->next  == NULL);
-	log_assert(frame->len > 0);
-	r = stream->lis_ctx;
-	pframe = &r->in_data;
-	while(*pframe != NULL){
-		pframe = &((*pframe)->next);
-	}
-	*pframe = frame;
-}
-
-static void  stream_remote_reset(jhd_http2_stream *stream){
-	jhd_http_request *r;
-	jhd_event_handler_pt timeout;
-	jhd_event_t *ev;
-	r = stream->lis_ctx;
-	ev = &r->event;
-	if(ev->timer.key){
-		timeout =ev->timeout;
-		jhd_event_del_timer(ev);
-		timeout(ev);
-	}
-	--r->count;
-	if(r->count == 0){
-
-	}
-}
-
-static stream_reset_with_free_cache_frame_data(jhd_http2_stream *stream){
-	jhd_http_request *r;
-	r = stream->lis_ctx;
-	jhd_queue_only_remove(&r->event.queue);
-	jhd_free_with_size(r->cache_frame.data,r->cache_frame.data_len);
-	jhd_free_with_size(r,sizeof(jhd_http_request));
-}
-
-
-
-
-static jhd_http2_stream_listener server_stream_listener_with_bad_request_alloc_data_frame ={
-		ignore_stream_remote_close,	//	jhd_event_handler_pt remote_close;
-		ignore_stream_remote_data,//		jhd_event_handler_pt remote_data;
-		ignore_stream_remote_empty_data,
-		stream_reset_with_direct_free_request,//		jhd_event_handler_pt reset;
-		ignore_stream_remote_recv,//		jhd_event_handler_pt remote_recv;
-		ignore_stream_recv_window_change,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
-		ignore_stream_send_window_change,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
-};
-static jhd_http2_stream_listener server_stream_listener_with_flow_control_and_in_send_queue ={
-		ignore_stream_remote_close,	//	jhd_event_handler_pt remote_close;
-		ignore_stream_remote_data,//		jhd_event_handler_pt remote_data;
-		ignore_stream_remote_empty_data,
-		stream_reset_with_direct_free_request,//		jhd_event_handler_pt reset;
-		ignore_stream_remote_recv,//		jhd_event_handler_pt remote_recv;
-		ignore_stream_recv_window_change,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
-		ignore_stream_send_window_change,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_ignore_listener,//		jhd_event_handler_pt remote_recv;
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
 };
 
-static jhd_http2_stream_listener server_stream_listener_with_flow_control_and_not_in_send_queue ={
-		ignore_stream_remote_close,	//	jhd_event_handler_pt remote_close;
-		ignore_stream_remote_data,//		jhd_event_handler_pt remote_data;
-		ignore_stream_remote_empty_data,
-		stream_reset_with_direct_free_request,//		jhd_event_handler_pt reset;
-		ignore_stream_remote_recv,//		jhd_event_handler_pt remote_recv;
-		ignore_stream_recv_window_change,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
-		ignore_stream_send_window_change,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
-};
 
-static void jhd_http2_free_cache_frame(jhd_http2_frame *frame){
-	jhd_http_request * r;
-	r =  (jhd_http_request *) (((u_char *) frame) - offsetof(jhd_http_request, cache_frame));
-	jhd_free_with_size(frame->data,frame->data_len);
-	jhd_free_with_size(r,sizeof(jhd_http_request));
-}
-
-static void jhd_http2_frame_cache_frame_write_over(jhd_http2_frame *frame){
-	frame->data = NULL;
-}
-
-static void jhd_http2_free_cache_frame_write_next_fragmentation(jhd_http2_frame *frame){
-	jhd_http_request * r;
-	jhd_http2_stream *stream;
-	jhd_connection_t *c;
-	jhd_http2_connection *h2c;
-	int size;
-
-	r =  (jhd_http_request *) (((u_char *) frame) - offsetof(jhd_http_request, cache_frame));
-	stream = r->stream;
-	c = stream->connection;
-	h2c = c->data;
-
-	size = min(h2c->send.window_size,stream->send_window_size);
-	if(size >= ((int)r->payload_len)){
-		jhd_queue_
-
-		h2c->send.window_size -= r->payload_len;
-
-	}
-
-
-
-
-}
 
 
 static void http2_alloc_bad_request_body_frame_data(jhd_event_t *ev){
@@ -250,90 +62,28 @@ static void http2_alloc_bad_request_body_frame_data(jhd_event_t *ev){
 		jhd_wait_mem(&r->event,frame->data_len);
 		return;
 	}
-
-
-
-
-
-
-
-
-
+	r->payload =frame->data + 9;
+	r->payload_len = jhd_http_bad_request_context_len;
+	memcpy(r->payload,jhd_http_bad_request_context,jhd_http_bad_request_context_len);
+	jhd_http2_stream_send_last_raw_data(r);
 }
 static void http2_send_bad_request_body(jhd_http_request *r){
 	jhd_http2_frame *frame;
-	jhd_http2_stream *stream;
-	jhd_connection_t *c;
-	jhd_http2_connection *h2c;
-	int size;
-	u_char *p;
-
 
 	frame = &r->cache_frame;
-	frame->type = JHD_HTTP2_FRAME_TYPE_DATA_FRAME;
+
 	frame->data_len = 9 + jhd_http_bad_request_context_len;
 	frame->data = jhd_alloc(frame->data_len);
 	if(frame->data == NULL){
 		jhd_wait_mem(&r->event,frame->data_len);
 		r->event.handler = http2_alloc_bad_request_body_frame_data;
-		r->stream->listener = server_stream_listener_with_bad_request_alloc_data_frame;
+		((jhd_http2_stream*)(r->stream))->listener = &server_stream_listener_with_bad_request_alloc_data_frame;
 		return;
 	}
+	r->payload =frame->data+ 9;
 	r->payload_len = jhd_http_bad_request_context_len;
-	p = frame->pos = frame->data;
-	p += 9;
-	r->payload = p;
-	memcpy(p,jhd_http_bad_request_context,jhd_http_bad_request_context_len);
-	p -= 9;
-	stream = r->stream;
-	c = stream->connection;
-	h2c = c->data;
-
-	size = min(h2c->send.window_size,stream->send_window_size);
-	if(size < ((int)r->payload_len)){
-		jhd_queue_insert(&h2c->flow_control,&stream->flow_control);
-		if(size < 1){
-			stream->listener = server_stream_listener_with_flow_control_and_not_in_send_queue;
-		}else{
-			r->payload_len   -= (uint32_t)size;
-			r->payload       += (uint32_t)size;
-
-			stream->listener = server_stream_listener_with_flow_control_and_in_send_queue;
-
-			r->count = 1;
-
-			frame->len = 9  +  ((uint32_t)size);
-
-			p[0] = 0;
-			p[1] =((u_char)(size>>8));
-			p[2] =(u_char)(size);
-			p[4] = JHD_HTTP2_FRAME_TYPE_DATA_FRAME;
-			p[5] = 0;
-			p += 5;
-			jhd_http2_set_stream_id(p,stream->id);
-
-			frame->next = NULL;
-
-			frame->func_free =
-		}
-		return;
-	}
-
-	h2c->send.window_size -= jhd_http_bad_request_context_len;
-	frame->len = frame->data_len;
-	p[0] = 0;
-	p[1] =((u_char)(jhd_http_bad_request_context_len>>8));
-	p[2] =(u_char)(jhd_http_bad_request_context_len);
-	p[4] = JHD_HTTP2_FRAME_TYPE_DATA_FRAME;
-	p[5] = JHD_HTTP2_END_STREAM_FLAG;
-	p += 5;
-	jhd_http2_set_stream_id(p,stream->id);
-
-	frame->free_func = jhd_http2_free_cache_frame;
-	frame->next = NULL;
-	jhd_http2_send_queue_frame(c,h2c,frame);
-	jhd_queue_only_remove(&stream->queue);
-	jhd_free_with_size(stream,sizeof(jhd_http2_stream));
+	memcpy(r->payload,jhd_http_bad_request_context,jhd_http_bad_request_context_len);
+	jhd_http2_stream_send_last_raw_data(r);
 }
 
 
@@ -368,7 +118,7 @@ static void http2_bad_request_alloc_headers_frame(jhd_event_t *ev){
 
 
 
-static stream_reset_with_alloc_headers_frame_block(jhd_http2_stream *stream){
+static void stream_reset_with_alloc_headers_frame_block(jhd_http2_stream *stream){
 	jhd_http2_frame **frame_head,*frame;
 	jhd_http_request *r;
 
@@ -385,13 +135,13 @@ static stream_reset_with_alloc_headers_frame_block(jhd_http2_stream *stream){
 
 
 static jhd_http2_stream_listener server_stream_listener_with_bad_request_alloc_header_frame ={
-		ignore_stream_remote_close,	//	jhd_event_handler_pt remote_close;
-		ignore_stream_remote_data,//		jhd_event_handler_pt remote_data;
-		ignore_stream_remote_empty_data,
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt remote_close;
+		jhd_http2_stream_ignore_data_listener,//		jhd_event_handler_pt remote_data;
+		jhd_http2_stream_ignore_listener,
 		stream_reset_with_alloc_headers_frame_block,//		jhd_event_handler_pt reset;
-		ignore_stream_remote_recv,//		jhd_event_handler_pt remote_recv;
-		ignore_stream_recv_window_change,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
-		ignore_stream_send_window_change,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_ignore_listener,//		jhd_event_handler_pt remote_recv;
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
 };
 static void http2_bad_request(jhd_http_request *r){
 	uint16_t  mem_len;
@@ -439,7 +189,7 @@ static void http2_bad_request(jhd_http_request *r){
 	if(mem_len){
 		r->event.handler = http2_bad_request_alloc_headers_frame;
 		r->event.timeout = jhd_event_noop;
-		r->stream->listener = server_stream_listener_with_bad_request_alloc_header_frame;
+		((jhd_http2_stream*)(r->stream))->listener = &server_stream_listener_with_bad_request_alloc_header_frame;
 		jhd_wait_mem(&r->event,mem_len);
 		return;
 	}
@@ -473,24 +223,24 @@ static void http2_reqeust_check(jhd_event_t *ev){
 		if(header->name_len == 10){
 			if (0 == memcpy(header->name,":authority",10)){
 
-				if(r->host->data){
+				if(r->host.data){
 					goto func_error;
 				}
-				r->host->data = header->value;
-				r->host->len = header->value_len;
-				r->host->alloced = header->value_alloced;
+				r->host.data = header->value;
+				r->host.len = header->value_len;
+				r->host.alloced = header->value_alloced;
 				header->value_alloced = 0;
 				tq = q;
 				q = jhd_queue_next(q);
 				jhd_queue_only_remove(tq);
 				jhd_queue_insert_tail(&h,tq);
 			}else if(0 == memcpy(header->name,"user-agent",10)){
-				if(r->user_agent->data){
+				if(r->user_agent.data){
 					goto func_error;
 				}
-				r->user_agent->data = header->value;
-				r->user_agent->len = header->value_len;
-				r->user_agent->alloced = header->value_alloced;
+				r->user_agent.data = header->value;
+				r->user_agent.len = header->value_len;
+				r->user_agent.alloced = header->value_alloced;
 				header->value_alloced = 0;
 				tq = q;
 				q = jhd_queue_next(q);
@@ -545,12 +295,12 @@ static void http2_reqeust_check(jhd_event_t *ev){
 			jhd_queue_only_remove(tq);
 			jhd_queue_insert_tail(&h,tq);
 		}else if(header->name_len == 5 && (0 == memcpy(header->name,":path",5))){
-			if(r->path->data){
+			if(r->path.data){
 				goto func_error;
 			}
-			r->path->data = header->value;
-			r->path->len = header->value_len;
-			r->path->alloced = header->value_alloced;
+			r->path.data = header->value;
+			r->path.len = header->value_len;
+			r->path.alloced = header->value_alloced;
 			header->value_alloced = 0;
 			tq = q;
 			q = jhd_queue_next(q);
@@ -565,12 +315,12 @@ static void http2_reqeust_check(jhd_event_t *ev){
 			q = jhd_queue_next(q);
 			jhd_queue_only_remove(tq);
 		}else if(header->name_len == 12 && (0 == memcpy(header->name,"content-type",12))){
-			if(r->content_type->data){
+			if(r->content_type.data){
 				goto func_error;
 			}
-			r->content_type->data = header->value;
-			r->content_type->len = header->value_len;
-			r->content_type->alloced = header->value_alloced;
+			r->content_type.data = header->value;
+			r->content_type.len = header->value_len;
+			r->content_type.alloced = header->value_alloced;
 			header->value_alloced = 0;
 			tq = q;
 			q = jhd_queue_next(q);
@@ -594,12 +344,12 @@ static void http2_reqeust_check(jhd_event_t *ev){
 		r->host.alloced = host->value_alloced;
 		host->value_alloced = 0;
 	}
-	http_ctx =(jhd_http_listening_context *) r->stream->connection->listening->lis_ctx;
+	http_ctx =(jhd_http_listening_context *) (((jhd_http2_stream*)(r->stream))->connection->listening->lis_ctx);
 	http_ctx->handler(http_ctx->data,r);
 	goto func_free;
 
 func_error:
-	if(jhd_queue_has_item(r->headers)){
+	if(jhd_queue_has_item(&r->headers)){
 		jhd_queue_merge(&h,&r->headers);
 		log_assert_code(jhd_queue_init(&r->headers);)
 	}

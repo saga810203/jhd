@@ -4,7 +4,7 @@
 
 jhd_queue_t  jhd_http_serveres={&jhd_http_serveres,&jhd_http_serveres};
 
-static char *default_jhd_http_bad_request_context= "<html>\n"
+const char *default_jhd_http_bad_request_context= "<html>\n"
 		"<head><title>400 Bad Request</title></head>\n"
 		"<body bgcolor=\"white\">\n"
 		"<center><h1>400 Bad Request</h1></center>\n"
@@ -12,7 +12,7 @@ static char *default_jhd_http_bad_request_context= "<html>\n"
 		"</body>\n"
 		"</html>";
 
-char *jhd_http_bad_request_context = default_jhd_http_bad_request_context;
+const char *jhd_http_bad_request_context ;
 
 uint16_t jhd_http_bad_request_context_len = sizeof("<html>\n"
 		"<head><title>400 Bad Request</title></head>\n"

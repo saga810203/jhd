@@ -371,10 +371,7 @@ void jhd_http2_hpack_search_item(jhd_http2_hpack *hpack,u_char *name,uint16_t na
 void jhd_http2_hpack_search_dynamic_item(jhd_http2_hpack *hpack,u_char *name,uint16_t name_len,u_char *val,uint16_t val_len,jhd_http2_hpack_search_result *result){
 	uint32_t i;
 	u_char *p;
-	jhd_http2_hpack_header_item *static_item = jhd_http2_headers_static;
-
 	log_assert(result->name_idx == 0  &&  result->val_idx == 0);
-
 	for(i = 0 ; i < hpack->rds_headers ; ++i){
 		p =hpack->index[i];
 		if(name_len ==(*((uint16_t*)p))){
@@ -401,7 +398,6 @@ void jhd_http2_hpack_search_dynamic_item(jhd_http2_hpack *hpack,u_char *name,uin
 
 uint32_t jhd_http2_hpack_find_static_name(u_char *name,uint16_t name_len){
 	uint32_t i;
-	u_char *p;
 	jhd_http2_hpack_header_item *static_item = jhd_http2_headers_static;
 	for(static_item = jhd_http2_headers_static,i = 0 ; i < 61; ++i,++static_item){
 		if(static_item->name.len == name_len){

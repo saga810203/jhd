@@ -46,11 +46,11 @@ extern jhd_http2_hpack_header_item jhd_http2_headers_static[];
 #define jhd_http2_hpack_string(str)     {  (u_char *) str,(uint16_t)(sizeof(str) - 1)}
 
 
-jhd_inline u_char* jhd_http2_hpack_static_name(u_char idx){
+static jhd_inline u_char* jhd_http2_hpack_static_name(u_char idx){
 	return jhd_http2_headers_static[idx-1].name.data;
 }
 
-jhd_inline uint16_t* jhd_http2_hpack_static_name_len(u_char idx){
+static jhd_inline uint16_t jhd_http2_hpack_static_name_len(u_char idx){
 	return jhd_http2_headers_static[idx-1].name.len;
 }
 

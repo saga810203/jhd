@@ -121,12 +121,9 @@ static void server_create_request(jhd_event_t *ev){
 
 	if(r){
 		jhd_http_request_init_by_http2(r,ev);
-		r->event.queue.prev = &jhd_posted_events;
-		r->event.queue.next = &ev->queue;
-		ev->queue.prev = &r->event.queue;
-		ev->queue.next = jhd_posted_events.next;
-		jhd_posted_events.next->prev =&ev->queue;
-		jhd_posted_events.next = &r->event.queue;
+		ev->handler = event_h2c->recv.connection_frame_header_read;
+		jhd_unshift_event(ev,&jhd_posted_events);
+		r->event.handler(&r->event);
 	}else{
 		jhd_wait_mem(ev,sizeof(jhd_http_request));
 		jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout,jhd_http2_common_mem_timeout);
@@ -165,7 +162,7 @@ static void server_end_headers_handler(jhd_event_t *ev){
 			jhd_queue_insert_tail(&event_h2c->streams[(stream->id >> 1) & 0x1F/*31*/],&stream->queue);
 
 			stream->lis_ctx = NULL;
-			stream->listener = server_stream_first_listener;
+			stream->listener = &server_stream_first_listener;
 			++event_h2c->processing;
 			event_h2c->recv.stream = stream;
 			event_h2c->recv.state_param = stream;
