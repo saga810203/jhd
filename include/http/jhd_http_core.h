@@ -48,8 +48,8 @@ typedef struct{
 	size_t 					 size;
 
 
-	ssize_t 				range_start;
-	ssize_t					range_end;
+	size_t 				range_start;
+	size_t					range_end;
 
 	int fd;
     unsigned                 is_file:1;

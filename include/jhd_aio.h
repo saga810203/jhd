@@ -26,6 +26,7 @@ typedef struct jhd_aio_cb_s{
 
 extern jhd_aio_cb *jhd_free_iocbs;
 extern jhd_queue_t waitting_iocb_queue;
+extern uint32_t    jhd_aio_block_size;
 
 
 

@@ -11,6 +11,7 @@ static aio_context_t jhd_aio;
 
 jhd_aio_cb *jhd_free_iocbs = NULL;
 jhd_queue_t waitting_iocb_queue;
+uint32_t    jhd_aio_block_size = 512;
 
 
 static jhd_connection_t *aio_con = NULL;

@@ -320,7 +320,7 @@ void jhd_http_request_handle_with_internal_error(jhd_http_request *r){
 void jhd_http_request_handle_with_not_modified(jhd_http_request *r){
 	log_assert(jhd_queue_emtpy(&r->headers));
 	if(r->is_http2){
-		jhd_http_request_handle_with_not_modified_by_http2(r);
+		jhd_http2_send_not_modified_response(r);
 	}else{
 		jhd_http_request_handle_with_not_modified_by_http11(r);
 	}

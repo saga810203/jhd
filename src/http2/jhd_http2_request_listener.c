@@ -179,7 +179,7 @@ static void http2_cache_response_alloc_headers_frame(jhd_event_t *ev) {
 		http2_send_cache_response_body(r);
 	}else{
 		jhd_wait_mem(&r->event, 256);
-		jhd_event_add_timer(ev,r->mem_timeout,stream_reset_with_alloc_cache_response_headers_frame_timeout);
+		jhd_event_add_timer(ev,r->http_service->mem_timeout,stream_reset_with_alloc_cache_response_headers_frame_timeout);
 	}
 }
 
@@ -188,9 +188,10 @@ static void http2_not_modified_response_alloc_headers_frame(jhd_event_t *ev) {
 	jhd_http_request *r = ev->data;
 	frame = jhd_alloc(256);
 	if(frame){
+		jhd_event_del_timer(ev);
 		jhd_http2_send_not_modified_response_headers_frmae(r,frame);
 	}else{
-		jhd_wait_mem(&r->event, 256);
+		jhd_wait_mem(ev, 256);
 		jhd_event_add_timer(ev,r->http_service->mem_timeout,stream_reset_with_alloc_cache_response_headers_frame_timeout);
 	}
 }
@@ -257,15 +258,11 @@ void jhd_http2_send_not_modified_response(jhd_http_request *r){
 	jhd_connection_t *c;
 	jhd_http2_connection *h2c;
 
-	u_char *content_type,*host,*user_agent,*path;
-	uint16_t  content_type_len,host_len,user_agent_len,path_len;
-	content_type_len = host_len = user_agent_len = path_len = 0;
+	u_char *host,*user_agent,*path;
+	uint16_t  host_len,user_agent_len,path_len;
+	host_len = user_agent_len = path_len = 0;
 
-	if(r->content_type.alloced){
-		content_type = r->content_type.data;
-		content_type_len = r->content_type.alloced;
-		r->content_type.alloced = 0;
-	}
+
 	if(r->host.alloced){
 		host = r->host.data;
 		host_len = r->host.alloced;
@@ -283,22 +280,18 @@ void jhd_http2_send_not_modified_response(jhd_http_request *r){
 	}
 	log_assert( jhd_queue_empty(&r->headers));
 
-
 	//TODO op this value[256]  only include  state  content_length  content_type server date
 	r->state_param = NULL;
 	frame = jhd_alloc(256);
-	if(frame == NULL){
+	if(frame){
+		jhd_http2_send_not_modified_response_headers_frmae(r,frame);
+	}else{
 		r->event.handler = http2_not_modified_response_alloc_headers_frame;
 		((jhd_http2_stream*)(r->stream))->listener = &server_stream_listener_with_ignore_cache_response_alloc_header_frame;
 		jhd_wait_mem(&r->event,256);
-		jhd_event_add_timer(&r->event,r->mem_timeout,stream_reset_with_alloc_cache_response_headers_frame_timeout);
-		goto func_free;
+		jhd_event_add_timer(&r->event,r->http_service->mem_timeout,stream_reset_with_alloc_cache_response_headers_frame_timeout);
 	}
-	jhd_http2_send_not_modified_response_headers_frmae(r,frame);
 func_free:
-	if(content_type_len){
-		jhd_free_with_size(content_type,content_type_len);
-	}
 	if(path_len){
 		jhd_free_with_size(path,path_len);
 	}
@@ -308,7 +301,6 @@ func_free:
 	if(host_len){
 		jhd_free_with_size(host,host_len);
 	}
-
 }
 
 void jhd_http2_send_cached_response(jhd_http_request *r,uint16_t status,u_char* body,uint16_t body_len){
