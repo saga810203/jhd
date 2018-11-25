@@ -944,7 +944,19 @@ void jhd_connection_empty_ssl_write(jhd_event_t *wv){
 	//FIXME: impl
 }
 
-
+jhd_connection_t*  jhd_connection_get(){
+	jhd_connection_t *c = free_connections;
+	if (c) {
+		--free_connection_count;
+		free_connections = c->data;
+	}
+	return c;
+}
+void jhd_connection_destroy(jhd_connection_t *c){
+	++free_connection_count;
+	c->data = free_connections;
+	free_connections = c;
+}
 ssize_t jhd_connection_recv(jhd_connection_t *c, u_char *buf, size_t size) {
 	ssize_t n,ret;
 	int err;

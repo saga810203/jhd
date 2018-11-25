@@ -69,7 +69,7 @@ struct jhd_connection_s {
 	jhd_sockaddr_t sockaddr;
 	socklen_t socklen;
 	void *ssl;
-	int idx;
+	uint32_t idx;
 	unsigned shutdown_remote:1;
 
 #ifdef JHD_LOG_ASSERT_ENABLE
@@ -79,7 +79,8 @@ struct jhd_connection_s {
 };
 
 #define jhd_connection_free() ++free_connection_count;c->data = free_connections;free_connections = c
-
+jhd_connection_t*  jhd_connection_get();
+void jhd_connection_destroy(jhd_connection_t *c);
 
 
 int jhd_connection_parse_sockaddr(jhd_sockaddr_t* addr,socklen_t *socklen,u_char *addr_text,size_t addr_text_len,uint16_t default_port);

@@ -10,30 +10,41 @@
 #include <jhd_config.h>
 #include <jhd_log.h>
 #include <jhd_event.h>
-#include <libaio.h>		/* for perror() */
+#include <linux/aio_abi.h>
+#include <bits/syscall.h>
 
-extern struct iocb *jhd_free_iocbs;
+
+
+
+typedef struct {
+	struct iocb  aio;
+	int64_t      result;
+}jhd_aio_cb;
+
+extern jhd_aio_cb *jhd_free_iocbs;
 extern jhd_queue_t waitting_iocb_queue;
+
+
+
 
 int jhd_aio_setup();
 
-static jhd_inline struct iocb * jhd_aio_get() {
-	struct iocb *ret,**ppiocb;
+
+
+static jhd_inline void* jhd_aio_get() {
+	jhd_aio_cb *ret,**ppiocb;
 	ret = jhd_free_iocbs;
 	if(ret) {
-		ppiocb = (struct iocb **)(ret);
+		ppiocb = (jhd_aio_cb **)(ret);
 		jhd_free_iocbs = *ppiocb;
 	}
 	return ret;
-
 }
 static jhd_inline void jhd_aio_free(void* ic){
 	jhd_event_t *ev;
 	jhd_queue_t *q;
-
-	*((struct iocb **)ic) = jhd_free_iocbs;
-
-	jhd_free_iocbs = ((struct iocb *)ic);
+	*((jhd_aio_cb **)ic) = jhd_free_iocbs;
+	jhd_free_iocbs = ((jhd_aio_cb *)ic);
 	q = waitting_iocb_queue.next;
 
 	if(q != &waitting_iocb_queue){
@@ -46,6 +57,10 @@ static jhd_inline void jhd_aio_free(void* ic){
 static jhd_inline void jhd_aio_wait(jhd_event_t *ev) {
 	jhd_queue_insert_tail(&waitting_iocb_queue,&ev->queue);
 }
+
+void jhd_aio_read(jhd_event_t *ev,void*ic,int fd,u_char *buf, size_t size, off_t offset);
+void jhd_aio_write(jhd_event_t *ev,void*ic,int fd,u_char *buf, size_t size, off_t offset);
+
 
 void jhd_aio_destroy();
 
