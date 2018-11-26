@@ -52,7 +52,43 @@ jhd_http2_stream_listener server_stream_listener_with_ignore_request_body_alloc_
 		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
 };
 
+static void http_alloc_cached_response_body_frame_data_timeout(jhd_event_t *ev){
+		jhd_http_request *r;
+		jhd_http2_stream *stream;
+		jhd_connection_t *c;
+		jhd_http2_connection *h2c;
+		jhd_http2_frame *frame;
+		u_char *p;
 
+		r = ev->data;
+		stream = r->stream;
+		c = stream->connection;
+		h2c = c->data;
+
+		jhd_queue_only_remove(stream->queue);
+
+		frame = (jhd_http2_frame*)(stream);
+		--h2c->processing;
+		h2c->recv.stream = &jhd_http2_invalid_stream;
+		p = frame->pos = (u_char*)(((u_char*)frame)+sizeof(jhd_http2_frame));
+		frame->type = JHD_HTTP2_FRAME_TYPE_RST_STREAM_FRAME;
+		frame->data_len = sizeof(jhd_http2_stream);
+		frame->len = 13;
+		frame->free_func = jhd_http2_frame_free_by_single;
+		frame->next = NULL;
+		*((uint32_t*)p) =0x03040000;
+		p[4] = 0;\
+		p[5] = (u_char)((stream->id) >> 24);
+		p[6] = (u_char)((stream->id) >> 16);
+		p[7] = (u_char)((stream->id) >> 8);
+		p[8] = (u_char)(stream->id);
+		p += 9;
+		*((uint32_t*)p) = JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT;
+		jhd_http2_send_queue_frame(c,h2c,frame);
+
+		jhd_queue_only_remove(&r->event.queue);
+		jhd_http_request_free(r);
+}
 
 
 static void http2_alloc_cached_response_body_frame_data(jhd_event_t *ev){
@@ -79,8 +115,12 @@ static void http2_send_cache_response_body(jhd_http_request *r){
 	if(frame->data == NULL){
 		jhd_wait_mem(&r->event,frame->data_len);
 		r->event.handler = http2_alloc_cached_response_body_frame_data;
+		jhd_event_add_timer(&r->event,r->mem_timeout,http_alloc_cached_response_body_frame_data_timeout);
 		((jhd_http2_stream*)(r->stream))->listener = &server_stream_listener_with_ignore_request_body_alloc_data_frame;
 		return;
+	}
+	if(r->event.timer.key){
+		jhd_event_del_timer(&r->event);
 	}
 	r->payload =frame->data+ 9;
 	r->payload_len = frame->len;
@@ -88,6 +128,49 @@ static void http2_send_cache_response_body(jhd_http_request *r){
 	jhd_http2_stream_send_last_raw_data(r);
 }
 
+static void stream_reset_with_alloc_headers_frame_block_timer(jhd_event_t *ev){
+	jhd_http2_frame **frame_head,*frame;
+	jhd_http_request *r;
+	jhd_http2_stream *stream;
+	jhd_connection_t *c;
+	jhd_http2_connection *h2c;
+	jhd_http2_frame *frame;
+	u_char *p;
+
+	r = ev->data;
+	stream = r->stream;
+	c = stream->connection;
+	h2c = c->data;
+
+	jhd_queue_only_remove(stream->queue);
+	frame = (jhd_http2_frame*)(stream);
+	--h2c->processing;
+	h2c->recv.stream = &jhd_http2_invalid_stream;
+	p = frame->pos = (u_char*)(((u_char*)frame)+sizeof(jhd_http2_frame));
+	frame->type = JHD_HTTP2_FRAME_TYPE_RST_STREAM_FRAME;
+	frame->data_len = sizeof(jhd_http2_stream);
+	frame->len = 13;
+	frame->free_func = jhd_http2_frame_free_by_single;
+	frame->next = NULL;
+	*((uint32_t*)p) =0x03040000;
+	p[4] = 0;\
+	p[5] = (u_char)((stream->id) >> 24);
+	p[6] = (u_char)((stream->id) >> 16);
+	p[7] = (u_char)((stream->id) >> 8);
+	p[8] = (u_char)(stream->id);
+	p += 9;
+	*((uint32_t*)p) = JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT;
+	jhd_http2_send_queue_frame(c,h2c,frame);
+
+	jhd_queue_only_remove(&r->event.queue);
+	frame_head = (jhd_http2_frame**)(&r->state_param);
+	while((*frame_head)!= NULL){
+		frame = *frame_head;
+		*frame_head = frame->next;
+		frame->free_func(frame);
+	}
+	jhd_http_request_free(r);
+}
 
 static void http2_cache_response_alloc_headers_frame(jhd_event_t *ev) {
 	uint16_t mem_len;
@@ -97,12 +180,14 @@ static void http2_cache_response_alloc_headers_frame(jhd_event_t *ev) {
 	jhd_http2_connection *h2c;
 
 	jhd_http_request *r = ev->data;
+
 	frame_head = (jhd_http2_frame**) (&r->state_param);
 
 	mem_len = jhd_http2_alloc_headers_frame(frame_head, &r->state);
 
 	if (mem_len) {
 		jhd_wait_mem(&r->event, mem_len);
+		jhd_event_add_timer(ev,r->mem_timeout,stream_reset_with_alloc_headers_frame_block_timer);
 		return;
 	}
 	jhd_http2_send_response_headers_frmae(r, frame_head, jhd_false);
@@ -114,6 +199,8 @@ static void http2_cache_response_alloc_headers_frame(jhd_event_t *ev) {
 	if (r->cache_frame.len) {
 		http2_send_cache_response_body(r);
 	} else {
+		log_assert(r->event.timer.key != 0);
+		jhd_event_del_timer(ev);
 		stream = r->stream;
 		c = stream->connection;
 		h2c = c->data;
@@ -139,13 +226,16 @@ static void stream_reset_with_alloc_headers_frame_block(jhd_http2_stream *stream
 
 	r = stream->lis_ctx;
 	jhd_queue_only_remove(&r->event.queue);
+	if(r->event.timer.key){
+		jhd_event_del_timer(&r->event);
+	}
 	frame_head = (jhd_http2_frame**)(&r->state_param);
 	while((*frame_head)!= NULL){
 		frame = *frame_head;
 		*frame_head = frame->next;
 		frame->free_func(frame);
 	}
-	jhd_free_with_size(r,sizeof(jhd_http_request));
+	jhd_http_request_free(r);
 }
 
 
@@ -177,6 +267,7 @@ static void jhd_http2_send_cached_response(jhd_http_request *r,uint16_t status,u
 	}
 	if(r->user_agent.alloced){
 		jhd_free_with_size(r->user_agent.data,r->user_agent.alloced);
+		r->user_agent.alloced = 0;
 	}
 	if(r->content_type.alloced){
 		jhd_free_with_size(r->content_type.data,r->content_type.alloced);
@@ -209,6 +300,7 @@ static void jhd_http2_send_cached_response(jhd_http_request *r,uint16_t status,u
 		r->event.timeout = jhd_event_noop;
 		((jhd_http2_stream*)(r->stream))->listener = &server_stream_listener_with_ignore_request_body_alloc_header_frame;
 		jhd_wait_mem(&r->event,mem_len);
+		jhd_event_add_timer(&r->event,r->mem_timeout,stream_reset_with_alloc_headers_frame_block_timer);
 		return;
 	}
 	jhd_http2_send_response_headers_frmae(r,frame_head,body_len?jhd_false:jhd_true);
@@ -448,7 +540,8 @@ void jhd_http_request_init_by_http2(jhd_http_request *r,jhd_event_t *ev){
 	r->event.data = r;
 	r->event.handler = http2_reqeust_check;
 	r->event.timer.key = 0;
-	jhd_queue_init(&r->event.queue);
+	r->event.queue.next = NULL;
+
 
 //	jhd_queue_init(&r->headers);
 

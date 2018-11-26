@@ -480,6 +480,7 @@ void jhd_http2_send_cached_response(jhd_http_request *r,uint16_t status,u_char* 
 #define jhd_http2_do_reset_stream(EV,EC,H2C,P,FRAME,ENO,STR) \
 	log_assert((STR)->id == (H2C)->recv.sid); \
 	FRAME = (jhd_http2_frame*)(STR);\
+	(FRAME)->type = JHD_HTTP2_FRAME_TYPE_RST_STREAM_FRAME;\
 	(STR)->listener->reset(STR);\
 	jhd_queue_only_remove(&((STR)->queue));\
 	jhd_queue_only_remove(&((STR)->flow_control));\

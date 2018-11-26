@@ -118,6 +118,8 @@ struct jhd_http_header_s{
      };
 };
 
+
+
 typedef struct{
 	u_char *data;
 	uint16_t len;
@@ -187,6 +189,38 @@ struct jhd_http_request_s{
     uint32_t mem_timeout;
 	u_char count;
 };
+
+jhd_inline static void jhd_http_request_free(jhd_http_request *r){
+	jhd_http_header *header;
+	jhd_queue_t *head,*q;
+	log_assert(r->event.queue.next== NULL);
+	log_assert(r->event.timer.key == 0);
+
+	if(r->user_agent.alloced){
+		jhd_free_with_size(r->user_agent.data,r->user_agent.alloced);
+	}
+	if(r->content_type.alloced){
+		jhd_free_with_size(r->content_type.data,r->content_type.alloced);
+	}
+	if(r->path.alloced){
+		jhd_free_with_size(r->path.data,r->path.alloced);
+	}
+	if(r->host.alloced){
+		jhd_free_with_size(r->host.data,r->host.alloced);
+	}
+	head = &r->headers;
+	for(q = jhd_queue_next(head); q != head;){
+		header = jhd_queue_data(q,jhd_http_header,queue);
+		q = jhd_queue_next(q);
+		if(header->name_alloced){
+			jhd_free_with_size(header->name,header->name_alloced);
+		}
+		if(header->value_alloced){
+			jhd_free_with_size(header->value,header->value_alloced);
+		}
+		jhd_free_with_size(header,sizeof(jhd_http_header));
+	}
+}
 
 struct jhd_http_request_info_s{
 
