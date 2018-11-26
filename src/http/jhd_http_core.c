@@ -23,6 +23,45 @@ uint16_t jhd_http_bad_request_context_len = sizeof("<html>\n"
 		"</html>") - 1;
 
 
+
+const char *default_jhd_http_nofound_request_context= "<html>\n"
+		"<head><title>404 NOT FOUND</title></head>\n"
+		"<body bgcolor=\"white\">\n"
+		"<center><h1>404 NOT FOUND</h1></center>\n"
+		"<hr><center>jhttpd</center>\n"
+		"</body>\n"
+		"</html>";
+
+const char *jhd_http_nofound_request_context ;
+
+uint16_t jhd_http_nofound_request_context_len = sizeof("<html>\n"
+		"<head><title>404 NOT FOUND</title></head>\n"
+		"<body bgcolor=\"white\">\n"
+		"<center><h1>404 NOT FOUND</h1></center>\n"
+		"<hr><center>jhttpd</center>\n"
+		"</body>\n"
+		"</html>") - 1;
+
+
+const char *default_jhd_http_internal_error_request_context= "<html>\n"
+		"<head><title>500 Internal Error</title></head>\n"
+		"<body bgcolor=\"white\">\n"
+		"<center><h1>500 Internal Error</h1></center>\n"
+		"<hr><center>jhttpd</center>\n"
+		"</body>\n"
+		"</html>";
+
+const char *jhd_http_internal_error_request_context ;
+
+uint16_t jhd_http_internal_error_request_context_len = sizeof("<html>\n"
+		"<head><title>500 Internal Error</title></head>\n"
+		"<body bgcolor=\"white\">\n"
+		"<center><h1>500 Internal Error</h1></center>\n"
+		"<hr><center>jhttpd</center>\n"
+		"</body>\n"
+		"</html>") - 1;
+
+
 void jhd_http_listening_context_free_with_single_server(void *ctx){
 	log_assert(((jhd_http_listening_context*)ctx) != NULL);
 	log_assert(((jhd_http_listening_context*)ctx)->data != NULL);
@@ -73,11 +112,13 @@ int jhd_http_single_server_handler(void *lis_ctx_data,jhd_http_request *r){
 	for(q = jhd_queue_next(head); q!= head; q = jhd_queue_next(q)){
 		svs = jhd_queue_data(q,jhd_http_service,queue);
 		if(svs->match(svs->service_ctx,r)){
+			r->mem_timeout = svs->mem_timeout;
 			return svs->service_func(svs->service_ctx,r);
 		}
 	}
 	q = head->prev;
 	svs =jhd_queue_data(q,jhd_http_service,queue);
+	r->mem_timeout = svs->mem_timeout;
 	return svs->service_func(svs->service_ctx,r);
 }
 
@@ -95,11 +136,13 @@ int jhd_http_mulitple_server_handler(void *lis_ctx_data,jhd_http_request *r){
 					for(q = jhd_queue_next(head); q!= head; q = jhd_queue_next(q)){
 						svs = jhd_queue_data(q,jhd_http_service,queue);
 						if(svs->match(svs->service_ctx,r)){
+							r->mem_timeout = svs->mem_timeout;
 							return svs->service_func(svs->service_ctx,r);
 						}
 					}
 					q = head->prev;
 					svs =jhd_queue_data(q,jhd_http_service,queue);
+					r->mem_timeout = svs->mem_timeout;
 					return svs->service_func(svs->service_ctx,r);
 			}
 			++svr;
@@ -111,14 +154,57 @@ int jhd_http_mulitple_server_handler(void *lis_ctx_data,jhd_http_request *r){
 	for(q = jhd_queue_next(head); q!= head; q = jhd_queue_next(q)){
 		svs = jhd_queue_data(q,jhd_http_service,queue);
 		if(svs->match(svs->service_ctx,r)){
+			r->mem_timeout = svs->mem_timeout;
 			return svs->service_func(svs->service_ctx,r);
 		}
 	}
 	q = head->prev;
 	svs =jhd_queue_data(q,jhd_http_service,queue);
+	r->mem_timeout = svs->mem_timeout;
 	return svs->service_func(svs->service_ctx,r);
 }
 
 
 
 void jhd_http_request_init_by_http11(jhd_http_request *r,jhd_event_t *ev){}
+
+
+
+
+
+
+void jhd_http_request_handle_with_bad_by_http11(jhd_http_request *r){}
+void jhd_http_request_handle_with_nofound_by_http11(jhd_http_request *r){}
+void jhd_http_request_handle_with_internal_error_by_http11(jhd_http_request *r){}
+
+void jhd_http_request_handle_with_bad(jhd_http_request *r){
+	if(r->is_http2){
+		jhd_http_request_handle_with_bad_by_http2(r);
+	}else{
+		jhd_http_request_handle_with_bad_by_http11(r);
+	}
+}
+void jhd_http_request_handle_with_nofound(jhd_http_request *r){
+	if(r->is_http2){
+		jhd_http_request_handle_with_nofound_by_http2(r);
+	}else{
+		jhd_http_request_handle_with_nofound_by_http11(r);
+	}
+}
+void jhd_http_request_handle_with_internal_error(jhd_http_request *r){
+	if(r->is_http2){
+		jhd_http_request_handle_with_internal_error_by_http2(r);
+	}else{
+		jhd_http_request_handle_with_internal_error_by_http11(r);
+	}
+}
+
+
+
+
+
+
+
+
+
+

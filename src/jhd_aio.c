@@ -3,7 +3,7 @@
 #include <jhd_connection.h>
 
 static int jhd_aio_max_nr = 128;
-static struct iocb *jhd_iocb_ptr = NULL;
+static jhd_aio_cb *jhd_iocb_ptr = NULL;
 
 
 static aio_context_t jhd_aio;
@@ -17,8 +17,7 @@ static jhd_connection_t *aio_con = NULL;
 static int aio_eventfd = -1;
 
 
-static void
-jhd_epoll_eventfd_handler(jhd_event_t *ev)
+static void jhd_epoll_eventfd_handler(jhd_event_t *ev)
 {
     int               n, events;
     long              i;
@@ -167,6 +166,7 @@ int jhd_aio_setup() {
 			jhd_free_iocbs = (jhd_aio_cb*) (ppiocb);
 		    jhd_free_iocbs->aio.aio_flags = IOCB_FLAG_RESFD;
 		    jhd_free_iocbs->aio.aio_resfd = aio_eventfd;
+		    jhd_free_iocbs->aio.aio_data = NULL;
 		}
 	} else {
 		io_destroy(jhd_aio);
@@ -193,7 +193,20 @@ int jhd_aio_setup() {
 
 
 void jhd_aio_destroy() {
+	int i ;
+	jhd_aio_cb *aiocb;
+	jhd_event_t *ev;
 	if(	aio_eventfd != -1){
+		for(i = 0 ; i < jhd_aio_max_nr ; ++i){
+			aiocb = &jhd_iocb_ptr[i];
+
+			if(aiocb->aio.aio_data){
+				aiocb->result = -1;
+				ev = (jhd_event_t*)aiocb->aio.aio_data;
+				jhd_post_event(ev,&jhd_posted_events);
+			}
+
+		}
 		io_destroy(jhd_aio);
 		jhd_connection_destroy(aio_con);
 		close(aio_eventfd);

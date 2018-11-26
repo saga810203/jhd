@@ -26,6 +26,12 @@ typedef enum {
 
 
 typedef struct {
+	u_char   *data;
+	u_char   *pos;
+	void (*free_func)(void* data);
+	void *next;
+	u_int16_t data_len;
+	uint16_t len;
 	unsigned type:4;
 	union{
 		unsigned ack:1;
@@ -35,15 +41,17 @@ typedef struct {
 		unsigned end_header:1;
 		unsigned padded:1;
 	};
-	u_char   *data;
-	u_int16_t data_len;
-	u_char   *pos;
-	uint16_t len;
-	void (*free_func)(void* data);
-	void *next;
 }jhd_http_data;
 
+typedef struct{
+	int fd;
+	time_t                   mtime;
+	size_t 					 size;
+    unsigned                 is_file:1;
+    unsigned                 is_link:1;
+    unsigned                 is_exec:1;
 
+}jhd_http_file_info;
 
 
 typedef struct {
@@ -115,6 +123,7 @@ typedef struct{
 	uint16_t len;
 	uint16_t alloced;
 }http_named_header;
+
 struct jhd_http_request_s{
 	jhd_event_t event;
 	jhd_queue_t queue;
@@ -134,7 +143,7 @@ struct jhd_http_request_s{
 
 	union{
 		http_named_header   user_agent;
-		http_named_header   response_unuse;
+		http_named_header   etag;
 	};
 	http_named_header content_type;
 
@@ -161,9 +170,10 @@ struct jhd_http_request_s{
 		jhd_http_data 	*out_data;
 	};
 
-
+	union{
 	jhd_http_data cache_frame;
-
+	jhd_http_file_info file_info;
+	};
 	unsigned is_http2:1;
 	unsigned in_close:1;
 	unsigned out_close:1;
@@ -174,9 +184,7 @@ struct jhd_http_request_s{
 
 
 
-
-
-
+    uint32_t mem_timeout;
 	u_char count;
 };
 
@@ -209,6 +217,7 @@ typedef struct{
 	jhd_bool (*match)(void *service_ctx,jhd_http_request *request);
 	void (*server_ctx_free_func)(void *);
 	int (*service_func)(void *service_ctx,jhd_http_request *request);
+	uint32_t  mem_timeout;
 }jhd_http_service;
 
 
@@ -270,6 +279,16 @@ void jhd_http11_init(jhd_event_t *ev);
 
 void jhd_http_request_init_by_http2(jhd_http_request *r,jhd_event_t *ev);
 void jhd_http_request_init_by_http11(jhd_http_request *r,jhd_event_t *ev);
+void jhd_http_request_handle_with_bad_by_http2(jhd_http_request *r);
+void jhd_http_request_handle_with_nofound_by_http2(jhd_http_request *r);
+void jhd_http_request_handle_with_internal_error_by_http2(jhd_http_request *r);
+void jhd_http_request_handle_with_bad_by_http11(jhd_http_request *r);
+void jhd_http_request_handle_with_nofound_by_http11(jhd_http_request *r);
+void jhd_http_request_handle_with_internal_error_by_http11(jhd_http_request *r);
+
+void jhd_http_request_handle_with_bad(jhd_http_request *r);
+void jhd_http_request_handle_with_nofound(jhd_http_request *r);
+void jhd_http_request_handle_with_internal_error(jhd_http_request *r);
 
 extern jhd_http_request_info  jhd_http11_info;
 
@@ -278,5 +297,11 @@ extern jhd_queue_t  jhd_http_serveres;
 
 extern const char *jhd_http_bad_request_context;
 extern uint16_t jhd_http_bad_request_context_len;
+
+extern const char *jhd_http_nofound_request_context;
+extern uint16_t jhd_http_nofound_request_context_len;
+
+extern const char *jhd_http_internal_error_request_context;
+extern uint16_t jhd_http_internal_error_request_context_len;
 
 #endif /* HTTP_JHD_HTTP_CORE_H_ */

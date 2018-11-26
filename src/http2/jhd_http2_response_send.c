@@ -142,6 +142,7 @@ void jhd_http2_stream_send_last_raw_data(jhd_http_request *r){
 		stream->send_window_size -= size;
 
 		frame->pos = r->payload;
+		frame->len = size + 9;
 		p =  r->payload - 9;
 
 		p[0] = 0;
@@ -156,12 +157,13 @@ void jhd_http2_stream_send_last_raw_data(jhd_http_request *r){
 		jhd_http2_send_queue_frame(c,h2c,frame);
 		stream->listener =&server_stream_listener_with_flow_control_and_in_send_queue;
 	}else{
-		h2c->send.window_size -= size;
+		h2c->send.window_size -= ((int)r->payload_len);
 
 		log_assert_code(r->stream = NULL;)
 
 		frame->free_func = cache_frame_free_with_free_request;
 		frame->pos = r->payload;
+		frame->len = (((int)r->payload_len+9));
 		p =  r->payload - 9;
 		p[0] = 0;
 		p[1] = ((u_char)(size>> 8));
@@ -176,5 +178,6 @@ void jhd_http2_stream_send_last_raw_data(jhd_http_request *r){
 		jhd_queue_remove(&stream->queue);
 		h2c->recv.stream = &jhd_http2_invalid_stream;
 		--h2c->processing;
+		jhd_free_with_size(stream,sizeof(jhd_http2_stream));
 	}
 }

@@ -472,7 +472,7 @@ void jhd_http2_send_ping_frame(jhd_event_t *ev);
 uint16_t jhd_http2_alloc_headers_frame(jhd_http2_frame **frame,uint32_t *len);
 void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame **frame_head,jhd_bool end_stream);
 uint32_t jhd_http2_calc_response_headers_size(jhd_http_request *r);
-
+void jhd_http2_send_cached_response(jhd_http_request *r,uint16_t status,u_char* body,uint16_t body_len);
 
 
 
