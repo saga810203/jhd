@@ -44,9 +44,11 @@ typedef struct {
 }jhd_http_data;
 
 typedef struct{
-	int fd;
 	time_t                   mtime;
 	size_t 					 size;
+
+
+	int fd;
     unsigned                 is_file:1;
     unsigned                 is_link:1;
     unsigned                 is_exec:1;
@@ -313,6 +315,8 @@ void jhd_http11_init(jhd_event_t *ev);
 
 void jhd_http_request_init_by_http2(jhd_http_request *r,jhd_event_t *ev);
 void jhd_http_request_init_by_http11(jhd_http_request *r,jhd_event_t *ev);
+
+
 void jhd_http_request_handle_with_bad_by_http2(jhd_http_request *r);
 void jhd_http_request_handle_with_nofound_by_http2(jhd_http_request *r);
 void jhd_http_request_handle_with_internal_error_by_http2(jhd_http_request *r);
@@ -324,6 +328,12 @@ void jhd_http_request_handle_with_bad(jhd_http_request *r);
 void jhd_http_request_handle_with_nofound(jhd_http_request *r);
 void jhd_http_request_handle_with_internal_error(jhd_http_request *r);
 
+void jhd_http_request_handle_with_412(jhd_http_request *r);
+
+void jhd_http_request_handle_with_412_by_http2(jhd_http_request *r);
+void jhd_http_request_handle_with_412_by_http11(jhd_http_request *r);
+
+
 extern jhd_http_request_info  jhd_http11_info;
 
 
@@ -331,6 +341,10 @@ extern jhd_queue_t  jhd_http_serveres;
 
 extern const char *jhd_http_bad_request_context;
 extern uint16_t jhd_http_bad_request_context_len;
+
+
+extern const char *jhd_http_412_request_context;
+extern uint16_t jhd_http_412_request_context_len;
 
 extern const char *jhd_http_nofound_request_context;
 extern uint16_t jhd_http_nofound_request_context_len;

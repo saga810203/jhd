@@ -17,7 +17,7 @@ typedef struct tm             jht_tm_t;
 
 
 void jhd_update_time();
-
+time_t jhd_parse_http_time(u_char *value, size_t len);
 
 
 extern u_char* 			jhd_cache_log_time;

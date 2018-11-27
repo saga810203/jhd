@@ -24,6 +24,26 @@ uint16_t jhd_http_bad_request_context_len = sizeof("<html>\n"
 
 
 
+const char *default_jhd_http_412_request_context= "<html>\n"
+		"<head><title>412 Precondition Failed</title></head>\n"
+		"<body bgcolor=\"white\">\n"
+		"<center><h1>412 Precondition Failed</h1></center>\n"
+		"<hr><center>jhttpd</center>\n"
+		"</body>\n"
+		"</html>";
+
+const char *jhd_http_412_request_context ;
+
+uint16_t jhd_http_412_request_context_len = sizeof("<html>\n"
+		"<head><title>412 Precondition Failed</title></head>\n"
+		"<body bgcolor=\"white\">\n"
+		"<center><h1>412 Precondition Failed</h1></center>\n"
+		"<hr><center>jhttpd</center>\n"
+		"</body>\n"
+		"</html>") - 1;
+
+
+
 const char *default_jhd_http_nofound_request_context= "<html>\n"
 		"<head><title>404 NOT FOUND</title></head>\n"
 		"<body bgcolor=\"white\">\n"
@@ -196,6 +216,15 @@ void jhd_http_request_handle_with_internal_error(jhd_http_request *r){
 		jhd_http_request_handle_with_internal_error_by_http2(r);
 	}else{
 		jhd_http_request_handle_with_internal_error_by_http11(r);
+	}
+}
+
+
+void jhd_http_request_handle_with_412(jhd_http_request *r){
+	if(r->is_http2){
+		jhd_http_request_handle_with_412_by_http2(r);
+	}else{
+		jhd_http_request_handle_with_412_by_http11(r);
 	}
 }
 

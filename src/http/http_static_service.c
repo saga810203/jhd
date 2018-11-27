@@ -14,15 +14,7 @@ typedef struct{
 }jhd_http_static_service_context;
 
 
-typedef struct {
-	jhd_http_header *if_unmodified_since;
-	jhd_http_header *if_match;
-	jhd_http_header *if_modified_since;
-	jhd_http_header *if_none_match;
-	jhd_http_header *range;
-	jhd_http_header *if_range;
 
-}jhd_http_static_request_headers;
 
 void http_file_stat(jhd_http_file_info *file_info,u_char* file_loc){
     time_t                          now;
@@ -52,6 +44,14 @@ void http_file_stat(jhd_http_file_info *file_info,u_char* file_loc){
     	file_info->is_exec = ((fi.st_mode & S_IXUSR) == S_IXUSR);
       	file_info->fd = fd;
     }
+}
+
+u_char *http_etag_calc(u_char* dst,size_t size,time_t mtime){
+	dst = jhd_u64_to_hex(dst,size);
+	--dst;
+	*dst='-';
+	--dst;
+	return jhd_u64_to_hex(dst,mtime);
 }
 
 
@@ -111,6 +111,78 @@ void http_file_stat(jhd_http_file_info *file_info,u_char* file_loc){
 //}
 
 
+static int jhd_http_test_if_match(u_char *etag,size_t etag_len, jhd_http_header *if_match,int weak)
+{
+    u_char     *start, *end, ch;
+
+
+    if (if_match->value_len == 1 && if_match->value[0] == '*') {
+        return 1;
+    }
+
+    if (etag_len == NULL) {
+        return 0;
+    }
+
+
+
+    start = if_match->value;
+    end = start + if_match->value_len;
+
+    while (start < end) {
+        if (weak
+            && end - start > 2
+            && start[0] == 'W'
+            && start[1] == '/')
+        {
+            start += 2;
+        }
+
+        if (etag_len > (size_t) (end - start)) {
+            return 0;
+        }
+
+        if (memcmp(start, etag, etag_len) != 0) {
+            goto skip;
+        }
+
+        start += etag_len;
+
+        while (start < end) {
+            ch = *start;
+
+            if (ch == ' ' || ch == '\t') {
+                start++;
+                continue;
+            }
+
+            break;
+        }
+
+        if (start == end || *start == ',') {
+            return 1;
+        }
+
+    skip:
+
+        while (start < end && *start != ',') { start++; }
+        while (start < end) {
+            ch = *start;
+
+            if (ch == ' ' || ch == '\t' || ch == ',') {
+                start++;
+                continue;
+            }
+
+            break;
+        }
+    }
+
+    return 0;
+}
+
+
+static u_char http_etag_buffer[41];
 void jhd_http_static_request_headers_out(jhd_http_request *r){
 	jhd_http_header *header;
 	jhd_queue_t *head,*q,*hq,h;
@@ -120,6 +192,14 @@ void jhd_http_static_request_headers_out(jhd_http_request *r){
 	jhd_http_header *if_none_match;
 	jhd_http_header *range;
 	jhd_http_header *if_range;
+
+	u_char *etag;
+	size_t etag_len;
+
+	time_t iums;
+
+	etag = http_etag_calc(http_etag_buffer+ 40,r->file_info.size,r->file_info.mtime);
+	etag_len = http_etag_buffer+ 40 - etag;
 
 
 	if_match = NULL;
@@ -205,6 +285,46 @@ void jhd_http_static_request_headers_out(jhd_http_request *r){
 		}
 	}
 
+    if (if_unmodified_since){
+    	 iums = jhd_parse_http_time(if_unmodified_since->value,if_unmodified_since->value_len);
+    	 if(r->file_info.mtime < iums){
+    		 close(r->file_info->fd);
+    		 jhd_http_request_handle_with_412(r);
+    		goto func_free;
+    	 }
+    }
+    if (if_match){
+    	if(!jhd_http_test_if_match(etag,etag_len,if_match,0)){
+    		 close(r->file_info->fd);
+    		 jhd_http_request_handle_with_412(r);
+    		 goto func_free;
+    	}
+    }
+
+    if(if_none_match){
+    	if(if_none_match->value_len == etag_len &&(0 == memcmp(etag,if_none_match->value,etag_len))){
+    		close(r->file_info->fd);
+    	    jhd_queue_move(&h,&r->headers);
+    	    jhd_http_request_handle_with_not_modified(r);
+    	    goto func_free;
+    	}
+    }else if(if_modified_since){
+    	 iums = jhd_parse_http_time(if_modified_since->value,if_modified_since->value_len);
+    	 if(iums == r->file_info->mtime){
+     		close(r->file_info->fd);
+     	    jhd_queue_move(&h,&r->headers);
+     	    jhd_http_request_handle_with_not_modified(r);
+     	    goto func_free;
+    	 }
+    }
+
+
+
+
+
+
+
+
 
 
 
@@ -212,6 +332,7 @@ void jhd_http_static_request_headers_out(jhd_http_request *r){
 
 
 func_error:
+	close(r->file_info->fd);
     jhd_queue_move(&h,&r->headers);
     jhd_http_request_handle_with_bad(r);
 func_free:
