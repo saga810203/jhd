@@ -22,7 +22,8 @@
  *
  */
 void jhd_http2_stream_send_last_raw_data(jhd_http_request *r);
-
+void jhd_http2_send_cached_response(jhd_http_request *r,uint16_t state,u_char *body,uint16_t body_len);
+void jhd_http2_send_not_modified_response(jhd_http_request *r);
 
 
 #endif /* HTTP2_JHD_HTTP2_RESPONSE_SEND_H_ */

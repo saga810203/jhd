@@ -101,7 +101,6 @@ static size_t jhd_http2_write_header(jhd_http_header *header){
 
 
 
-
 uint32_t jhd_http2_calc_response_headers_size(jhd_http_request *r){
 	jhd_queue_t *head,*q;
 	jhd_http_header *header;
@@ -185,9 +184,166 @@ int jhd_http2_write_request_headers_frame(jhd_event_t *ev){
 
 	return 0;
 }
+void jhd_http2_send_not_modified_response_headers_frmae(jhd_http_request *r,jhd_http2_frame *frame){
+	uint16_t len;
+		jhd_connection_t *c;
+		jhd_http2_connection *h2c;
+		jhd_http2_stream *stream;
+		u_char *p;
 
+		stream = r->stream;
+		c = stream->connection;
+		h2c = c->data;
 
+		frame->type = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
+		frame->end_header = 1;
+		//frame->data = frame;
+		frame->data_len = 256;
+		frame->free_func = jhd_http2_frame_free_by_single;
+		p = ((u_char*)frame) + sizeof(jhd_http2_frame);
+		frame->pos = p;
+		p+=9;
 
+		*p = 128 + 11;
+		++p;
+		//server:jhttpd
+		*p = 15;
+		++p;
+		*p = 54 - 15;
+		++p;
+		*p = 6;
+		++p;
+		memcpy(p,"jhttpd",6);
+		p += 6;// (2+1+r->server.len);
+
+		//data
+		*p = 15;
+		++p;
+		*p = 33 - 15;
+		++p;
+		*p = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
+		++p;
+		memcpy(p,jhd_cache_http_date,sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
+		p += (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
+		//last-modified
+		*p = 15;
+		++p;
+		*p = 44 - 15;
+		++p;
+		*p = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
+		++p;
+		jhd_write_http_time(p,r->file_info->mtime);
+		p += (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
+
+		len = p - frame->pos;
+		frame->len = len;
+		len -= 9;
+		frame->pos[0] = 0;
+		frame->pos[1] = 0;
+		frame->pos[2] = (u_char)(len);
+		frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
+		frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG | JHD_HTTP2_END_STREAM_FLAG;
+		frame->pos[5] = (u_char)(stream->id >> 24);
+		frame->pos[6] = (u_char)(stream->id >> 16);
+		frame->pos[7] = (u_char)(stream->id >> 8);
+		frame->pos[8] = (u_char)(stream->id);
+		frame->next = NULL;
+	    jhd_http2_send_headers_frame(c,h2c,frame,frame);
+
+	    jhd_queue_only_remove(stream->queue);
+	    --h2c->processing;
+	    jhd_free_with_size(stream,sizeof(jhd_http2_stream));
+	    if(r->event.timer.key){
+	    	jhd_event_del_timer(&r->event);
+	    }
+	    jhd_free_with_size(r,jhd_http_request);
+}
+
+void jhd_http2_send_cache_response_headers_frmae(jhd_http_request *r,jhd_http2_frame *frame){
+	uint16_t len;
+	jhd_connection_t *c;
+	jhd_http2_connection *h2c;
+	jhd_http2_stream *stream;
+	u_char *p,*begin,*end;
+
+	log_assert((r->status == 400) ||(r->status == 404) || (r->status == 500) );
+
+	stream = r->stream;
+	c = stream->connection;
+	h2c = c->data;
+	frame->type = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
+	frame->end_header = 1;
+	//frame->data = frame;
+	frame->data_len = 256;
+	frame->free_func = jhd_http2_frame_free_by_single;
+	p = ((u_char*)frame) + sizeof(jhd_http2_frame);
+	frame->pos = p;
+	p+=9;
+	if(r->status == 400){
+		*p = 128 + 12;
+	}else if(r->status == 404){
+		*p = 128 + 13;
+	}else /*(r->status == 500)*/{
+		*p = 128 + 14;
+	}
+	++p;
+	//content_type:text/html
+	*p = 15;
+	++p;
+	*p = 31 -15;
+	++p;
+	*p = 9; //sizeof("text/html") - 1;
+	++p;
+	memcpy(p,"text/html",9);
+	p+=  9;//r->content_type.len;
+
+	//server:jhttpd
+	*p = 15;
+	++p;
+	*p = 54 - 15;
+	++p;
+	*p = 6;
+	++p;
+	memcpy(p,"jhttpd",6);
+	p += 6;// (2+1+r->server.len);
+
+	*p = 15;
+	++p;
+	*p = 33 - 15;
+	++p;
+	*p = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
+	++p;
+	memcpy(p,jhd_cache_http_date,sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
+	p += (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
+
+	if(r->content_length>=0){
+		*p = 15;
+		++p;
+		*p = 28 - 15;
+		++p;
+		end = jhd_calc_buffer + 100;
+		begin = jhd_u64_to_string(end,(uint64_t)((r->content_length)));
+		len = end - begin;
+		*p = (u_char)len;
+		++p;
+		memcpy(p,begin,len);
+		p += len;
+	}
+	len = p - frame->pos;
+	frame->len = len;
+	len -= 9;
+	frame->pos[0] = 0;
+	frame->pos[1] = 0;
+	frame->pos[2] = (u_char)(len);
+	frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
+	frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG;
+	frame->pos[5] = (u_char)(stream->id >> 24);
+	frame->pos[6] = (u_char)(stream->id >> 16);
+	frame->pos[7] = (u_char)(stream->id >> 8);
+	frame->pos[8] = (u_char)(stream->id);
+	frame->next = NULL;
+    jhd_http2_send_headers_frame(c,h2c,frame,frame);
+}
 
 
 
@@ -267,7 +423,7 @@ void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame *
 	++p;
 	memcpy(p,r->content_type.data,r->content_type.len);
 	len -= (2+1+r->content_type.len);
-	p+= (2+1+r->content_type.len);
+	p+= (r->content_type.len);
 
 	*p = 15;
 	++p;
@@ -277,17 +433,17 @@ void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame *
 	++p;
 	memcpy(p,r->server.data,r->server.len);
 	len -= (2+1+r->server.len);
-	p += (2+1+r->server.len);
+	p += (r->server.len);
 
 	*p = 15;
 	++p;
-	*p = 44 - 15;
+	*p = 33 - 15;
 	++p;
 	*p = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
 	++p;
 	memcpy(p,r->date.data,sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
 	len -= (2+1+sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
-	p += (2+1+sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
+	p += (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
 
 	if(r->content_length>=0){
 		*p = 15;
@@ -306,7 +462,7 @@ void jhd_http2_send_response_headers_frmae(jhd_http_request *r,jhd_http2_frame *
 		++p;
 		memcpy(p,begin,slen);
 		len -= (2+1+slen);
-		p += (2+1+slen);
+		p += (slen);
 	}
 
     head = &r->headers;

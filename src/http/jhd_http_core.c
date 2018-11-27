@@ -1,6 +1,7 @@
 #include <jhd_config.h>
 #include <jhd_log.h>
 #include <http/jhd_http_core.h>
+#include <http2/jhd_http2_response_send.h>
 
 jhd_queue_t  jhd_http_serveres={&jhd_http_serveres,&jhd_http_serveres};
 
@@ -198,37 +199,38 @@ void jhd_http_request_handle_with_nofound_by_http11(jhd_http_request *r){}
 void jhd_http_request_handle_with_internal_error_by_http11(jhd_http_request *r){}
 
 void jhd_http_request_handle_with_bad(jhd_http_request *r){
+	log_assert(jhd_queue_emtpy(&r->headers));
 	if(r->is_http2){
-		jhd_http_request_handle_with_bad_by_http2(r);
+		jhd_http2_send_cached_response(r,400,jhd_http_bad_request_context,jhd_http_bad_request_context_len);
 	}else{
-		jhd_http_request_handle_with_bad_by_http11(r);
+		jhd_http2_send_cached_response(r,400,jhd_http_bad_request_context,jhd_http_bad_request_context_len);
 	}
 }
 void jhd_http_request_handle_with_nofound(jhd_http_request *r){
+	log_assert(jhd_queue_emtpy(&r->headers));
 	if(r->is_http2){
-		jhd_http_request_handle_with_nofound_by_http2(r);
+		jhd_http2_send_cached_response(r,404,jhd_http_nofound_request_context,jhd_http_nofound_request_context_len);
 	}else{
-		jhd_http_request_handle_with_nofound_by_http11(r);
+		jhd_http11_send_cached_response(r,404,jhd_http_nofound_request_context,jhd_http_nofound_request_context_len);
 	}
 }
 void jhd_http_request_handle_with_internal_error(jhd_http_request *r){
+	log_assert(jhd_queue_emtpy(&r->headers));
 	if(r->is_http2){
-		jhd_http_request_handle_with_internal_error_by_http2(r);
+		jhd_http2_send_cached_response(r,500,jhd_http_internal_error_request_context,jhd_http_internal_error_request_context_len);
 	}else{
-		jhd_http_request_handle_with_internal_error_by_http11(r);
+		jhd_http2_send_cached_response(r,500,jhd_http_internal_error_request_context,jhd_http_internal_error_request_context_len);
 	}
 }
 
-
-void jhd_http_request_handle_with_412(jhd_http_request *r){
+void jhd_http_request_handle_with_not_modified(jhd_http_request *r){
+	log_assert(jhd_queue_emtpy(&r->headers));
 	if(r->is_http2){
-		jhd_http_request_handle_with_412_by_http2(r);
+		jhd_http_request_handle_with_not_modified_by_http2(r);
 	}else{
-		jhd_http_request_handle_with_412_by_http11(r);
+		jhd_http_request_handle_with_not_modified_by_http11(r);
 	}
 }
-
-
 
 
 

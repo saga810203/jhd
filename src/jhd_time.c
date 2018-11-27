@@ -155,6 +155,11 @@ void jhd_update_time() {
 	log_debug("log time:%s",jhd_cache_log_time);
 }
 
+void jhd_write_http_time(u_char *dst,time_t tm){
+	struct tm gmt;
+	jhd_gmtime(tm, &gmt);
+	sprintf((char*)dst, "%s, %02d %s %4d %02d:%02d:%02d GMT", week[gmt.tm_wday], gmt.tm_mday, months[gmt.tm_mon - 1], gmt.tm_year, gmt.tm_hour, gmt.tm_min,gmt.tm_sec);
+}
 
 
 
