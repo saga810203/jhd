@@ -359,7 +359,8 @@ jhd_inline static u_char *http_etag_calc(u_char* dst,size_t size,time_t mtime){
 
 extern jhd_http_request_info  jhd_http11_info;
 
-
+extern const u_char *default_http_content_type ;
+extern const u_char  default_http_content_type_len ;
 extern jhd_queue_t  jhd_http_serveres;
 
 extern const char *jhd_http_bad_request_context;

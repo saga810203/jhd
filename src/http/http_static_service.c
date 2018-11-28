@@ -8,7 +8,8 @@
 typedef struct{
 	u_char *file_path;
 	uint16_t file_path_len;
-	void(*build_target_file)(u_char target_file[8192],void*ctx,jhd_http_request *r);
+	//return target_file length;
+	uint16_t (*build_target_file)(u_char target_file[8192],void*ctx,jhd_http_request *r);
 
 
 }jhd_http_static_service_context;
@@ -104,82 +105,268 @@ void http_file_stat(jhd_http_file_info *file_info,u_char* file_loc){
 //		jhd_http_request_free(r);
 //}
 
-
-static int jhd_http_test_if_match(u_char *etag,size_t etag_len, jhd_http_header *if_match,int weak)
-{
-    u_char     *start, *end, ch;
-
-
-    if (if_match->value_len == 1 && if_match->value[0] == '*') {
-        return 1;
-    }
-
-    if (etag_len == NULL) {
-        return 0;
-    }
-
+static void stream_reset_with_alloc_static_response_headers_frame_block(jhd_http2_stream *stream){
+	jhd_http_request *r;
+	r = stream->lis_ctx;
+	jhd_queue_only_remove(&r->event.queue);
+	if(r->event.timer.key){
+		jhd_event_del_timer(&r->event);
+	}
+	if(r->file_info.fd !=-1){
+		close(r->file_info.fd);
+	}
+	jhd_free_with_size(r,sizeof(jhd_http_request));
+}
 
 
-    start = if_match->value;
-    end = start + if_match->value_len;
+static jhd_http2_stream_listener server_stream_listener_with_ignore_static_response_alloc_header_frame ={
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt remote_close;
+		jhd_http2_stream_ignore_data_listener,//		jhd_event_handler_pt remote_data;
+		jhd_http2_stream_ignore_listener,
+		stream_reset_with_alloc_static_response_headers_frame_block,//		jhd_event_handler_pt reset;
+		jhd_http2_stream_ignore_listener,//		jhd_event_handler_pt remote_recv;
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+};
+static void http2_stream_reset_with_alloc_static_response_headers_frame_timeout(jhd_event_t *ev){
+	jhd_http2_frame **frame_head,*frame;
+	jhd_http_request *r;
+	jhd_http2_stream *stream;
+	jhd_connection_t *c;
+	jhd_http2_connection *h2c;
+	jhd_http2_frame *frame;
+	u_char *p;
 
-    while (start < end) {
-        if (weak
-            && end - start > 2
-            && start[0] == 'W'
-            && start[1] == '/')
-        {
-            start += 2;
-        }
+	r = ev->data;
+	stream = r->stream;
+	c = stream->connection;
+	h2c = c->data;
 
-        if (etag_len > (size_t) (end - start)) {
-            return 0;
-        }
+	jhd_queue_only_remove(stream->queue);
+	frame = (jhd_http2_frame*)(stream);
+	--h2c->processing;
+	h2c->recv.stream = &jhd_http2_invalid_stream;
+	p = frame->pos = (u_char*)(((u_char*)frame)+sizeof(jhd_http2_frame));
+	frame->type = JHD_HTTP2_FRAME_TYPE_RST_STREAM_FRAME;
+	frame->data_len = sizeof(jhd_http2_stream);
+	frame->len = 13;
+	frame->free_func = jhd_http2_frame_free_by_single;
+	frame->next = NULL;
+	*((uint32_t*)p) =0x03040000;
+	p[4] = 0;\
+	p[5] = (u_char)((stream->id) >> 24);
+	p[6] = (u_char)((stream->id) >> 16);
+	p[7] = (u_char)((stream->id) >> 8);
+	p[8] = (u_char)(stream->id);
+	p += 9;
+	*((uint32_t*)p) = JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT;
+	jhd_http2_send_queue_frame(c,h2c,frame);
 
-        if (memcmp(start, etag, etag_len) != 0) {
-            goto skip;
-        }
+	jhd_queue_only_remove(&r->event.queue);
+	if(r->file_info.fd !=-1){
+		close(r->file_info.fd);
+	}
+	jhd_free_with_size(r,sizeof(jhd_http_request));
+}
+static u_char http_etag_buffer[41];
+void http2_send_static_200_response_headers_frmae(jhd_http_request *r,jhd_http2_frame *frame){
+    uint16_t len;
+	jhd_connection_t *c;
+	jhd_http2_connection *h2c;
+	jhd_http2_stream *stream;
+	u_char *p,*etag;
+	stream = r->stream;
+	c = stream->connection;
+	h2c = c->data;
 
-        start += etag_len;
+	frame->type = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
+	frame->end_header = 1;
+	//frame->data = frame;
+	frame->data_len = 256;
+	frame->free_func = jhd_http2_frame_free_by_single;
+	p = ((u_char*)frame) + sizeof(jhd_http2_frame);
+	frame->pos = p;
+	p+=9;
+//status : 200
+	*p = 128 + 8;
+	++p;
+	//server:jhttpd
+	*p = 15;
+	++p;
+	*p = 54 - 15;
+	++p;
+	*p = 6;
+	++p;
+	memcpy(p,"jhttpd",6);
+	p += 6;// (2+1+r->server.len);
 
-        while (start < end) {
-            ch = *start;
+	//date
+	*p = 15;
+	++p;
+	*p = 33 - 15;
+	++p;
+	*p = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
+	++p;
+	memcpy(p,jhd_cache_http_date,sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
+	p += (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
+	//last-modified
+	*p = 15;
+	++p;
+	*p = 44 - 15;
+	++p;
+	*p = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
+	++p;
+	jhd_write_http_time(p,r->file_info->mtime);
+	p += (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
 
-            if (ch == ' ' || ch == '\t') {
-                start++;
-                continue;
-            }
+	//etag
+	*p = 15;
+	++p;
+	*p = 34-15;
+	++p;
+	etag = http_etag_calc(http_etag_buffer+ 40,r->file_info.size,r->file_info.mtime);
+	len = http_etag_buffer + 40 - etag;
+	*p = (u_char)(len);
+	++p;
+	memcpy(p,etag,len);
+	p+=len;
 
-            break;
-        }
+	//content_type
 
-        if (start == end || *start == ',') {
-            return 1;
-        }
+	*p = 15;
+	++p;
+	*p = 31-15;
+	++p;
+	*p = (u_char)r->content_type.len;
+    ++p;
+    memcpy(p,r->content_type.data,r->content_type.len);
+    p+=r->content_type.len;
 
-    skip:
+    //content_length
+    *p = 15;
+    ++p;
+    *p =28-15;
+    ++p;
 
-        while (start < end && *start != ',') { start++; }
-        while (start < end) {
-            ch = *start;
+	etag = jhd_u64_to_string(http_etag_buffer + 40,(uint64_t)((r->file_info.size)));
+	len = http_etag_buffer + 40 - etag;
+	*p = (u_char)len;
+	++p;
+	memcpy(p,etag,len);
+	p += len;
 
-            if (ch == ' ' || ch == '\t' || ch == ',') {
-                start++;
-                continue;
-            }
+	//
+	*p = 15;
+	++p;
+	*p = 18-15;
+	++p;
+	*p = 5;
+	++p;
+	memcpy(p,"bytes",5);
+	p+=5;
 
-            break;
-        }
-    }
+	len = p - frame->pos;
+	frame->len = len;
+	len -= 9;
+	frame->pos[0] = 0;
+	frame->pos[1] = 0;
+	frame->pos[2] = (u_char)(len);
+	frame->pos[3] = JHD_HTTP2_FRAME_TYPE_HEADERS_FRAME;
+	frame->pos[4] = JHD_HTTP2_END_HEADERS_FLAG ;
 
-    return 0;
+	frame->pos[5] = (u_char)(stream->id >> 24);
+	frame->pos[6] = (u_char)(stream->id >> 16);
+	frame->pos[7] = (u_char)(stream->id >> 8);
+	frame->pos[8] = (u_char)(stream->id);
+	frame->next = NULL;
+
+    jhd_http2_send_headers_frame(c,h2c,frame,frame);
+	if(r->file_info.size==0){
+		frame->pos[4] |= JHD_HTTP2_END_STREAM_FLAG;
+		jhd_queue_only_remove(stream->queue);
+		--h2c->processing;
+		jhd_free_with_size(stream,sizeof(jhd_http2_stream));
+		if(r->event.timer.key){
+			jhd_event_del_timer(&r->event);
+		}
+		close(r->file_info.fd);
+		jhd_free_with_size(r,jhd_http_request);
+	}else{
+
+		//TODO sned body
+	}
+
+
+
+
+
+}
+
+
+static void http2_static_response_200_alloc_headers_frame(jhd_event_t *ev) {
+	jhd_http2_frame *frame;
+	jhd_http_request *r = ev->data;
+	frame = jhd_alloc(256);
+	if(frame){
+		jhd_http2_send_static_200_response_headers_frmae(r,frame);
+	}else{
+		jhd_wait_mem(&r->event, 256);
+		jhd_event_add_timer(ev,r->mem_timeout,http2_stream_reset_with_alloc_static_response_headers_frame_timeout);
+	}
+}
+
+
+void jhd_http_static_request_out_with_200_by_http2(jhd_http_request *r){
+	jhd_http2_frame *frame;
+		jhd_http2_stream *stream;
+		jhd_connection_t *c;
+		jhd_http2_connection *h2c;
+		u_char *host,*user_agent,*path;
+		uint16_t  host_len,user_agent_len,path_len;
+		host_len = user_agent_len = path_len = 0;
+
+		if(r->host.alloced){
+			host = r->host.data;
+			host_len = r->host.alloced;
+			r->host.alloced = 0;
+		}
+		if(r->path.alloced){
+			path = r->path.data;
+			path_len = r->path.alloced;
+			r->path.alloced = 0;
+		}
+		if(r->user_agent.alloced){
+			user_agent = r->user_agent.data;
+			user_agent_len = r->user_agent.alloced ;
+			r->user_agent.alloced = 0;
+		}
+		log_assert( jhd_queue_empty(&r->headers));
+		//TODO op this value[256]  only include  state  content_length  content_type server date
+		r->state_param = NULL;
+		frame = jhd_alloc(256);
+		if(frame == NULL){
+			r->event.handler = http2_static_response_200_alloc_headers_frame;
+			((jhd_http2_stream*)(r->stream))->listener = &server_stream_listener_with_ignore_static_response_alloc_header_frame;
+			jhd_wait_mem(&r->event,256);
+			jhd_event_add_timer(&r->event,r->mem_timeout,http2_stream_reset_with_alloc_static_response_headers_frame_timeout);
+			goto func_free;
+		}
+		jhd_http2_send_static_200_response_headers_frmae(r,frame);
+	func_free:
+		if(path_len){
+			jhd_free_with_size(path,path_len);
+		}
+		if(user_agent_len){
+			jhd_free_with_size(user_agent,user_agent_len);
+		}
+		if(host_len){
+			jhd_free_with_size(host,host_len);
+		}
 }
 
 
 
 
-
-static u_char http_etag_buffer[41];
 
 
 void jhd_http_static_request_out_with_range(jhd_http_request *r){
@@ -187,7 +374,11 @@ void jhd_http_static_request_out_with_range(jhd_http_request *r){
 }
 
 void jhd_http_static_request_out_with_200(jhd_http_request *r){
-
+	if(r->is_http2){
+		jhd_http_static_request_out_with_200_by_http2(r);
+	}else{
+		//TODO impl
+	}
 }
 
 
@@ -270,6 +461,7 @@ void jhd_http_static_request_headers_out(jhd_http_request *r){
     if(if_none_match){
     	if(if_none_match->value_len == etag_len &&(0 == memcmp(etag,if_none_match->value,etag_len))){
     		close(r->file_info->fd);
+    		r->file_info->fd = -1;
     		log_assert(jhd_queue_empty(&r->headers));
     	    jhd_http_request_handle_with_not_modified(r);
     	    goto func_free;
@@ -278,6 +470,7 @@ void jhd_http_static_request_headers_out(jhd_http_request *r){
     	 iums = jhd_parse_http_time(if_modified_since->value,if_modified_since->value_len);
     	 if(iums == r->file_info->mtime){
      		close(r->file_info->fd);
+     		r->file_info->fd = -1;
      		log_assert(jhd_queue_empty(&r->headers));
      	    jhd_http_request_handle_with_not_modified(r);
      	    goto func_free;
@@ -314,6 +507,7 @@ void jhd_http_static_request_headers_out(jhd_http_request *r){
     		++p;
     		if(c < '0' || c >'9'){
     			close(r->file_info->fd);
+    			r->file_info->fd = -1;
     			//TODO impl 416 Requested Range Not Satisfiable
     		    jhd_http_request_handle_with_bad(r);
     		    goto func_free;
@@ -411,12 +605,14 @@ func_200:
 	goto func_free;
 func_416:
 	close(r->file_info->fd);
+	r->file_info->fd = -1;
 	//TODO impl 416 Requested Range Not Satisfiable
 	jhd_http_request_handle_with_bad(r);
 	goto func_free;
 
 func_error:
 	close(r->file_info->fd);
+	r->file_info->fd = -1;
 	if(jhd_queue_has_item(&r->headers)){
 		jhd_queue_merge(&h,&r->headers);
 		jhd_queue_init(&r->headers);
@@ -447,13 +643,43 @@ func_free:
 void jhd_http_static_request_handler(void *ctx,jhd_http_request *r){
 	jhd_http_static_service_context *svs_ctx;
 	u_char file_loc[8192];
+	uint16_t len,idx;
+	u_char *req_content_type;
+	uint16_t req_content_type_len;
+
+
 	if(r->method == JHD_HTTP_METHOD_GET || r->method == JHD_HTTP_METHOD_HEAD){
+
 		svs_ctx = ctx;
-		svs_ctx->build_target_file(file_loc,ctx,r);
+		len =svs_ctx->build_target_file(file_loc,ctx,r);
 		http_file_stat(file_loc,&r->file_info);
 		if(r->file_info.fd != -1){
-
+			if(r->content_type.alloced){
+				req_content_type = r->content_type.data;
+				req_content_type_len = r->content_type.alloced;
+				r->content_type.alloced = 0;
+			}else{
+				req_content_type_len = 0;
+			}
+			idx = len - 1;
+			log_assert(file_loc[0] == '/');
+			log_assert(file_loc[idx] != '.');
+			for(;;){
+				if(file_loc[idx] == '.'){
+					++idx;
+					jhd_http_content_type_get(file_loc + idx,len - idx,&r->content_type.data,&r->content_type.len);
+					break;
+				}else if(file_loc[idx] == '/'){
+					r->content_type.data = default_http_content_type;
+					r->content_type.len = default_http_content_type_len;
+					break;
+				}
+				--idx;
+			}
 			jhd_http_static_request_headers_out(r);
+			if(req_content_type_len){
+				jhd_free_with_size(req_content_type,req_content_type_len);
+			}
 		}else{
 			jhd_http_request_handle_with_nofound(r);
 		}
@@ -463,6 +689,8 @@ void jhd_http_static_request_handler(void *ctx,jhd_http_request *r){
 	}else{
 		jhd_http_request_handle_with_bad(r);
 	}
+
+
 }
 
 

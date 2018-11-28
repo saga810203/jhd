@@ -151,7 +151,7 @@ func_error:
 }
 
 void jhd_http_content_type_get(u_char *ext,u_char ext_len,u_char **content_type,u_char *content_type_len){
-
+	int rc;
 	jhd_queue_t *head,*q;
 	jhd_http_header *header;
 
@@ -162,18 +162,19 @@ void jhd_http_content_type_get(u_char *ext,u_char ext_len,u_char **content_type,
 
 		if(header->name_len > ext_len){
 			break;
-		}else if(header->name_len == ext_len &&(0 < memcmp(ih->name,ext,ext_len))){
-			q = jhd_queue_prev(q);
-			jhd_queue_insert_after(q,&header->queue);
-			return JHD_OK;
+		}else if(header->name_len == ext_len ){
+			rc = memcmp(ext,header->name,ext_len);
+			if(rc == 0){
+				*content_type = header->value;
+				*content_type_len = header->value_len;
+				return;
+			}else if(rc > 0){
+				break;
+			}
 		}
-
-
 	}
-
-
-
-
+	*content_type = default_http_content_type;
+	*content_type_len = default_http_content_type_len;
 }
 
 void jhd_http_listening_context_free_with_single_server(void *ctx){
