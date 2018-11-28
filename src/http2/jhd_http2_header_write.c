@@ -185,11 +185,12 @@ int jhd_http2_write_request_headers_frame(jhd_event_t *ev){
 	return 0;
 }
 void jhd_http2_send_not_modified_response_headers_frmae(jhd_http_request *r,jhd_http2_frame *frame){
-	uint16_t len;
+	    uint16_t len;
 		jhd_connection_t *c;
 		jhd_http2_connection *h2c;
 		jhd_http2_stream *stream;
-		u_char *p;
+		u_char *p,*etag;
+		u_char etag_buffer[41];
 
 		stream = r->stream;
 		c = stream->connection;
@@ -234,6 +235,17 @@ void jhd_http2_send_not_modified_response_headers_frmae(jhd_http_request *r,jhd_
 		++p;
 		jhd_write_http_time(p,r->file_info->mtime);
 		p += (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
+
+		*p = 15;
+		++p;
+		*p = 34-15;
+		++p;
+		etag = http_etag_calc(etag_buffer+ 40,r->file_info.size,r->file_info.mtime);
+		len = etag_buffer+ 40 - etag;
+		*p = (u_char)(len);
+		++p;
+		memcpy(p,etag,len);
+		p+=len;
 
 		len = p - frame->pos;
 		frame->len = len;

@@ -5,6 +5,12 @@
 
 jhd_queue_t  jhd_http_serveres={&jhd_http_serveres,&jhd_http_serveres};
 
+jhd_queue_t  jhd_http_content_type_queue = {&jhd_http_content_type_queue,jhd_http_content_type_queue};
+
+
+const u_char *default_http_content_type ="application/octet-stream";
+const u_char  default_http_content_type_len = sizeof("application/octet-stream") -1;
+
 const char *default_jhd_http_bad_request_context= "<html>\n"
 		"<head><title>400 Bad Request</title></head>\n"
 		"<body bgcolor=\"white\">\n"
@@ -82,6 +88,93 @@ uint16_t jhd_http_internal_error_request_context_len = sizeof("<html>\n"
 		"</body>\n"
 		"</html>") - 1;
 
+void jhd_http_content_type_queue_free(){
+	jhd_queue_t *q;
+	jhd_http_header *header;
+	while(jhd_queue_has_item(&jhd_http_content_type_queue)){
+		q = jhd_http_content_type_queue.next;
+		jhd_queue_only_remove(q);
+		header = jhd_queue_data(q,jhd_http_header,queue);
+		free(header->name);
+		free(header->value);
+		free(header);
+	}
+}
+
+int jhd_http_content_type_add(u_char *ext,u_char ext_len,u_char *ext,u_char ext_len,u_char *content_type,u_char content_type_len){
+	jhd_http_header *header,*ih;
+	jhd_queue_t *head,*q;
+	log_assert_master();
+
+	header = malloc(sizeof(jhd_http_header));
+	if(header){
+		header ->value = NULL;
+		header ->name = malloc(ext_len+1);
+		if(header->name){
+			memcpy(header->name,ext,ext_len);
+			header->name[ext_len] = 0;
+			header->name_len = ext_len;
+			header ->value =malloc(content_type_len+1);
+			if(header->value){
+				memcpy(header->value,content_type,content_type_len);
+				header->value[content_type_len] = 0;
+				header->value_len = content_type_len;
+				head = &jhd_http_content_type_queue;
+				for(q = jhd_queue_next(head); q!=head;){
+					ih = jhd_queue_data(q,jhd_http_header,queue);
+					if(ih->name_len > ext_len){
+						q = jhd_queue_prev(q);
+						jhd_queue_insert_after(q,&header->queue);
+						return JHD_OK;
+					}else if(ih->name_len == ext_len &&(0 < memcmp(ih->name,ext,ext_len))){
+						q = jhd_queue_prev(q);
+						jhd_queue_insert_after(q,&header->queue);
+						return JHD_OK;
+					}
+				}
+				jhd_queue_insert_tail(head,&header->queue);
+				return JHD_OK;
+			}
+		}
+		goto func_error;
+		return JHD_OK;
+	}
+func_error:
+	if(header){
+		if(header->value){
+			free(header->value);
+		}
+		free(header);
+	}
+	jhd_http_content_type_queue_free();
+	return JHD_ERROR;
+}
+
+void jhd_http_content_type_get(u_char *ext,u_char ext_len,u_char **content_type,u_char *content_type_len){
+
+	jhd_queue_t *head,*q;
+	jhd_http_header *header;
+
+	head = &jhd_http_content_type_queue;
+
+	for(q = jhd_queue_next(head);q != head;q= jhd_queue_next(q)){
+		header = jhd_queue_data(q,jhd_http_header,queue);
+
+		if(header->name_len > ext_len){
+			break;
+		}else if(header->name_len == ext_len &&(0 < memcmp(ih->name,ext,ext_len))){
+			q = jhd_queue_prev(q);
+			jhd_queue_insert_after(q,&header->queue);
+			return JHD_OK;
+		}
+
+
+	}
+
+
+
+
+}
 
 void jhd_http_listening_context_free_with_single_server(void *ctx){
 	log_assert(((jhd_http_listening_context*)ctx) != NULL);

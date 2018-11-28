@@ -46,13 +46,7 @@ void http_file_stat(jhd_http_file_info *file_info,u_char* file_loc){
     }
 }
 
-u_char *http_etag_calc(u_char* dst,size_t size,time_t mtime){
-	dst = jhd_u64_to_hex(dst,size);
-	--dst;
-	*dst='-';
-	--dst;
-	return jhd_u64_to_hex(dst,mtime);
-}
+
 
 
 //static void stream_reset_with_alloc_static_request_headers(jhd_http2_stream *stream){
@@ -182,7 +176,21 @@ static int jhd_http_test_if_match(u_char *etag,size_t etag_len, jhd_http_header 
 }
 
 
+
+
+
 static u_char http_etag_buffer[41];
+
+
+void jhd_http_static_request_out_with_range(jhd_http_request *r){
+
+}
+
+void jhd_http_static_request_out_with_200(jhd_http_request *r){
+
+}
+
+
 void jhd_http_static_request_headers_out(jhd_http_request *r){
 	jhd_http_header *header;
 	jhd_queue_t *head,*q,*hq,h;
@@ -191,19 +199,17 @@ void jhd_http_static_request_headers_out(jhd_http_request *r){
 	jhd_http_header *range;
 	jhd_http_header *if_range;
 
-	u_char *etag;
+	u_char *etag,*p,*end,c;
 	size_t etag_len;
+
 
 	time_t iums;
 
 	etag = http_etag_calc(http_etag_buffer+ 40,r->file_info.size,r->file_info.mtime);
 	etag_len = http_etag_buffer+ 40 - etag;
 
-
-
 	if_modified_since = NULL;
 	if_none_match = NULL;
-
 	if_range = NULL;
 	range = NULL;
 
@@ -264,6 +270,7 @@ void jhd_http_static_request_headers_out(jhd_http_request *r){
     if(if_none_match){
     	if(if_none_match->value_len == etag_len &&(0 == memcmp(etag,if_none_match->value,etag_len))){
     		close(r->file_info->fd);
+    		log_assert(jhd_queue_empty(&r->headers));
     	    jhd_http_request_handle_with_not_modified(r);
     	    goto func_free;
     	}
@@ -271,28 +278,149 @@ void jhd_http_static_request_headers_out(jhd_http_request *r){
     	 iums = jhd_parse_http_time(if_modified_since->value,if_modified_since->value_len);
     	 if(iums == r->file_info->mtime){
      		close(r->file_info->fd);
+     		log_assert(jhd_queue_empty(&r->headers));
      	    jhd_http_request_handle_with_not_modified(r);
      	    goto func_free;
     	 }
     }
 
+    if(r->file_info.size ==0){
+    	jhd_http_static_request_out_with_200(r);
+    	goto func_free;
+    }
 
 
+    if(range &&  range->value_len>7  && (0 == memcmp(range->value,"bytes=",6))){
+    	if(if_range){
+    		 if (if_range->value_len >= 2 && if_range->value[if_range->value_len - 1] == '"') {
+				if ((if_range->value_len != etag_len) || ( 0 !=  memcmp(etag,if_range->value,etag_len))){
+					jhd_http_static_request_out_with_200(r);
+					goto func_free;
+				}
+    		}
+    		iums = jhd_parse_http_time(if_range->value, if_range->value_len);
+    		if (iums != r->file_info.mtime) {
+    			jhd_http_static_request_out_with_200(r);
+    			goto func_free;
+    		}
+    	}
+    	r->file_info.range_start = -1;
+    	r->file_info.range_end = -1;
+    	p = range->value + 6;
+    	end = range->value + range->value_len;
+    	while((*p == ' ') && (p < end)){++p;}
+    	if(p < end){
+    		c = *p ;
+    		++p;
+    		if(c < '0' || c >'9'){
+    			close(r->file_info->fd);
+    			//TODO impl 416 Requested Range Not Satisfiable
+    		    jhd_http_request_handle_with_bad(r);
+    		    goto func_free;
+    		}
+    		r->file_info.range_start = c -'0';
+    		if(p  == end){
+    			goto func_416;
+    		}
+    		do{
+    			c = *p;
+    			++p;
+    			if( c >= '0'  && c<='9'){
+    				if(r->file_info.range_start >= (0x7FFFFFFFFFFFFFFFLL / 10)){
+    					goto func_416;
+    				}
+    				r->file_info.range_start =  c -'0' + (r->file_info.range_start * 10);
+    			}else if(c == ' '){
+    				break;
+    			}else if(c == '-'){
+    				goto parse_range_end;
+    			}else{
+    				goto func_416;
+    			}
+    		}while(p < end);
+    		if( p  == end){
+    			goto func_416;
+    		}
+    		while((*p == ' ') && (p < end)){++p;}
+    		if(p < end){
+				if(*p == '-'){
+					++p;
+					goto parse_range_end;
+				}else{
+					goto func_416;
+				}
+    		}else{
+    			 goto func_416;
+    		}
+    		parse_range_end:
+    		while((*p == ' ') && (p < end)){++p;}
+    		if(p == end){
+    			//TODO file size > 0x7FFFFFFFFFFFFFFFULL     ????????????????????
+    			r->file_info.range_end = r->file_info.size - 1;
+    		}else{
+    			c = *p ;
+				++p;
+				if(c == ','){
+					goto func_200;
+				}else if(c == '\0' && p == end){
+					//TODO
+			    	r->file_info.range_end = r->file_info.size - 1;
+				}else if(c >= '0' || c <='9'){
+					r->file_info.range_end = c -'0';
+					if(p  < end){
+						do{
+						  c = *p;
+						  ++p;
+						  if(c >= '0' || c <='9'){
+							  if(r->file_info.range_end >= (0x7FFFFFFFFFFFFFFFLL / 10)){
+								  goto func_416;
+							  }
+							  r->file_info.range_end =  c -'0' + (r->file_info.range_end * 10);
+						  }else{
+							  break;
+						  }
+						}while(p < end);
+						if(p < end){
+							do{
+								c = *p;
+								++p;
+								if(c != ' ' &&  c!='\0'){
+									break;
+								}
+							}while(p< end);
+							if(p==end){
+								goto func_200;
+							}
+						}
+					}
+				}else{
+					goto func_200;
+				}
+    		}
+    	}
 
 
-
-
-
-
-
-
-
-
+    	if(r->file_info.range_start >= r->file_info.range_end){
+    		goto func_416;
+    	}
+    	jhd_http_static_request_out_with_range(r);
+    	goto func_free;
+    }
+func_200:
+	jhd_http_static_request_out_with_200(r);
+	goto func_free;
+func_416:
+	close(r->file_info->fd);
+	//TODO impl 416 Requested Range Not Satisfiable
+	jhd_http_request_handle_with_bad(r);
+	goto func_free;
 
 func_error:
 	close(r->file_info->fd);
-    jhd_queue_merge(&h,&r->headers);
-    jhd_queue_init(&r->headers);
+	if(jhd_queue_has_item(&r->headers)){
+		jhd_queue_merge(&h,&r->headers);
+		jhd_queue_init(&r->headers);
+	}
     jhd_http_request_handle_with_bad(r);
 func_free:
 	if(if_modified_since){

@@ -48,6 +48,9 @@ typedef struct{
 	size_t 					 size;
 
 
+	ssize_t 				range_start;
+	ssize_t					range_end;
+
 	int fd;
     unsigned                 is_file:1;
     unsigned                 is_link:1;
@@ -324,6 +327,34 @@ void jhd_http_request_handle_with_bad(jhd_http_request *r);
 void jhd_http_request_handle_with_nofound(jhd_http_request *r);
 void jhd_http_request_handle_with_internal_error(jhd_http_request *r);
 void jhd_http_request_handle_with_not_modified(jhd_http_request *r);
+
+
+
+void jhd_http_content_type_get(u_char *ext,u_char ext_len,u_char **content_type,u_char *content_type_len);
+
+
+
+
+
+
+
+jhd_inline static u_char *http_etag_calc(u_char* dst,size_t size,time_t mtime){
+	*dst ='"';
+	--dst;
+	dst = jhd_u64_to_hex(dst,size);
+	--dst;
+	*dst='-';
+	--dst;
+	dst = jhd_u64_to_hex(dst,mtime);
+	--dst;
+	*dst ='"';
+	return dst;
+}
+
+
+
+
+
 
 
 extern jhd_http_request_info  jhd_http11_info;
