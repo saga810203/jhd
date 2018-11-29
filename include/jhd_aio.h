@@ -31,7 +31,7 @@ int jhd_aio_setup();
 
 
 
-static jhd_inline void* jhd_aio_get() {
+static jhd_inline jhd_aio_cb * jhd_aio_get() {
 	jhd_aio_cb *ret,**ppiocb;
 	ret = jhd_free_iocbs;
 	if(ret) {

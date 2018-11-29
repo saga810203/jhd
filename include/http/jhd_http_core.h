@@ -105,6 +105,38 @@ struct jhd_http_listening_context_s{
 };
 
 
+typedef struct{
+	jhd_queue_t queue; //in all (all in config)
+	u_char *listening_addr_text;
+	u_char listening_addr_text_len;
+
+
+
+    jhd_queue_t services;
+    u_char *host;
+    uint16_t host_len;
+}jhd_http_server;
+
+
+
+typedef struct{
+	jhd_queue_t queue;
+	void *service_ctx;
+	jhd_bool (*match)(void *service_ctx,jhd_http_request *request);
+	void (*server_ctx_free_func)(void *);
+	int (*service_func)(jhd_http_request *request);
+	uint32_t  mem_timeout;
+	jhd_http_server *server;
+}jhd_http_service;
+
+
+
+
+
+
+
+
+
 typedef struct {
 	u_char *ptr;
 	size_t  len;
@@ -131,10 +163,17 @@ typedef struct{
 	uint16_t alloced;
 }http_named_header;
 
+typedef struct{
+	u_char *data;
+	uint16_t len;
+} http_static_file_buffer;
+
 struct jhd_http_request_s{
 	jhd_event_t event;
-	jhd_queue_t queue;
-
+	union{
+		jhd_queue_t queue;
+		http_static_file_buffer file_buffer;
+	};
 	jhd_queue_t  headers;
 
 	union{
@@ -151,11 +190,13 @@ struct jhd_http_request_s{
 	union{
 		http_named_header   user_agent;
 		http_named_header   etag;
+		jhd_aio_cb 			*aio;
 	};
 	http_named_header content_type;
-
+    union{
 	ssize_t   content_length;
-
+	size_t	  static_file_size;
+    };
 	union{
 		http_named_header  path;
 		http_named_header  date;
@@ -187,11 +228,8 @@ struct jhd_http_request_s{
 	unsigned out_headers_sent:1;
 
 
+    jhd_http_service *http_service;
 
-
-
-
-    uint32_t mem_timeout;
 	u_char count;
 };
 
@@ -236,28 +274,7 @@ struct jhd_http_request_info_s{
 
 
 
-typedef struct{
-	jhd_queue_t queue; //in all (all in config)
-	u_char *listening_addr_text;
-	u_char listening_addr_text_len;
 
-
-
-    jhd_queue_t services;
-    u_char *host;
-    uint16_t host_len;
-}jhd_http_server;
-
-
-
-typedef struct{
-	jhd_queue_t queue;
-	void *service_ctx;
-	jhd_bool (*match)(void *service_ctx,jhd_http_request *request);
-	void (*server_ctx_free_func)(void *);
-	int (*service_func)(void *service_ctx,jhd_http_request *request);
-	uint32_t  mem_timeout;
-}jhd_http_service;
 
 
 

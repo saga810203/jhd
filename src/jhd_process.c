@@ -176,10 +176,10 @@ int jhd_signal_process(char *sig_name) {
 
 	if (n == -1) {
 		printf("read pid file[%s] error:%d", jhd_pid_file, errno);
-		close(pid_file_fd);
+		jhd_close(pid_file_fd);
 		return 1;
 	}
-	close(pid_file_fd);
+	jhd_close(pid_file_fd);
 
 	while (n-- && (buf[n] == '\r' || buf[n] == '\n')) { /* void */
 	}
@@ -260,10 +260,10 @@ jhd_bool jhd_create_pidfile() {
 	len = strlen(pid);
 	if (pwrite(fd, pid, len, 0) == -1) {
 		//TODO:log
-		close(fd);
+		jhd_close(fd);
 		return jhd_false;
 	}
-	close(fd);
+	jhd_close(fd);
 	jhd_pid_file_listener.data = NULL;
 	jhd_pid_file_listener.handler = jhd_delete_pidfile;
 	jhd_add_master_shutdown_listener(&jhd_pid_file_listener);

@@ -12,6 +12,42 @@
 
 
 
+jhd_inline static void jhd_http2_reset_stream_by_request(jhd_http_request *r,uint32_t err_code){
+	jhd_http2_frame *frame;
+	jhd_http2_stream *stream;
+	jhd_connection_t *c;
+	jhd_http2_connection *h2c;
+	u_char *p;
+
+	stream = r->stream;
+	c = stream->connection;
+	h2c = c->data;
+
+	jhd_queue_only_remove(stream->queue);
+	frame = (jhd_http2_frame*)(stream);
+	--h2c->processing;
+	h2c->recv.stream = &jhd_http2_invalid_stream;
+
+	p = frame->pos = (u_char*)(((u_char*)frame)+sizeof(jhd_http2_frame));
+	frame->type = JHD_HTTP2_FRAME_TYPE_RST_STREAM_FRAME;
+	frame->data_len = sizeof(jhd_http2_stream);
+	frame->len = 13;
+	frame->free_func = jhd_http2_frame_free_by_single;
+	frame->next = NULL;
+	*((uint32_t*)p) =0x03040000;
+	p[4] = 0;\
+	p[5] = (u_char)((stream->id) >> 24);
+	p[6] = (u_char)((stream->id) >> 16);
+	p[7] = (u_char)((stream->id) >> 8);
+	p[8] = (u_char)(stream->id);
+	p += 9;
+
+	*((uint32_t*)p) = err_code;
+
+	jhd_http2_send_queue_frame(c,h2c,frame);
+}
+
+
 
 /**
  * raw   data mem point = r->cache_frame.data;

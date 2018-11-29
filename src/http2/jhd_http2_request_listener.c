@@ -191,7 +191,7 @@ static void http2_not_modified_response_alloc_headers_frame(jhd_event_t *ev) {
 		jhd_http2_send_not_modified_response_headers_frmae(r,frame);
 	}else{
 		jhd_wait_mem(&r->event, 256);
-		jhd_event_add_timer(ev,r->mem_timeout,stream_reset_with_alloc_cache_response_headers_frame_timeout);
+		jhd_event_add_timer(ev,r->http_service->mem_timeout,stream_reset_with_alloc_cache_response_headers_frame_timeout);
 	}
 }
 

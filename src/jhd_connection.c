@@ -411,7 +411,7 @@ void jhd_listening_free(jhd_listening_t* lis, jhd_bool close_socket) {
 		 *
 		 * */
 		if(lis->fd > 2){
-			close(lis->fd);
+			jhd_close(lis->fd);
 			lis->fd = -1;
 		}
 	}
@@ -603,12 +603,12 @@ int jhd_open_listening_sockets(jhd_listening_t *lis) {
 	}
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *) &reuseaddr, sizeof(int)) == -1) {
 		log_stderr("systemcall setsockopt(SO_REUSEADDR) failed with %s", lis->addr_text);
-		close(fd);
+		jhd_close(fd);
 		return JHD_ERROR;
 	}
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void *) &reuseport, sizeof(int)) == -1) {
 		log_stderr("systemcall setsockopt(SO_REUSEPORT) failed with %s", lis->addr_text);
-		close(fd);
+		jhd_close(fd);
 		return JHD_ERROR;
 	}
 
@@ -624,7 +624,7 @@ int jhd_open_listening_sockets(jhd_listening_t *lis) {
 	reuseport = 1;
 	if (ioctl(fd, FIONBIO, &reuseport) == -1) {
 		log_stderr("systemcall ioctl(FIONBIO) failed with %s", lis->addr_text);
-		close(fd);
+		jhd_close(fd);
 		return JHD_ERROR;
 	}
 	lis->fd = fd;
@@ -821,7 +821,7 @@ static int jhd_connection_worker_close_listening(jhd_listener_t* listener) {
 	g_connections = NULL;
 	free(event_list);
 	event_list = NULL;
-	close(epoll_fd);
+	jhd_close(epoll_fd);
 	epoll_fd = -1;
 	return JHD_OK;
 }
@@ -894,7 +894,7 @@ static int jhd_connection_worker_startup_listening(jhd_listener_t* listener) {
 	failed:
 
 	if (epoll_fd != (-1)) {
-		close(epoll_fd);
+		jhd_close(epoll_fd);
 		epoll_fd = (-1);
 	}
 	if (event_list) {
@@ -1061,7 +1061,7 @@ void jhd_connection_close(jhd_connection_t *c) {
 	ee.events = 0;
 	ee.data.ptr = NULL;
 	epoll_ctl(epoll_fd, op, c->fd, &ee);
-	close(c->fd);
+	jhd_close(c->fd);
 	c->fd = -1;
 	++free_connection_count;
 	c->data = free_connections;
@@ -1094,7 +1094,7 @@ void jhd_connection_close(jhd_connection_t *c) {
 		log_debug("exec ioctl(,FIONBIO,)==%d", err);\
 		if (err == (-1)) {\
 			jhd_connection_free();\
-			close(fd);\
+			jhd_close(fd);\
 			log_err("connection acccept[%s] error with:%s", lis->addr_text, "ioctl(,FIONBIO,)== -1");\
 			log_notice("<== function with:%s", "ioctl(,FIONBIO,)== -1");\
 			return;\
@@ -1103,7 +1103,7 @@ void jhd_connection_close(jhd_connection_t *c) {
 			nb = lis->rcvbuf ;\
 			if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF,(const void *) &nb, sizeof(int)) == -1) {\
 				jhd_connection_free();\
-				close(fd);\
+				jhd_close(fd);\
 				log_err("connection acccept[%s] error with:setsockopt(SO_RCVBUF,%d) == -1 error=%d", lis->addr_text,(int)lis->rcvbuf,errno);\
 				log_notice("<== function with:%s  error");\
 				return;\
@@ -1113,7 +1113,7 @@ void jhd_connection_close(jhd_connection_t *c) {
 			nb = lis->sndbuf ;\
 			if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF,(const void *) &nb, sizeof(int)) == -1) {\
 				jhd_connection_free();\
-				close(fd);\
+				jhd_close(fd);\
 				log_err("connection acccept[%s] error with:setsockopt(SO_SNDBUF,%d) == -1 error=%d", lis->addr_text,(int)lis->sndbuf,errno);\
 				log_notice("<== function with:%s error");\
 				return;\
@@ -1146,7 +1146,7 @@ void jhd_connection_close(jhd_connection_t *c) {
 			jhd_event_add_timer(&c->read,lis->accept_timeout,connection_accept_timeout);\
 			sc->listening->connection_start(c);\
 		}else{\
-			close(fd);\
+			jhd_close(fd);\
 			c->fd = -1;\
 			jhd_connection_free();\
 			log_notice("<== function with: error");\

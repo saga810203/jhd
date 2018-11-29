@@ -139,14 +139,14 @@ int jhd_aio_setup() {
 
 	if (ioctl(aio_eventfd, FIONBIO, &ret) == -1) {
 		log_stderr("ioctl(aio_eventfd, FIONBIO) failed");
-		close(aio_eventfd);
+		jhd_close(aio_eventfd);
 		aio_eventfd = -1;
 		return JHD_ERROR;
 	}
 
 	if (io_setup(jhd_aio_max_nr, &jhd_aio) == -1) {
 		log_stderr("io_setup() failed");
-		close(aio_eventfd);
+		jhd_close(aio_eventfd);
 		return JHD_ERROR;
 	}
 	log_assert(free_connection_count>0);
@@ -171,7 +171,7 @@ int jhd_aio_setup() {
 	} else {
 		io_destroy(jhd_aio);
 		jhd_connection_destroy(aio_con);
-		close(aio_eventfd);
+		jhd_close(aio_eventfd);
 		aio_eventfd = -1;
 		log_stderr("malloc(iocb *  jhd_aio_max_nrfailed");
 		return JHD_ERROR;
@@ -182,7 +182,7 @@ int jhd_aio_setup() {
 	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, aio_eventfd, &ee) == -1) {
 		io_destroy(jhd_aio);
 		jhd_connection_destroy(aio_con);
-		close(aio_eventfd);
+		jhd_close(aio_eventfd);
 		aio_eventfd = -1;
 		free(jhd_iocb_ptr);
 		 log_stderr("epoll_ctl(EPOLL_CTL_ADD, aio_eventfd) failed");
@@ -209,7 +209,7 @@ void jhd_aio_destroy() {
 		}
 		io_destroy(jhd_aio);
 		jhd_connection_destroy(aio_con);
-		close(aio_eventfd);
+		jhd_close(aio_eventfd);
 		aio_eventfd = -1;
 		free(jhd_iocb_ptr);
 	}

@@ -227,14 +227,14 @@ int jhd_http_single_server_handler(void *lis_ctx_data,jhd_http_request *r){
 	for(q = jhd_queue_next(head); q!= head; q = jhd_queue_next(q)){
 		svs = jhd_queue_data(q,jhd_http_service,queue);
 		if(svs->match(svs->service_ctx,r)){
-			r->mem_timeout = svs->mem_timeout;
-			return svs->service_func(svs->service_ctx,r);
+			r->http_service = svs;
+			return svs->service_func(r);
 		}
 	}
 	q = head->prev;
 	svs =jhd_queue_data(q,jhd_http_service,queue);
-	r->mem_timeout = svs->mem_timeout;
-	return svs->service_func(svs->service_ctx,r);
+	r->http_service = svs;
+	return svs->service_func(r);
 }
 
 
@@ -251,14 +251,14 @@ int jhd_http_mulitple_server_handler(void *lis_ctx_data,jhd_http_request *r){
 					for(q = jhd_queue_next(head); q!= head; q = jhd_queue_next(q)){
 						svs = jhd_queue_data(q,jhd_http_service,queue);
 						if(svs->match(svs->service_ctx,r)){
-							r->mem_timeout = svs->mem_timeout;
-							return svs->service_func(svs->service_ctx,r);
+							r->http_service = svs;
+							return svs->service_func(r);
 						}
 					}
 					q = head->prev;
 					svs =jhd_queue_data(q,jhd_http_service,queue);
-					r->mem_timeout = svs->mem_timeout;
-					return svs->service_func(svs->service_ctx,r);
+					r->http_service = svs;
+					return svs->service_func(svs,r);
 			}
 			++svr;
 		}while(*svr != NULL);
@@ -269,14 +269,14 @@ int jhd_http_mulitple_server_handler(void *lis_ctx_data,jhd_http_request *r){
 	for(q = jhd_queue_next(head); q!= head; q = jhd_queue_next(q)){
 		svs = jhd_queue_data(q,jhd_http_service,queue);
 		if(svs->match(svs->service_ctx,r)){
-			r->mem_timeout = svs->mem_timeout;
-			return svs->service_func(svs->service_ctx,r);
+			r->http_service = svs;
+			return svs->service_func(r);
 		}
 	}
 	q = head->prev;
 	svs =jhd_queue_data(q,jhd_http_service,queue);
-	r->mem_timeout = svs->mem_timeout;
-	return svs->service_func(svs->service_ctx,r);
+	r->http_service = svs;
+	return svs->service_func(r);
 }
 
 

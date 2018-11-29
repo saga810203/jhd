@@ -145,6 +145,17 @@ static jhd_inline u_char * jhd_strlchr(u_char *p, u_char *last, u_char c)
     return NULL;
 }
 
+static jhd_inline void jhd_close(int fd){
+	for(;;){
+		if(close(fd)){
+			if(errno == EINTR){
+				continue;
+			}
+		}
+		break;
+	}
+}
+
 
 void jhd_config_check();
 
