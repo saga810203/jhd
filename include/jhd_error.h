@@ -48,6 +48,9 @@
 #define JHD_HTTP2_INTERNAL_ERROR_READ_TIMEOUT               		0x02200000
 #define JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT               			0x02300000
 
+#define JHD_HTTP2_INTERNAL_ERROR_READ_FILE_TIMEOUT               	0x02FE0000
+#define JHD_HTTP2_INTERNAL_ERROR_READ_FILE_ERROR               	    0x02FF0000
+
 /******************************************/
 #define JHD_HTTP2_FLOW_CTRL_ERROR              0x03000000
 

@@ -14,12 +14,15 @@
 #include <bits/syscall.h>
 
 
+typedef struct jhd_aio_cb_s jhd_aio_cb;
 
-
-typedef struct {
+typedef struct jhd_aio_cb_s{
 	struct iocb  aio;
-	int64_t      result;
-}jhd_aio_cb;
+	union{
+		int64_t      result;
+		jhd_aio_cb   *next;
+	};
+}jhd_aio_cb_s;
 
 extern jhd_aio_cb *jhd_free_iocbs;
 extern jhd_queue_t waitting_iocb_queue;
@@ -32,19 +35,18 @@ int jhd_aio_setup();
 
 
 static jhd_inline jhd_aio_cb * jhd_aio_get() {
-	jhd_aio_cb *ret,**ppiocb;
+	jhd_aio_cb *ret;
 	ret = jhd_free_iocbs;
 	if(ret) {
-		ppiocb = (jhd_aio_cb **)(ret);
-		jhd_free_iocbs = *ppiocb;
+		jhd_free_iocbs = ret->next;
 	}
 	return ret;
 }
-static jhd_inline void jhd_aio_free(void* ic){
+static jhd_inline void jhd_aio_free(jhd_aio_cb* ic){
 	jhd_event_t *ev;
 	jhd_queue_t *q;
-	*((jhd_aio_cb **)ic) = jhd_free_iocbs;
-	jhd_free_iocbs = ((jhd_aio_cb *)ic);
+	ic->next = jhd_free_iocbs;
+	jhd_free_iocbs = ic;
 	jhd_free_iocbs->aio.aio_data = NULL;
 	q = waitting_iocb_queue.next;
 

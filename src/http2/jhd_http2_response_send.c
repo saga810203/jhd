@@ -118,7 +118,7 @@ void jhd_http2_stream_send_last_raw_data(jhd_http_request *r){
 	log_assert(frame->data != NULL);
 	log_assert(r->payload != NULL);
 	log_assert(frame->data >  (r->payload +9));
-	log_assert((frame->data  - r->payload) <= (16384+9) );
+	log_assert((frame->data  - r->payload) < (16384+9) );
 
 
 	log_assert(r->payload_len >0);

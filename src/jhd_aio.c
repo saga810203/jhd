@@ -121,8 +121,8 @@ void jhd_aio_write(jhd_event_t *ev,void*ic,int fd,u_char *buf, size_t size, off_
 
 int jhd_aio_setup() {
 	int ret, i;
-	struct iocb ** ppiocb;
     struct epoll_event  ee;
+    jhd_aio_cb *paio;
 
 
 	memset(&jhd_aio, 0, sizeof(aio_context_t));
@@ -158,15 +158,16 @@ int jhd_aio_setup() {
 	aio_con->read.handler = jhd_epoll_eventfd_handler;
 
 	jhd_queue_init(&waitting_iocb_queue);
-	jhd_iocb_ptr = malloc(sizeof(jhd_aio_cb) * jhd_aio_max_nr);
-	if (jhd_iocb_ptr) {
-		for (i = 0; i < jhd_aio_max_nr; ++i) {
-			ppiocb = (jhd_aio_cb **) (&jhd_iocb_ptr[i]);
-			*ppiocb = jhd_free_iocbs;
-			jhd_free_iocbs = (jhd_aio_cb*) (ppiocb);
-		    jhd_free_iocbs->aio.aio_flags = IOCB_FLAG_RESFD;
-		    jhd_free_iocbs->aio.aio_resfd = aio_eventfd;
-		    jhd_free_iocbs->aio.aio_data = NULL;
+	paio = jhd_iocb_ptr = malloc(sizeof(jhd_aio_cb) * jhd_aio_max_nr);
+	if (paio) {
+		jhd_free_iocbs = NULL;
+		memset(paio,0,sizeof(jhd_aio_cb) * jhd_aio_max_nr);
+		for (i = 0; i < jhd_aio_max_nr; ++i,++paio) {
+		    paio->aio.aio_flags = IOCB_FLAG_RESFD;
+		    paio->aio.aio_resfd = aio_eventfd;
+		    paio->aio.aio_data = NULL;
+		    paio->next = jhd_free_iocbs;
+		    jhd_free_iocbs = paio;
 		}
 	} else {
 		io_destroy(jhd_aio);
