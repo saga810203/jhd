@@ -2,6 +2,16 @@
 #include <jhd_log.h>
 #include <http2/jhd_http2_response_send.h>
 
+void jhd_http2_free_request_and_cache_data_with_cache_frame_free(jhd_http2_frame *frame){
+	jhd_http_request * r;
+	r =  (jhd_http_request *) (((u_char *) frame) - offsetof(jhd_http_request, cache_frame));
+
+	log_assert(r->event.queue.next == NULL  ||(jhd_queue_not_queued(&r->event.queue)));
+	log_assert(r->stream == NULL);
+
+	jhd_free_with_size(r->cache_frame.data,r->cache_frame.data_len);
+	jhd_free_with_size(r,sizeof(jhd_http_request));
+}
 
 static void stream_listener_by_remote_recv_send_cache_raw_data(jhd_http2_stream *stream){
 	jhd_http_request *r;
@@ -40,27 +50,14 @@ static void cache_frame_free_with_over(void *frame){
 	stream->listener = &server_send_response_with_flow_control_and_not_in_send_queue;
 }
 
-static void cache_frame_free_with_free_request(void *frame){
-	jhd_http_request * r;
-	r =  (jhd_http_request *) (((u_char *) frame) - offsetof(jhd_http_request, cache_frame));
 
-	log_assert(r->event.queue.next == NULL  ||(jhd_queue_not_queued(&r->event.queue)));
-	log_assert(r->stream == NULL);
-
-	jhd_free_with_size(r->cache_frame.data,r->cache_frame.data_len);
-	jhd_free_with_size(r,sizeof(jhd_http_request));
-}
 
 
 
 
 static void stream_listener_by_rest_with_change_cache_frame_free_func(jhd_http2_stream *stream){
 	log_assert_code(((jhd_http_request *)(stream->lis_ctx))->stream = NULL;)
-
-	((jhd_http_request *)(stream->lis_ctx))->cache_frame.free_func = cache_frame_free_with_free_request;
-
-
-
+	((jhd_http_request *)(stream->lis_ctx))->cache_frame.free_func = jhd_http2_free_request_and_cache_data_with_cache_frame_free;
 }
 
 static void cache_frame_free_with_send_next_fragmentation(void *frame){
@@ -145,6 +142,9 @@ void jhd_http2_stream_send_last_raw_data(jhd_http_request *r){
 		frame->len = size + 9;
 		p =  r->payload - 9;
 
+		r->payload += (uint32_t)size;
+		r->payload -= (uint32_t)size;
+
 		p[0] = 0;
 		p[1] = ((u_char)(size>> 8));
 		p[2] = ((u_char)(size));
@@ -158,10 +158,8 @@ void jhd_http2_stream_send_last_raw_data(jhd_http_request *r){
 		stream->listener =&server_stream_listener_with_flow_control_and_in_send_queue;
 	}else{
 		h2c->send.window_size -= ((int)r->payload_len);
-
 		log_assert_code(r->stream = NULL;)
-
-		frame->free_func = cache_frame_free_with_free_request;
+		frame->free_func = jhd_http2_free_request_and_cache_data_with_cache_frame_free;
 		frame->pos = r->payload;
 		frame->len = (((int)r->payload_len+9));
 		p =  r->payload - 9;

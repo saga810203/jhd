@@ -259,6 +259,72 @@ static jhd_http2_stream_listener server_send_staic_response_with_flow_control_an
 		stream_listener_by_rsend_window_change_send_file_raw,
 };
 
+static void http2_stream_file_raw_sent_wait_flow_control(jhd_http2_frame *frame){
+	jhd_http_request *r;
+	jhd_http2_stream *stream;
+	r =(jhd_http_request*)(((u_char*)frame)- offsetof(jhd_http_reqeust , cache_frame));
+	stream = r->stream;
+	stream->listener = server_send_staic_response_with_flow_control_and_not_in_send_queue;
+}
+static void http2_stream_file_raw_sent_wait_flow_control(jhd_http2_frame *frame){
+	jhd_http_request *r;
+	jhd_http2_stream *stream;
+	r =(jhd_http_request*)(((u_char*)frame)- offsetof(jhd_http_reqeust , cache_frame));
+	stream = r->stream;
+	stream->listener = server_send_staic_response_with_flow_control_and_not_in_send_queue;
+}
+
+static void http_stream_reset_with_change_cache_frame_free_func(jhd_http2_stream *stream){
+	jhd_http_request *r;
+	r = stream->lis_ctx;
+	r->cache_frame.free_func = jhd_http2_free_request_and_cache_data_with_cache_frame_free;
+	jhd_aio_free(r->aio);
+}
+static void http2_stream_send_next_file_fragmentation_with_cache_frame_free_func(void *frame){
+	http2_stream_send_file_raw_data( (jhd_http_request *) (((u_char *) frame) - offsetof(jhd_http_request, cache_frame)));
+}
+
+static void stream_listener_change_cache_frame_free_func_with_in_send_queue(jhd_http2_stream *stream){
+	log_assert(jhd_queue_queued(&stream->flow_control));
+	jhd_queue_remove(&stream->flow_control);
+	((jhd_http_request *)(stream->lis_ctx))->cache_frame.free_func = http2_stream_send_next_file_fragmentation_with_cache_frame_free_func;
+}
+
+
+static jhd_http2_stream_listener server_send_staic_response_with_flow_control_and_in_send_queue ={
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt remote_close;
+		jhd_http2_stream_ignore_data_listener,//		jhd_event_handler_pt remote_data;
+		jhd_http2_stream_ignore_listener,      //	    remote_empty_data;
+		http_stream_reset_with_change_cache_frame_free_func,//		    jhd_event_handler_pt reset;
+		stream_listener_change_cache_frame_free_func_with_in_send_queue,//		jhd_event_handler_pt remote_recv;
+		jhd_http2_stream_ignore_listener,	//	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
+		stream_listener_change_cache_frame_free_func_with_in_send_queue,
+};
+
+static void http2_stream_read_next_file_part_with_cache_frame_free(void *frame){
+	jhd_http_request *r;
+	jhd_http2_stream *stream;
+	size_t len;
+	r =(jhd_http_request*)(((u_char*)frame)- offsetof(jhd_http_reqeust , cache_frame));
+	stream = r->stream;
+
+    r->payload = r->cache_frame.data +9;
+    r->aio->aio.aio_offset += r->aio->result;
+	len = r->cache_frame.data_len - 9;
+	if(len <= r->static_file_size){
+		r->aio->aio.aio_nbytes = r->static_file_size;
+		r->event->handler = http2_static_aio_read_over;
+		stream->listener = server_stream_listener_block_with_static_response_aio_read;
+	}else{
+		r->aio->aio.aio_nbytes = len;
+		r->static_file_size -=len;
+		r->event->handler = http2_static_aio_read_compele;
+		stream->listener = server_stream_listener_block_with_static_response_aio_read;
+	}
+	r->event->timeout =http2_static_aio_timeout;
+	jhd_aio_submit(r->aio);
+}
+
 
 
 void http2_stream_send_file_raw_data(jhd_http_request *r){
@@ -297,10 +363,12 @@ void http2_stream_send_file_raw_data(jhd_http_request *r){
 		jhd_queue_insert_tail(&h2c->flow_control,&stream->flow_control);
 		h2c->send.window_size -= size;
 		stream->send_window_size -= size;
-
 		frame->pos = r->payload;
 		frame->len = size + 9;
 		p =  r->payload - 9;
+
+		r->payload += (uint32_t)size;
+		r->payload -= (uint32_t)size;
 
 		p[0] = 0;
 		p[1] = ((u_char)(size>> 8));
@@ -310,13 +378,14 @@ void http2_stream_send_file_raw_data(jhd_http_request *r){
 		p+=5;
 		jhd_http2_set_stream_id(p,stream->id);
 		frame->next = NULL;
-		frame->free_func = cache_frame_free_with_over;
+		frame->free_func = http2_stream_file_raw_sent_wait_flow_control;
 		jhd_http2_send_queue_frame(c,h2c,frame);
-		stream->listener =&server_stream_listener_with_flow_control_and_in_send_queue;
+		stream->listener =&server_send_staic_response_with_flow_control_and_in_send_queue;
 	}else{
 		h2c->send.window_size -= ((int)r->payload_len);
+		stream->send_window_size -=((int)r->payload_len);
 
-		log_assert_code(r->stream = NULL;)
+
 
 		frame->free_func = cache_frame_free_with_free_request;
 		frame->pos = r->payload;
@@ -400,9 +469,7 @@ static jhd_http2_stream_listener server_stream_listener_block_with_static_respon
 
 void http2_static_200_response_start_read(jhd_http_request *r){
 	size_t len;
-	struct iocb      *piocb[1];
 	jhd_http2_stream *stream;
-	piocb[0] = &r->aio->aio;
 	r->payload = r->aio->aio.aio_buf =(uint64_t)(r->cache_frame.data +9);
 	r->aio->aio.aio_offset = 0;
 	len = r->cache_frame.data_len - 9;
@@ -419,9 +486,7 @@ void http2_static_200_response_start_read(jhd_http_request *r){
 		stream->listener = server_stream_listener_block_with_static_response_aio_read;
 	}
 	r->event->timeout =http2_static_aio_timeout;
-
-
-
+	jhd_aio_submit(r->aio);
 }
 
 void http2_send_static_200_response_alloc_data_buffer(jhd_event_t *ev){

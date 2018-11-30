@@ -64,6 +64,8 @@ static jhd_inline void jhd_aio_wait(jhd_event_t *ev) {
 void jhd_aio_read(jhd_event_t *ev,void*ic,int fd,u_char *buf, size_t size, off_t offset);
 void jhd_aio_write(jhd_event_t *ev,void*ic,int fd,u_char *buf, size_t size, off_t offset);
 
+void jhd_aio_submit(jhd_aio_cb *aio);
+
 
 void jhd_aio_destroy();
 

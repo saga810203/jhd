@@ -118,6 +118,23 @@ void jhd_aio_write(jhd_event_t *ev,void*ic,int fd,u_char *buf, size_t size, off_
 	#endif
 }
 
+void jhd_aio_submit(jhd_aio_cb *aio){
+	struct iocb      *piocb[1];
+	piocb[0] = &aio->aio;
+
+#ifdef JHD_LOG_ASSERT_ENABLE
+if(
+#endif
+io_submit(jhd_aio, 1, piocb)
+#ifdef JHD_LOG_ASSERT_ENABLE
+!=1){
+log_assert(1==2);
+}
+#else
+;
+#endif
+
+}
 
 int jhd_aio_setup() {
 	int ret, i;
