@@ -49,6 +49,10 @@ jhd_inline static void jhd_http2_reset_stream_by_request(jhd_http_request *r,uin
 
 
 
+void jhd_http2_alloc_single_response_headers_frame_timeout(jhd_event_t * ev);
+void jhd_http2_alloc_multi_response_headers_frame_timeout(jhd_event_t * ev);
+
+
 /**
  * raw   data mem point = r->cache_frame.data;
  *
@@ -59,12 +63,11 @@ jhd_inline static void jhd_http2_reset_stream_by_request(jhd_http_request *r,uin
  */
 void jhd_http2_stream_send_last_raw_data(jhd_http_request *r);
 void jhd_http2_send_cached_response(jhd_http_request *r,uint16_t state,u_char *body,uint16_t body_len);
-void jhd_http2_send_not_modified_response(jhd_http_request *r);
-
 void jhd_http2_free_request_and_cache_data_with_cache_frame_free(jhd_http2_frame *frame);
 
 
 
-
+extern jhd_http2_stream_listener jhd_http2_server_stream_listener_at_alloc_single_header_frame_block_and_ignore_data_frame;
+extern jhd_http2_stream_listener jhd_http2_server_stream_listener_at_alloc_multi_header_frame_block_and_ignore_data_frame;
 
 #endif /* HTTP2_JHD_HTTP2_RESPONSE_SEND_H_ */

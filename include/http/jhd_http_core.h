@@ -343,7 +343,7 @@ void jhd_http_request_handle_with_not_modified_by_http11(jhd_http_request *r);
 void jhd_http_request_handle_with_bad(jhd_http_request *r);
 void jhd_http_request_handle_with_nofound(jhd_http_request *r);
 void jhd_http_request_handle_with_internal_error(jhd_http_request *r);
-void jhd_http_request_handle_with_not_modified(jhd_http_request *r);
+
 
 
 
@@ -355,18 +355,6 @@ void jhd_http_content_type_get(u_char *ext,u_char ext_len,u_char **content_type,
 
 
 
-jhd_inline static u_char *http_etag_calc(u_char* dst,size_t size,time_t mtime){
-	*dst ='"';
-	--dst;
-	dst = jhd_u64_to_hex(dst,size);
-	--dst;
-	*dst='-';
-	--dst;
-	dst = jhd_u64_to_hex(dst,mtime);
-	--dst;
-	*dst ='"';
-	return dst;
-}
 
 
 

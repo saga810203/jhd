@@ -1,18 +1,8 @@
-#include <http/jhd_http_core.h>
-#include <http2/jhd_http2.h>
-#include <jhd_log.h>
-#include <jhd_aio.h>
-#include <fcntl.h>
+#include <http/jhd_http_static_service.h>
+#include <http2/jhd_http2_static.h>
 
-typedef struct {
-	uint16_t config_ctx_size;
-	void* config_ctx;
-	u_char *file_path;
-	uint16_t file_path_len;
-	//return target_file length;
-	uint16_t (*build_target_file)(u_char target_file[8192], void*ctx, jhd_http_request *r);
-	size_t *wait_aio_timeout;
-} jhd_http_static_service_context;
+
+
 
 void http2_stream_send_file_raw_data(jhd_http_request *r);
 
@@ -97,28 +87,7 @@ void http_file_stat(jhd_http_file_info *file_info, u_char* file_loc) {
 //		jhd_http_request_free(r);
 //}
 
-static void stream_reset_with_alloc_static_response_headers_frame_block(jhd_http2_stream *stream) {
-	jhd_http_request *r;
 
-	r = stream->lis_ctx;
-	log_assert(r->event.timer.key != 0);
-	jhd_queue_only_remove(&r->event.queue);
-	jhd_event_del_timer(&r->event);
-	if (r->file_info.fd != -1) {
-		jhd_close(r->file_info.fd);
-	}
-	jhd_free_with_size(r, sizeof(jhd_http_request));
-}
-
-static jhd_http2_stream_listener server_stream_listener_with_ignore_static_response_alloc_header_frame = {
-			jhd_http2_stream_ignore_listener, //	jhd_event_handler_pt remote_close;
-			jhd_http2_stream_ignore_data_listener, //		jhd_event_handler_pt remote_data;
-			jhd_http2_stream_ignore_listener,
-			stream_reset_with_alloc_static_response_headers_frame_block, //		jhd_event_handler_pt reset;
-			jhd_http2_stream_ignore_listener, //		jhd_event_handler_pt remote_recv;
-			jhd_http2_stream_ignore_listener, //	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
-			jhd_http2_stream_ignore_listener, //	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
-};
 
 static void stream_reset_with_alloc_static_response_aio_block(jhd_http2_stream *stream) {
 	jhd_http_request *r;
@@ -164,22 +133,12 @@ static jhd_http2_stream_listener server_stream_listener_block_with_static_respon
                 jhd_http2_stream_ignore_listener, //	jhd_event_handler_pt recv_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
                 jhd_http2_stream_ignore_listener, //	jhd_event_handler_pt send_window_change;//keep stream recv_window_size == ?(return in ev->data->data->recv.state)
                 };
-static void http2_stream_reset_with_alloc_static_response_headers_frame_timeout(jhd_event_t *ev) {
+
+
+static void http2_static_wait_aio_timeout(jhd_event_t *ev) {
 	jhd_http_request *r = ev->data;
 	jhd_queue_only_remove(&r->event.queue);
 	jhd_http2_reset_stream_by_request(r, JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
-	if (r->file_info.fd != -1) {
-		jhd_close(r->file_info.fd);
-	}
-	jhd_free_with_size(r, sizeof(jhd_http_request));
-}
-
-static void http2_static_200_wait_aio_timeout(jhd_event_t *ev) {
-	jhd_http_request *r = ev->data;
-
-	jhd_queue_only_remove(&r->event.queue);
-	jhd_http2_reset_stream_by_request(r, JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
-
 	log_assert(r->file_info.fd != -1);
 	jhd_close(r->file_info.fd);
 	jhd_free_with_size(r, sizeof(jhd_http_request));
@@ -505,6 +464,35 @@ void http2_send_static_200_response_data_frmae(jhd_http_request *r) {
 	}
 }
 
+void http2_send_static_206_response_data_frmae(jhd_http_request *r) {
+	size_t size;
+	jhd_http2_stream *stream;
+
+	size = r->static_file_size = r->file_info->size;
+	r->aio->aio.aio_fildes = r->file_info.fd;
+	if (size <= 1024) {
+		r->cache_frame.data_len = 1024 + 9;
+	} else if (size <= 2048) {
+		r->cache_frame.data_len = 2048 + 9;
+	} else if (size <= 4096) {
+		r->cache_frame.data_len = 4096 + 9;
+	} else if (size <= 8192) {
+		r->cache_frame.data_len = 8192 + 9;
+	} else {
+		r->cache_frame.data_len = 16384 + 9;
+	}
+	r->cache_frame.data = jhd_alloc(r->cache_frame.data_len);
+	if (r->cache_frame.data) {
+		http2_static_200_response_start_read(r);
+	} else {
+		r->event.handler = http2_send_static_200_response_alloc_data_buffer;
+		jhd_wait_mem(&r->event, r->cache_frame.data_len + 9);
+		jhd_event_add_timer(&r->event, r->http_service->mem_timeout, http2_static_200_wait_data_buffer_timeout);
+		stream = r->stream;
+		stream->listener = &server_stream_listener_block_with_static_response_alloc_data_buffer;
+	}
+}
+
 static void http2_static_200_alloc_aio(jhd_event_t *ev) {
 	jhd_http_request *r = ev->data;
 	log_assert(r->file_info.fd != -1);
@@ -517,6 +505,16 @@ static void http2_static_200_alloc_aio(jhd_event_t *ev) {
 	log_assert(r->aio != NULL);
 
 	http2_send_static_200_response_data_frmae(r);
+}
+static void http2_static_206_alloc_aio(jhd_event_t *ev) {
+	jhd_http_request *r = ev->data;
+	log_assert(r->file_info.fd != -1);
+	log_assert(r->event.timer.key != 0);
+	jhd_event_del_timer(ev);
+	r->aio = jhd_aio_get();
+	r->aio->aio.aio_data = (uint64_t) ev;
+	log_assert(r->aio != NULL);
+	http2_send_static_206_response_data_frmae(r);
 }
 
 static u_char http_etag_buffer[41];
@@ -650,14 +648,13 @@ void http2_send_static_200_response_headers_frmae(jhd_http_request *r, jhd_http2
 		} else {
 			r->event->handler = http2_static_200_alloc_aio;
 			jhd_aio_wait(&r->event);
-			jhd_event_add_timer(&r->event, ((jhd_http_static_service_context *) (r->http_service->service_ctx))->wait_aio_timeout,
-			                http2_static_200_wait_aio_timeout);
+			jhd_event_add_timer(&r->event, ((jhd_http_static_service_context *) (r->http_service->service_ctx))->wait_aio_timeout,http2_static_wait_aio_timeout);
 			stream->listener = server_stream_listener_block_with_static_response_alloc_aio;
 		}
 	}
 }
 
-void http2_send_static_range_response_headers_frmae(jhd_http_request *r, jhd_http2_frame *frame) {
+void http2_send_static_206_response_headers_frmae(jhd_http_request *r, jhd_http2_frame *frame) {
 	uint16_t len;
 	jhd_connection_t *c;
 	jhd_http2_connection *h2c;
@@ -665,13 +662,7 @@ void http2_send_static_range_response_headers_frmae(jhd_http_request *r, jhd_htt
 	u_char *p, *etag,*end;
 
 	log_assert(r->event.timer.key == 0);
-
-
 	log_assert(r->file_info.range_start<=r->file_info.range_end);
-
-
-
-
 
 
 	stream = r->stream;
@@ -808,33 +799,17 @@ void http2_send_static_range_response_headers_frmae(jhd_http_request *r, jhd_htt
 	r->aio = jhd_aio_get();
 	if (r->aio) {
 		r->aio->aio.aio_data = (uint64_t) (&r->event);
-		http2_send_static_200_response_data_frmae(r);
+		http2_send_static_206_response_data_frmae(r);
 	} else {
-		r->event->handler = http2_static_200_alloc_aio;
+		r->event->handler = http2_static_206_alloc_aio;
 		jhd_aio_wait(&r->event);
-		jhd_event_add_timer(&r->event, ((jhd_http_static_service_context *) (r->http_service->service_ctx))->wait_aio_timeout,
-						http2_static_200_wait_aio_timeout);
+		jhd_event_add_timer(&r->event, ((jhd_http_static_service_context *) (r->http_service->service_ctx))->wait_aio_timeout,http2_static_wait_aio_timeout);
 		stream->listener = server_stream_listener_block_with_static_response_alloc_aio;
 	}
 }
 
 
 
-static void http2_static_response_200_alloc_headers_frame(jhd_event_t *ev) {
-	jhd_http2_frame *frame;
-	jhd_http_request *r = ev->data;
-
-	log_assert(r->event.timer.key != 0);
-
-	frame = jhd_alloc(256);
-	if (frame) {
-		jhd_event_del_timer(&r->event);
-		http2_send_static_200_response_headers_frmae(r, frame);
-	} else {
-		jhd_wait_mem(&r->event, 256);
-		jhd_event_add_timer(ev, r->http_service->mem_timeout, http2_stream_reset_with_alloc_static_response_headers_frame_timeout);
-	}
-}
 static void http2_static_response_range_alloc_headers_frame(jhd_event_t *ev) {
 	jhd_http2_frame *frame;
 	jhd_http_request *r = ev->data;
@@ -900,64 +875,28 @@ void jhd_http_static_request_out_with_range_by_http2(jhd_http_request *r) {
 }
 
 
-void jhd_http_static_request_out_with_200_by_http2(jhd_http_request *r) {
-	jhd_http2_frame *frame;
-	jhd_http2_stream *stream;
-	jhd_connection_t *c;
-	jhd_http2_connection *h2c;
-	u_char *host, *user_agent, *path;
-	uint16_t host_len, user_agent_len, path_len;
-	host_len = user_agent_len = path_len = 0;
 
-	if (r->host.alloced) {
-		host = r->host.data;
-		host_len = r->host.alloced;
-		r->host.alloced = 0;
+void jhd_http_static_request_handle_with_304(jhd_http_request *r){
+	if(r->is_http2){
+		jhd_http2_static_request_out_with_304(r);
+	}else{
+		//TODO impl
 	}
-	if (r->path.alloced) {
-		path = r->path.data;
-		path_len = r->path.alloced;
-		r->path.alloced = 0;
-	}
-	if (r->user_agent.alloced) {
-		user_agent = r->user_agent.data;
-		user_agent_len = r->user_agent.alloced;
-		r->user_agent.alloced = 0;
-	}
-	log_assert(jhd_queue_empty(&r->headers));
-	//TODO op this value[256]  only include  state  content_length  content_type server date
-	frame = jhd_alloc(256);
-	if (frame == NULL) {
-		r->event.handler = http2_static_response_200_alloc_headers_frame;
-		((jhd_http2_stream*) (r->stream))->listener = &server_stream_listener_with_ignore_static_response_alloc_header_frame;
-		jhd_wait_mem(&r->event, 256);
-		jhd_event_add_timer(&r->event, r->http_service->mem_timeout, http2_stream_reset_with_alloc_static_response_headers_frame_timeout);
-		goto func_free;
-	}
-	http2_send_static_200_response_headers_frmae(r, frame);
-	func_free: if (path_len) {
-		jhd_free_with_size(path, path_len);
-	}
-	if (user_agent_len) {
-		jhd_free_with_size(user_agent, user_agent_len);
-	}
-	if (host_len) {
-		jhd_free_with_size(host, host_len);
-	}
+
 }
 
-void jhd_http_static_request_out_with_range(jhd_http_request *r) {
+void jhd_http_static_request_handle_with_206(jhd_http_request *r) {
 	if (r->is_http2) {
-		jhd_http_static_request_out_with_range_by_http2(r);
+		jhd_http2_static_request_handle_with_206(r);
 	} else {
 		//TODO impl
 	}
 
 }
 
-void jhd_http_static_request_out_with_200(jhd_http_request *r) {
+static void jhd_http_static_request_handle_with_200(jhd_http_request *r) {
 	if (r->is_http2) {
-		jhd_http_static_request_out_with_200_by_http2(r);
+		jhd_http2_static_request_handle_with_200(r);
 	} else {
 		//TODO impl
 	}
@@ -1038,40 +977,28 @@ void jhd_http_static_request_headers_out(jhd_http_request *r) {
 
 	if (if_none_match) {
 		if (if_none_match->value_len == etag_len && (0 == memcmp(etag, if_none_match->value, etag_len))) {
-			jhd_close(r->file_info->fd);
-			r->file_info->fd = -1;
-			log_assert(jhd_queue_empty(&r->headers));
-			jhd_http_request_handle_with_not_modified(r);
-			goto func_free;
+			goto func_304;
 		}
 	} else if (if_modified_since) {
 		iums = jhd_parse_http_time(if_modified_since->value, if_modified_since->value_len);
 		if (iums == r->file_info->mtime) {
-			jhd_close(r->file_info->fd);
-			r->file_info->fd = -1;
-			log_assert(jhd_queue_empty(&r->headers));
-			jhd_http_request_handle_with_not_modified(r);
-			goto func_free;
+			goto func_304;
 		}
 	}
-
 	if (r->file_info.size == 0) {
-		jhd_http_static_request_out_with_200(r);
-		goto func_free;
+		goto func_200;
 	}
 
 	if (range && range->value_len > 7 && (0 == memcmp(range->value, "bytes=", 6))) {
 		if (if_range) {
 			if (if_range->value_len >= 2 && if_range->value[if_range->value_len - 1] == '"') {
 				if ((if_range->value_len != etag_len) || (0 != memcmp(etag, if_range->value, etag_len))) {
-					jhd_http_static_request_out_with_200(r);
-					goto func_free;
+					goto func_200;
 				}
 			}
 			iums = jhd_parse_http_time(if_range->value, if_range->value_len);
 			if (iums != r->file_info.mtime) {
-				jhd_http_static_request_out_with_200(r);
-				goto func_free;
+				goto func_200;
 			}
 		}
 		r->file_info.range_start = -1;
@@ -1085,11 +1012,7 @@ void jhd_http_static_request_headers_out(jhd_http_request *r) {
 			c = *p;
 			++p;
 			if (c < '0' || c > '9') {
-				jhd_close(r->file_info->fd);
-				r->file_info->fd = -1;
-				//TODO impl 416 Requested Range Not Satisfiable
-				jhd_http_request_handle_with_bad(r);
-				goto func_free;
+				goto func_416;
 			}
 			r->file_info.range_start = c - '0';
 			if (p == end) {
@@ -1173,24 +1096,27 @@ void jhd_http_static_request_headers_out(jhd_http_request *r) {
 					goto func_200;
 				}
 			}
+			if (r->file_info.range_start > r->file_info.range_end) {
+				goto func_416;
+			}
+			jhd_http_static_request_handle_with_206(r);
+			goto func_free;
 		}
-
-		if (r->file_info.range_start >= r->file_info.range_end) {
-			goto func_416;
-		}
-		jhd_http_static_request_out_with_range(r);
-		goto func_free;
 	}
 func_200:
-	jhd_http_static_request_out_with_200(r);
+	jhd_http_static_request_handle_with_200(r);
 	goto func_free;
 func_416:
 	jhd_close(r->file_info->fd);
-	r->file_info->fd = -1;
 	//TODO impl 416 Requested Range Not Satisfiable
 	jhd_http_request_handle_with_bad(r);
 	goto func_free;
 
+func_304:
+	jhd_close(r->file_info->fd);
+	log_assert(jhd_queue_empty(&r->headers));
+	jhd_http_static_request_handle_with_304(r);
+	goto func_free;
 func_error:
 	jhd_close(r->file_info->fd);
 	r->file_info->fd = -1;
