@@ -200,6 +200,7 @@ struct jhd_http_request_s{
 	union{
 		http_named_header  path;
 		http_named_header  date;
+		uint32_t aio_skip;
 	};
 	union{
 		http_named_header host;

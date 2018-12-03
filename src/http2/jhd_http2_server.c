@@ -20,7 +20,7 @@ static void server_common_close(jhd_event_t *ev){
 	event_c->close(event_c);
 }
 
-static void server_create_stream_timeout(jhd_event_t *ev){
+static void server_alloc_timeout(jhd_event_t *ev){
 	jhd_http_header *header;
 	jhd_queue_t h,*q;
 	event_c  =  ev->data;
@@ -48,7 +48,7 @@ static void server_rst_stream(jhd_event_t *ev){
 	frame = jhd_alloc(sizeof(jhd_http2_frame)+13);
 	if(frame==NULL){
 		jhd_wait_mem(ev,sizeof(jhd_http2_frame)+13);
-		jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout,server_alloc_timeout_with_free_recv_headers);
+		jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout,server_alloc_timeout);
 		return;
 	}
 	jhd_http2_single_frame_init(frame,sizeof(jhd_http2_frame)+13);
@@ -189,7 +189,7 @@ static void server_end_headers_handler(jhd_event_t *ev){
 		event_h2c->recv.stream = stream = jhd_alloc(sizeof(jhd_http2_stream));
 		if(stream== NULL){
 			jhd_wait_mem(ev,sizeof(jhd_http2_stream));
-			jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout,server_create_stream_timeout);
+			jhd_event_add_timer(ev,event_h2c->conf->wait_mem_timeout,server_alloc_timeout);
 		}else{
 			stream->id = event_h2c->recv.last_stream_id;
 			stream->recv_window_size = event_h2c->recv.init_window_size;

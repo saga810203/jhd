@@ -37,4 +37,6 @@ jhd_inline static u_char *http_etag_calc(u_char* dst,size_t size,time_t mtime){
 }
 
 
+extern u_char http_etag_buffer[41];
+
 #endif /* HTTP_JHD_HTTP_STATIC_SERVICE_H_ */

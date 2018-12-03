@@ -560,10 +560,7 @@ void jhd_http_request_init_by_http2(jhd_http_request *r,jhd_event_t *ev){
 
 	r->stream = stream;
 
-
 	r->cache_frame.type = JHD_HTTP2_FRAME_TYPE_DATA_FRAME;
-
-	r->mem_timeout = jhd_http_request_default_mem_timeout;
 
 	jhd_queue_move(&r->headers,&event_h2c->recv.headers);
 	stream->lis_ctx = r ;
