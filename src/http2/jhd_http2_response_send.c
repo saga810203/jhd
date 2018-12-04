@@ -2,7 +2,7 @@
 #include <jhd_log.h>
 #include <http2/jhd_http2_response_send.h>
 
-void jhd_http2_free_request_and_cache_data_with_cache_frame_free(jhd_http2_frame *frame){
+void jhd_http2_free_request_and_cache_data_with_cache_frame_free(void *frame){
 	jhd_http_request * r;
 	r =  (jhd_http_request *) (((u_char *) frame) - offsetof(jhd_http_request, cache_frame));
 

@@ -8,6 +8,7 @@
 #ifndef HTTP2_JHD_HTTP2_STATIC_H_
 #define HTTP2_JHD_HTTP2_STATIC_H_
 #include <http/jhd_http_static_service.h>
+#include <http2/jhd_http2.h>
 
 void http2_wait_aio_timeout(jhd_event_t *ev);
 void http2_wait_file_data_buffer_timeout(jhd_event_t *ev);

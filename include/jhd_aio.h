@@ -48,7 +48,7 @@ static jhd_inline void jhd_aio_free(jhd_aio_cb* ic){
 	jhd_queue_t *q;
 	ic->next = jhd_free_iocbs;
 	jhd_free_iocbs = ic;
-	jhd_free_iocbs->aio.aio_data = NULL;
+	jhd_free_iocbs->aio.aio_data = 0;
 	q = waitting_iocb_queue.next;
 
 	if(q != &waitting_iocb_queue){

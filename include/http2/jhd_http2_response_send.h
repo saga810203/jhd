@@ -23,7 +23,7 @@ jhd_inline static void jhd_http2_reset_stream_by_request(jhd_http_request *r,uin
 	c = stream->connection;
 	h2c = c->data;
 
-	jhd_queue_only_remove(stream->queue);
+	jhd_queue_only_remove(&stream->queue);
 	frame = (jhd_http2_frame*)(stream);
 	--h2c->processing;
 	h2c->recv.stream = &jhd_http2_invalid_stream;
@@ -63,7 +63,7 @@ void jhd_http2_alloc_multi_response_headers_frame_timeout(jhd_event_t * ev);
  */
 void jhd_http2_stream_send_last_raw_data(jhd_http_request *r);
 void jhd_http2_send_cached_response(jhd_http_request *r,uint16_t state,u_char *body,uint16_t body_len);
-void jhd_http2_free_request_and_cache_data_with_cache_frame_free(jhd_http2_frame *frame);
+void jhd_http2_free_request_and_cache_data_with_cache_frame_free(void *frame);
 
 
 

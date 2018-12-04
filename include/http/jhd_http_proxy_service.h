@@ -13,12 +13,13 @@ typedef struct {
 	u_char *host;
 	u_int16_t  host_len;
 	jhd_sockaddr_t sockaddr;
-
-
-
-
-
-
+	//idle connection;
+	jhd_queue_t idles;
+	jhd_connection_t *connecting;
+	jhd_queue_t wait_request;
+	uint32_t num_connections;
+	uint32_t  max_connections;
+	unsigned is_ssl:1;
 } jhd_http_proxy_host;
 
 typedef struct {

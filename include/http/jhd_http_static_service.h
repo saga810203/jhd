@@ -10,6 +10,7 @@
 #include <http/jhd_http_core.h>
 #include <jhd_log.h>
 #include <jhd_aio.h>
+#include <jhd_string.h>
 #include <fcntl.h>
 
 typedef struct {
@@ -19,7 +20,7 @@ typedef struct {
 	uint16_t file_path_len;
 	//return target_file length;
 	uint16_t (*build_target_file)(u_char target_file[8192], void*ctx, jhd_http_request *r);
-	size_t *wait_aio_timeout;
+	size_t wait_aio_timeout;
 } jhd_http_static_service_context;
 
 

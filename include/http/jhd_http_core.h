@@ -5,6 +5,7 @@
 #include <jhd_pool.h>
 #include <jhd_queue.h>
 #include <jhd_event.h>
+#include <jhd_aio.h>
 
 
 
@@ -348,7 +349,7 @@ void jhd_http_request_handle_with_internal_error(jhd_http_request *r);
 
 
 
-void jhd_http_content_type_get(u_char *ext,u_char ext_len,u_char **content_type,u_char *content_type_len);
+void jhd_http_content_type_get(u_char *ext,u_char ext_len,u_char **content_type,uint16_t *content_type_len);
 
 
 
@@ -369,14 +370,14 @@ extern const u_char *default_http_content_type ;
 extern const u_char  default_http_content_type_len ;
 extern jhd_queue_t  jhd_http_serveres;
 
-extern const char *jhd_http_bad_request_context;
+extern u_char *jhd_http_bad_request_context;
 extern uint16_t jhd_http_bad_request_context_len;
 
 
-extern const char *jhd_http_nofound_request_context;
+extern u_char *jhd_http_nofound_request_context;
 extern uint16_t jhd_http_nofound_request_context_len;
 
-extern const char *jhd_http_internal_error_request_context;
+extern u_char *jhd_http_internal_error_request_context;
 extern uint16_t jhd_http_internal_error_request_context_len;
 
 #endif /* HTTP_JHD_HTTP_CORE_H_ */

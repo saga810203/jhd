@@ -1,14 +1,15 @@
 #include <jhd_config.h>
 #include <jhd_log.h>
+#include <jhd_queue.h>
 #include <http/jhd_http_core.h>
 #include <http2/jhd_http2_response_send.h>
 
 jhd_queue_t  jhd_http_serveres={&jhd_http_serveres,&jhd_http_serveres};
 
-jhd_queue_t  jhd_http_content_type_queue = {&jhd_http_content_type_queue,jhd_http_content_type_queue};
+jhd_queue_t  jhd_http_content_type_queue = {&jhd_http_content_type_queue,&jhd_http_content_type_queue};
 
 
-const u_char *default_http_content_type ="application/octet-stream";
+const u_char *default_http_content_type =(u_char*)"application/octet-stream";
 const u_char  default_http_content_type_len = sizeof("application/octet-stream") -1;
 
 const char *default_jhd_http_bad_request_context= "<html>\n"
@@ -19,7 +20,7 @@ const char *default_jhd_http_bad_request_context= "<html>\n"
 		"</body>\n"
 		"</html>";
 
-const char *jhd_http_bad_request_context ;
+u_char *jhd_http_bad_request_context ;
 
 uint16_t jhd_http_bad_request_context_len = sizeof("<html>\n"
 		"<head><title>400 Bad Request</title></head>\n"
@@ -31,7 +32,7 @@ uint16_t jhd_http_bad_request_context_len = sizeof("<html>\n"
 
 
 
-const char *default_jhd_http_412_request_context= "<html>\n"
+const u_char *default_jhd_http_412_request_context=(u_char*) "<html>\n"
 		"<head><title>412 Precondition Failed</title></head>\n"
 		"<body bgcolor=\"white\">\n"
 		"<center><h1>412 Precondition Failed</h1></center>\n"
@@ -51,7 +52,7 @@ uint16_t jhd_http_412_request_context_len = sizeof("<html>\n"
 
 
 
-const char *default_jhd_http_nofound_request_context= "<html>\n"
+const u_char *default_jhd_http_nofound_request_context= (u_char*)"<html>\n"
 		"<head><title>404 NOT FOUND</title></head>\n"
 		"<body bgcolor=\"white\">\n"
 		"<center><h1>404 NOT FOUND</h1></center>\n"
@@ -59,7 +60,7 @@ const char *default_jhd_http_nofound_request_context= "<html>\n"
 		"</body>\n"
 		"</html>";
 
-const char *jhd_http_nofound_request_context ;
+u_char *jhd_http_nofound_request_context ;
 
 uint16_t jhd_http_nofound_request_context_len = sizeof("<html>\n"
 		"<head><title>404 NOT FOUND</title></head>\n"
@@ -70,7 +71,7 @@ uint16_t jhd_http_nofound_request_context_len = sizeof("<html>\n"
 		"</html>") - 1;
 
 
-const char *default_jhd_http_internal_error_request_context= "<html>\n"
+const u_char *default_jhd_http_internal_error_request_context= (u_char*)"<html>\n"
 		"<head><title>500 Internal Error</title></head>\n"
 		"<body bgcolor=\"white\">\n"
 		"<center><h1>500 Internal Error</h1></center>\n"
@@ -78,7 +79,7 @@ const char *default_jhd_http_internal_error_request_context= "<html>\n"
 		"</body>\n"
 		"</html>";
 
-const char *jhd_http_internal_error_request_context ;
+u_char *jhd_http_internal_error_request_context ;
 
 uint16_t jhd_http_internal_error_request_context_len = sizeof("<html>\n"
 		"<head><title>500 Internal Error</title></head>\n"
@@ -101,7 +102,7 @@ void jhd_http_content_type_queue_free(){
 	}
 }
 
-int jhd_http_content_type_add(u_char *ext,u_char ext_len,u_char *ext,u_char ext_len,u_char *content_type,u_char content_type_len){
+int jhd_http_content_type_add(u_char *ext,u_char ext_len,u_char *content_type,uint16_t content_type_len){
 	jhd_http_header *header,*ih;
 	jhd_queue_t *head,*q;
 	log_assert_master();
@@ -150,7 +151,7 @@ func_error:
 	return JHD_ERROR;
 }
 
-void jhd_http_content_type_get(u_char *ext,u_char ext_len,u_char **content_type,u_char *content_type_len){
+void jhd_http_content_type_get(u_char *ext,u_char ext_len,u_char **content_type,uint16_t *content_type_len){
 	int rc;
 	jhd_queue_t *head,*q;
 	jhd_http_header *header;
@@ -173,7 +174,7 @@ void jhd_http_content_type_get(u_char *ext,u_char ext_len,u_char **content_type,
 			}
 		}
 	}
-	*content_type = default_http_content_type;
+	*content_type =(u_char*) default_http_content_type;
 	*content_type_len = default_http_content_type_len;
 }
 
@@ -258,7 +259,7 @@ int jhd_http_mulitple_server_handler(void *lis_ctx_data,jhd_http_request *r){
 					q = head->prev;
 					svs =jhd_queue_data(q,jhd_http_service,queue);
 					r->http_service = svs;
-					return svs->service_func(svs,r);
+					return svs->service_func(r);
 			}
 			++svr;
 		}while(*svr != NULL);
@@ -293,7 +294,7 @@ void jhd_http_request_handle_with_nofound_by_http11(jhd_http_request *r){}
 void jhd_http_request_handle_with_internal_error_by_http11(jhd_http_request *r){}
 
 void jhd_http_request_handle_with_bad(jhd_http_request *r){
-	log_assert(jhd_queue_emtpy(&r->headers));
+	log_assert(jhd_queue_empty(&r->headers));
 	if(r->is_http2){
 		jhd_http2_send_cached_response(r,400,jhd_http_bad_request_context,jhd_http_bad_request_context_len);
 	}else{

@@ -121,8 +121,9 @@ static void server_create_request_timeout(jhd_event_t *ev){
 
 
 	log_http2_err(JHD_HTTP2_INTERNAL_ERROR_MEM_TIMEOUT);
+	stream = event_h2c->recv.stream;
 
-	jhd_queue_only_remove(stream->queue);
+	jhd_queue_only_remove(&stream->queue);
 	frame = (jhd_http2_frame*)(stream);
 	--event_h2c->processing;
 	event_h2c->recv.stream = &jhd_http2_invalid_stream;

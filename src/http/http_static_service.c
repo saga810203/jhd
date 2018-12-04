@@ -6,9 +6,6 @@
 u_char http_etag_buffer[41];
 
 void http_file_stat(jhd_http_file_info *file_info, u_char* file_loc) {
-	time_t now;
-	uint32_t hash;
-	int64_t rc;
 	struct stat fi;
 	int fd;
 	file_info->fd = -1;
@@ -34,7 +31,7 @@ void http_file_stat(jhd_http_file_info *file_info, u_char* file_loc) {
 
 void jhd_http_static_request_handle_with_304(jhd_http_request *r){
 	if(r->is_http2){
-		jhd_http2_static_request_out_with_304(r);
+		jhd_http2_static_request_handle_with_304(r);
 	}else{
 		//TODO impl
 	}
@@ -86,15 +83,19 @@ void jhd_http_static_request_headers_out(jhd_http_request *r) {
 		hq = q;
 		q = jhd_queue_next(q);
 		jhd_queue_only_remove(hq);
-		if ((header->name_len == 8) && (memcmp(header->name, "if-range")) == 0) {
-			if (if_range) {
+		if (header->name_len == 8){
+			if(memcmp(header->name, "if-range",8) == 0) {
+				if (if_range) {
+					jhd_queue_insert_tail(&h, hq);
+					goto func_error;
+				} else {
+					if_range = header;
+				}
+			}else{
 				jhd_queue_insert_tail(&h, hq);
-				goto func_error;
-			} else {
-				if_range = header;
 			}
 		} else if (header->name_len == 17) {
-			if (memcmp(header->name, "if-modified-since") == 0) {
+			if (memcmp(header->name, "if-modified-since",17) == 0) {
 				if (if_modified_since) {
 					jhd_queue_insert_tail(&h, hq);
 					goto func_error;
@@ -105,7 +106,7 @@ void jhd_http_static_request_headers_out(jhd_http_request *r) {
 				jhd_queue_insert_tail(&h, hq);
 			}
 		} else if (header->name_len == 13) {
-			if (memcmp(header->name, "if-none-match") == 0) {
+			if (memcmp(header->name, "if-none-match",13) == 0) {
 				if (if_none_match) {
 					jhd_queue_insert_tail(&h, hq);
 					goto func_error;
@@ -115,8 +116,8 @@ void jhd_http_static_request_headers_out(jhd_http_request *r) {
 			} else {
 				jhd_queue_insert_tail(&h, hq);
 			}
-		} else if (header->name_len == 6) {
-			if (memcmp(header->name, "range") == 0) {
+		} else if (header->name_len == 5) {
+			if (memcmp(header->name, "range",5) == 0) {
 				if (range) {
 					jhd_queue_insert_tail(&h, hq);
 					goto func_error;
@@ -137,7 +138,7 @@ void jhd_http_static_request_headers_out(jhd_http_request *r) {
 		}
 	} else if (if_modified_since) {
 		iums = jhd_parse_http_time(if_modified_since->value, if_modified_since->value_len);
-		if (iums == r->file_info->mtime) {
+		if (iums == r->file_info.mtime) {
 			goto func_304;
 		}
 	}
@@ -266,19 +267,18 @@ func_200:
 	jhd_http_static_request_handle_with_200(r);
 	goto func_free;
 func_416:
-	jhd_close(r->file_info->fd);
+	jhd_close(r->file_info.fd);
 	//TODO impl 416 Requested Range Not Satisfiable
 	jhd_http_request_handle_with_bad(r);
 	goto func_free;
 
 func_304:
-	jhd_close(r->file_info->fd);
+	jhd_close(r->file_info.fd);
 	log_assert(jhd_queue_empty(&r->headers));
 	jhd_http_static_request_handle_with_304(r);
 	goto func_free;
 func_error:
-	jhd_close(r->file_info->fd);
-	r->file_info->fd = -1;
+	jhd_close(r->file_info.fd);
 	if (jhd_queue_has_item(&r->headers)) {
 		jhd_queue_merge(&h, &r->headers);
 		jhd_queue_init(&r->headers);
@@ -314,7 +314,7 @@ void jhd_http_static_request_handler(jhd_http_request *r) {
 	if (r->method == JHD_HTTP_METHOD_GET || r->method == JHD_HTTP_METHOD_HEAD) {
 		ctx = r->http_service->service_ctx;
 		len = ctx->build_target_file(jhd_calc_buffer, ctx, r);
-		http_file_stat(jhd_calc_buffer, &r->file_info);
+		http_file_stat(&r->file_info,jhd_calc_buffer);
 		if (r->file_info.fd != -1) {
 			if (r->content_type.alloced) {
 				req_content_type = r->content_type.data;
@@ -332,7 +332,7 @@ void jhd_http_static_request_handler(jhd_http_request *r) {
 					jhd_http_content_type_get(jhd_calc_buffer + idx, len - idx, &r->content_type.data, &r->content_type.len);
 					break;
 				} else if (jhd_calc_buffer[idx] == '/') {
-					r->content_type.data = default_http_content_type;
+					r->content_type.data = (u_char*)default_http_content_type;
 					r->content_type.len = default_http_content_type_len;
 					break;
 				}

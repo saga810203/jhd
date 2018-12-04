@@ -7,7 +7,7 @@ static void http2_static_aio_read_over_with_206(jhd_event_t *ev) {
 	jhd_aio_cb *aio;
 	r = ev->data;
 	jhd_close(r->file_info.fd);
-	if (r->aio->result != r->aio->aio.aio_nbytes) {
+	if (r->aio->result != ((ssize_t)r->aio->aio.aio_nbytes)) {
 		jhd_http2_reset_stream_by_request(r,JHD_HTTP2_INTERNAL_ERROR_READ_FILE_TIMEOUT);
 		jhd_aio_free(r->aio);
 		jhd_free_with_size(r->cache_frame.data, r->cache_frame.data_len);
@@ -23,10 +23,9 @@ static void http2_static_aio_read_over_with_206(jhd_event_t *ev) {
 
 static void http2_static_aio_read_compele_with_206(jhd_event_t *ev) {
 	jhd_http_request *r;
-	jhd_aio_cb *aio;
 	r = ev->data;
 	jhd_close(r->file_info.fd);
-	if (r->aio->result != r->aio->aio.aio_nbytes) {
+	if (r->aio->result != ((ssize_t)r->aio->aio.aio_nbytes)) {
 		jhd_http2_reset_stream_by_request(r,JHD_HTTP2_INTERNAL_ERROR_READ_FILE_TIMEOUT);
 		jhd_aio_free(r->aio);
 		jhd_free_with_size(r->cache_frame.data, r->cache_frame.data_len);
@@ -41,34 +40,35 @@ static void http2_static_aio_read_compele_with_206(jhd_event_t *ev) {
 static void http2_static_206_response_start_read(jhd_http_request *r) {
 	size_t len;
 	jhd_http2_stream *stream;
-	r->payload = r->aio->aio.aio_buf = (uint64_t) (r->cache_frame.data + 9);
+	r->payload = r->cache_frame.data + 9;
+	r->aio->aio.aio_buf = (uint64_t) (r->payload);
 	len = r->cache_frame.data_len - 9;
 	stream = r->stream;
 
 	if(r->aio_skip){
 		if (len <= r->static_file_size) {
 			r->aio->aio.aio_nbytes = r->static_file_size;
-			r->event->handler = http2_static_aio_read_over_with_206;
-			stream->listener = http2_server_stream_listener_block_with_static_response_aio_read;
+			r->event.handler = http2_static_aio_read_over_with_206;
+			stream->listener = &http2_server_stream_listener_block_with_static_response_aio_read;
 		} else {
 			r->aio->aio.aio_nbytes = len;
 			r->static_file_size -= len;
-			r->event->handler = http2_static_aio_read_compele;
-			stream->listener = http2_server_stream_listener_block_with_static_response_aio_read;
+			r->event.handler = http2_static_aio_read_compele;
+			stream->listener = &http2_server_stream_listener_block_with_static_response_aio_read;
 		}
 	}else{
 		if (len <= r->static_file_size) {
 			r->aio->aio.aio_nbytes = r->static_file_size;
-			r->event->handler = http2_static_aio_read_over;
-			stream->listener = http2_server_stream_listener_block_with_static_response_aio_read;
+			r->event.handler = http2_static_aio_read_over;
+			stream->listener = &http2_server_stream_listener_block_with_static_response_aio_read;
 		} else {
 			r->aio->aio.aio_nbytes = len;
 			r->static_file_size -= len;
-			r->event->handler = http2_static_aio_read_compele_with_206;
-			stream->listener = http2_server_stream_listener_block_with_static_response_aio_read;
+			r->event.handler = http2_static_aio_read_compele_with_206;
+			stream->listener = &http2_server_stream_listener_block_with_static_response_aio_read;
 		}
 	}
-	r->event->timeout = http2_static_aio_read_timeout;
+	r->event.timeout = http2_static_aio_read_timeout;
 	jhd_aio_submit(r->aio);
 }
 static void http2_send_static_206_response_alloc_data_buffer(jhd_event_t *ev) {
@@ -89,11 +89,11 @@ void http2_send_static_206_response_data_frmae(jhd_http_request *r) {
 
 	r->aio->aio.aio_fildes = r->file_info.fd;
 
-	r->aio_skip = r->file_info->range_start % jhd_aio_block_size;
+	r->aio_skip = r->file_info.range_start % jhd_aio_block_size;
 
-	size = r->static_file_size = r->file_info.range_end - r->file_info->range_start + r->aio_skip + 1;
+	size = r->static_file_size = r->file_info.range_end - r->file_info.range_start + r->aio_skip + 1;
 
-	r->aio->aio.aio_offset = r->file_info->range_start - r->aio_skip;
+	r->aio->aio.aio_offset = r->file_info.range_start - r->aio_skip;
 
 	if (size <= 1024) {
 		r->cache_frame.data_len = 1024 + 9;
@@ -137,7 +137,7 @@ void http2_send_static_206_response_headers_frmae(jhd_http_request *r, jhd_http2
 	jhd_connection_t *c;
 	jhd_http2_connection *h2c;
 	jhd_http2_stream *stream;
-	u_char *p, *etag,*end;
+	u_char *p, *etag;
 
 	log_assert(r->event.timer.key == 0);
 	log_assert(r->file_info.range_start<=r->file_info.range_end);
@@ -184,7 +184,7 @@ void http2_send_static_206_response_headers_frmae(jhd_http_request *r, jhd_http2
 	++p;
 	*p = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
 	++p;
-	jhd_write_http_time(p, r->file_info->mtime);
+	jhd_write_http_time(p, r->file_info.mtime);
 	p += (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
 
 	//etag
@@ -247,8 +247,8 @@ void http2_send_static_206_response_headers_frmae(jhd_http_request *r, jhd_http2
 
 	//content-range
 	*p = 15;
-	++p
-	*p = 30 -15;
+	++p;
+	*p = (u_char)(30 - 15);
 	++p;
 	*p = (u_char)len;
 	++p;
@@ -277,7 +277,7 @@ void http2_send_static_206_response_headers_frmae(jhd_http_request *r, jhd_http2
 		r->aio->aio.aio_data = (uint64_t) (&r->event);
 		http2_send_static_206_response_data_frmae(r);
 	} else {
-		r->event->handler = http2_static_206_alloc_aio;
+		r->event.handler = http2_static_206_alloc_aio;
 		jhd_aio_wait(&r->event);
 		jhd_event_add_timer(&r->event, ((jhd_http_static_service_context *) (r->http_service->service_ctx))->wait_aio_timeout,http2_wait_aio_timeout);
 		stream->listener = &http2_server_stream_listener_block_with_static_response_alloc_aio;
@@ -298,9 +298,6 @@ static void http2_alloc_headers_frame_with_206(jhd_event_t *ev) {
 
 void jhd_http2_static_request_handler_with_206(jhd_http_request *r) {
 	jhd_http2_frame *frame;
-	jhd_http2_stream *stream;
-	jhd_connection_t *c;
-	jhd_http2_connection *h2c;
 	u_char *host, *user_agent, *path;
 	uint16_t host_len, user_agent_len, path_len;
 	host_len = user_agent_len = path_len = 0;

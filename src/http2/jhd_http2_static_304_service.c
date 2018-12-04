@@ -1,5 +1,8 @@
 #include <http2/jhd_http2.h>
 #include <http2/jhd_http2_static.h>
+#include <http2/jhd_http2_response_send.h>
+
+
 static void send_response_headers_frmae_with_304(jhd_http_request *r,jhd_http2_frame *frame){
 	uint16_t len;
 	jhd_connection_t *c;
@@ -50,7 +53,7 @@ static void send_response_headers_frmae_with_304(jhd_http_request *r,jhd_http2_f
 	++p;
 	*p = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
 	++p;
-	jhd_write_http_time(p,r->file_info->mtime);
+	jhd_write_http_time(p,r->file_info.mtime);
 	p += (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
 
 	*p = 15;
@@ -79,7 +82,7 @@ static void send_response_headers_frmae_with_304(jhd_http_request *r,jhd_http2_f
 	frame->next = NULL;
 	jhd_http2_send_headers_frame(c,h2c,frame,frame);
 
-	jhd_queue_only_remove(stream->queue);
+	jhd_queue_only_remove(&stream->queue);
 	--h2c->processing;
 	jhd_free_with_size(stream,sizeof(jhd_http2_stream));
 	jhd_free_with_size(r,sizeof(jhd_http_request));
@@ -94,9 +97,6 @@ static void http2_alloc_headers_frame_with_304(jhd_event_t *ev){
 }
 void jhd_http2_static_request_handler_with_304(jhd_http_request *r){
 	jhd_http2_frame *frame;
-	jhd_http2_stream *stream;
-	jhd_connection_t *c;
-	jhd_http2_connection *h2c;
 	u_char *host,*user_agent,*path;
 	uint16_t host_len,user_agent_len,path_len;
 	host_len = user_agent_len = path_len = 0;
@@ -127,7 +127,6 @@ void jhd_http2_static_request_handler_with_304(jhd_http_request *r){
 		jhd_wait_mem(&r->event,256);
 		jhd_event_add_timer(&r->event,r->http_service->mem_timeout,jhd_http2_alloc_single_response_headers_frame_timeout);
 	}
-func_free:
 	if(path_len){
 		jhd_free_with_size(path,path_len);
 	}
