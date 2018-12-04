@@ -64,7 +64,7 @@ struct jhd_connection_s {
 	jhd_connection_close_pt close;
 	union{
 	jhd_listening_t *listening;
-	void *client_config;
+	void *config;
 	};
 	jhd_sockaddr_t sockaddr;
 	socklen_t socklen;

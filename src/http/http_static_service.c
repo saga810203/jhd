@@ -307,15 +307,14 @@ func_free:
 
 void jhd_http_static_request_handler(jhd_http_request *r) {
 	jhd_http_static_service_context *ctx;
-	u_char file_loc[8192];
 	uint16_t len, idx;
 	u_char *req_content_type;
 	uint16_t req_content_type_len;
 
 	if (r->method == JHD_HTTP_METHOD_GET || r->method == JHD_HTTP_METHOD_HEAD) {
 		ctx = r->http_service->service_ctx;
-		len = ctx->build_target_file(file_loc, ctx, r);
-		http_file_stat(file_loc, &r->file_info);
+		len = ctx->build_target_file(jhd_calc_buffer, ctx, r);
+		http_file_stat(jhd_calc_buffer, &r->file_info);
 		if (r->file_info.fd != -1) {
 			if (r->content_type.alloced) {
 				req_content_type = r->content_type.data;
@@ -325,14 +324,14 @@ void jhd_http_static_request_handler(jhd_http_request *r) {
 				req_content_type_len = 0;
 			}
 			idx = len - 1;
-			log_assert(file_loc[0] == '/');
-			log_assert(file_loc[idx] != '.');
+			log_assert(jhd_calc_buffer[0] == '/');
+			log_assert(jhd_calc_buffer[idx] != '.');
 			for (;;) {
-				if (file_loc[idx] == '.') {
+				if (jhd_calc_buffer[idx] == '.') {
 					++idx;
-					jhd_http_content_type_get(file_loc + idx, len - idx, &r->content_type.data, &r->content_type.len);
+					jhd_http_content_type_get(jhd_calc_buffer + idx, len - idx, &r->content_type.data, &r->content_type.len);
 					break;
-				} else if (file_loc[idx] == '/') {
+				} else if (jhd_calc_buffer[idx] == '/') {
 					r->content_type.data = default_http_content_type;
 					r->content_type.len = default_http_content_type_len;
 					break;
